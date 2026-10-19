@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 edgecoil -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Two round buttons, a heart and a plus. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#1F2A30" android:pathData="M8,4h32a4,4 0,0 1,4 4v32a4,4 0,0 1,-4 4h-32a4,4 0,0 1,-4 -4v-32a4,4 0,0 1,4 -4z" />
+    <path android:fillColor="#1ED760" android:pathData="M16,24m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M16,29.5l-4.2,-4.1c-1.6,-1.6 -1.1,-4.2 1,-4.5 1.2,-0.2 2.4,0.4 3.2,1.4 0.8,-1 2,-1.6 3.2,-1.4 2.1,0.3 2.6,2.9 1,4.5z" />
+    <path android:fillColor="#E0E0E0" android:pathData="M32,24m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0" />
+    <path android:fillColor="#1F2A30" android:pathData="M31,19h2v4h4v2h-4v4h-2v-4h-4v-2h4z" />
+</vector>
