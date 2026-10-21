@@ -53,7 +53,7 @@ LED0805 = "LED_SMD:LED_0805_2012Metric"
 LCSC_R0603 = {"1": "C22936", "1k": "C21190", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
               "220k": "C22961"}
 LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
-          ("22u", C0805): "C45783"}
+          ("22u", C0805): "C45783", ("10u", C0805): "C15850"}
 LCSC_LED_RED = "C2286"
 
 
@@ -179,7 +179,9 @@ def variant_c3():
         R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # about 200 mA by the TP4054's own formula
         # 1 ohm in series with the input capacitor damps the cable's ringing on plug-in, which
         # otherwise peaks around 7 V (TP4054 datasheet, and simulated).
-        C("C1", "4.7u", "VBUS_C", "GND", (32.5, 16.5), 90),
+        # 10 uF (the most USB allows on VBUS) with R13, so low-resistance cables ring to about 5.6 V
+        # rather than 6.1 V: the regulator's limit is 6.5 V.
+        C("C1", "10u", "VBUS_C", "GND", (33.0, 16.5), 90, fp=C0805),
         R("R13", "1", "VBUS", "VBUS_C", (30.4, 16.5), 90),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
@@ -191,6 +193,10 @@ def variant_c3():
         # 10k, not 100k: pulls Q1's gate down within ~3 ms of unplugging, and holds it down against
         # D2's reverse leakage when warm.
         R("R5", "10k", "VBUS", "GND", (41.5, 27.0), 90),
+        # Across Q1: for the few ms after unplugging, before Q1's gate is pulled down, the cell feeds
+        # VSYS through this (0.35 V) rather than Q1's body diode (0.6 V), which kept 3V3 above brown-out.
+        Part("D4", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBAT"},
+             (37.0, 29.8), 0, mpn="1N5819WS", lcsc="C191023"),
         Part("D2", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBUS"},
              (37.0, 23.0), 0, mpn="1N5819WS", lcsc="C191023"),
         # 3.3 V: RT9080, 600 mA (current limit at least 610 mA) with 2 uA quiescent, so Wi-Fi's
