@@ -12,7 +12,7 @@ standard 19.05 mm pitch:
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
-| Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
+| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
 
 **Rev A is unbuilt and untested.** Both boards pass KiCad's electrical rules check and its design
 rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
@@ -88,7 +88,11 @@ It needs KiCad 9, Java 21 and Freerouting 2.1.0 (later Freerouting releases need
 `gen.py` and rebuild rather than editing the KiCad files: a rebuild overwrites them. To hand-route
 instead, stop after `gen.py` and open the project in KiCad.
 
-For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm; Economic assembly limits the colours, green is safe). For their
+For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, **black** mask, white legend, **lead-free HASL**: Economic assembly offers that
+for 2–50 boards, while ENIG would force green). Under *Mark on PCB*, choose *Specify a location*:
+the `JLCJLCJLCJLC` marker puts their order number on the electronics side (C3) or the back (XIAO),
+away from the logo. Add a remark that the C3's module antenna and USB-C overhang the edge by
+design. For their
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
 its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you.
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
@@ -101,7 +105,7 @@ for a panel. Its USB-C, battery socket and module sit closer to the edges than J
 rule, so if JLC asks for rails, have them on the **left and right edges only**: the USB-C overhangs
 the bottom edge and the antenna overhangs the notch at the top.
 
-Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diode
+Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)
 are **Preferred** parts, which also carry no fee. Four types are **Extended**, at a fee per type per
 order: the ESP32-C3-WROOM-02 module, the USB-C socket, the JST battery socket and the RT9080

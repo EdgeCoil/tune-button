@@ -143,7 +143,8 @@ def variant_xiao():
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
             ("text", 12.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
             ("text", 1.5, 21.77, "BAT", 90)]
-    return parts, H, [], silk, {}
+    # JLC prints its order number where this marker is, rather than wherever it likes.
+    return parts, H, [], silk, {"jlc_mark": (W / 2, 12.0, "B")}
 
 
 def variant_c3():
@@ -261,8 +262,11 @@ def variant_c3():
               # above and below those vias.
               "logo": (37.0, 12.2, 15.0),
               "back_text": [(14.5, 8.3, "tune-button", 1.5), (14.5, 10.4, "c3 · rev A", 1.0),
-                            (14.5, 17.0, "edgecoil.dev", 1.2), (40.0, 22.0, "CHG", 1.0),
-                            (34.0, 22.0, "LED", 1.0)]}
+                            (14.5, 17.0, "edgecoil.dev", 1.2), (40.0, 22.0, "D1 CHG", 1.0),
+                            (34.0, 22.0, "D3 LED", 1.0)],
+              "hide_refs": ["D1", "D3"],  # named in the back text above
+              # JLC's order number goes on the electronics side, not next to the mark.
+              "jlc_mark": (19.5, 44.0, "F")}
     return parts, H, [], silk, extras
 
 
@@ -533,12 +537,13 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         if p.lcsc:
             fp.SetField("LCSC", p.lcsc)
             fp.GetFieldByName("LCSC").SetVisible(False)
-            # Slotted legs (the USB-C shell) on a reflowed part: paste them, overprinted 0.2 mm, so
+            # Slotted legs (the USB-C shell) on a reflowed part: paste them, overprinted 0.12 mm (which
+            # leaves a 0.15 mm stencil web to the next pad), so
             # they solder in reflow.
             for pad in fp.Pads():
                 if pad.HasHole() and pad.GetDrillShape() == pcbnew.PAD_DRILL_SHAPE_OBLONG:
                     layers = pad.GetLayerSet(); layers.AddLayer(pcbnew.F_Paste); pad.SetLayerSet(layers)
-                    pad.SetLocalSolderPasteMargin(pcbnew.FromMM(0.2))
+                    pad.SetLocalSolderPasteMargin(pcbnew.FromMM(0.12))
         # JLC's minimum legend line is 0.15 mm; library footprints draw 0.12.
         for item in fp.GraphicalItems():
             if item.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS) and isinstance(item, pcbnew.PCB_SHAPE):
@@ -573,8 +578,21 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         board.Add(t)
     if "logo" in extras:
         logo(board, *extras["logo"])
-    # Keep vias out from under the back-side text and the mark.
     art, logo_box = [], pcbnew.BOX2I()
+    if "jlc_mark" in extras:
+        x, y, side = extras["jlc_mark"]
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText("JLCJLCJLCJLC"); t.SetPosition(mm(x, y))
+        t.SetLayer(pcbnew.B_SilkS if side == "B" else pcbnew.F_SilkS); t.SetMirrored(side == "B")
+        t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
+        board.Add(t)
+        # JLC prints over it, so vias may go under it (it sits in the routing channel between the
+        # keys); but a footprint hole there would break the print.
+        box = t.GetBoundingBox(); box.Inflate(pcbnew.FromMM(0.2))
+        for pad in board.GetPads():
+            if pad.HasHole() and box.Intersects(pad.GetBoundingBox()):
+                raise SystemExit(f"{name}: hole in {pad.GetParentFootprint().GetReference()} under the JLC mark")
+    # Keep vias out from under the back-side text and the mark.
     for d in board.Drawings():
         if d.GetLayer() == pcbnew.B_SilkS:
             if isinstance(d, pcbnew.PCB_SHAPE) and d.GetShape() == pcbnew.SHAPE_T_SEGMENT:
@@ -589,8 +607,11 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         for pad in board.GetPads():
             if pad.HasHole() and b.Intersects(pad.GetBoundingBox()):
                 raise SystemExit(f"{name}: hole in {pad.GetParentFootprint().GetReference()} under back artwork")
+        b.Inflate(pcbnew.FromMM(0.6))  # vias 1 mm clear, so none reads as part of the print
         x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
+    for ref in extras.get("hide_refs", []):
+        board.FindFootprintByReference(ref).Reference().SetVisible(False)
     place_labels(board, h, extras.get("notch"))
     board.Save(path)
     set_stackup(path)
@@ -629,9 +650,14 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stro
     import subprocess
     import tempfile
     from PIL import Image
-    with tempfile.NamedTemporaryFile(suffix=".png") as png:
-        subprocess.run(["rsvg-convert", "-w", str(round(width / res)), "-o", png.name, svg], check=True)
-        img = Image.open(png.name).convert("RGBA")
+    def render(px):
+        with tempfile.NamedTemporaryFile(suffix=".png") as png:
+            subprocess.run(["rsvg-convert", "-w", str(px), "-o", png.name, svg], check=True)
+            im = Image.open(png.name).convert("RGBA")
+        return im.crop(im.getchannel("A").point(lambda a: 255 if a >= 128 else 0).getbbox())
+    # The SVG's canvas has margins: scale so the mark itself, not the canvas, is `width` wide.
+    px = round(width / res)
+    img = render(round(px * px / render(px).width))
     w, h = img.size
     alpha = img.getchannel("A").load()
     x0, y0 = cx - width / 2, cy - h * res / 2
@@ -682,6 +708,13 @@ def place_labels(board, h, notch=None):
                 box.Merge(item.GetBoundingBox())
         bodies[silk][fp.GetReference()] = box
         side_of[fp.GetReference()] = silk
+    # Keycaps on front-mounted switches cover an 18 mm square round the centre post.
+    for fp in board.Footprints():
+        if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:") and fp.GetLayer() == pcbnew.F_Cu:
+            post = max(fp.Pads(), key=lambda p: p.GetDrillSize().x).GetPosition()
+            half = pcbnew.FromMM(KEYCAP / 2)
+            bodies[pcbnew.F_SilkS][f"cap-{fp.GetReference()}"] = pcbnew.BOX2I(
+                pcbnew.VECTOR2I(post.x - half, post.y - half), pcbnew.VECTOR2I(2 * half, 2 * half))
     # A silkscreen outline marks something that sits over the board (the XIAO): nothing goes under it.
     for d in board.Drawings():
         if isinstance(d, pcbnew.PCB_SHAPE) and d.GetLayer() in bodies and d.GetShape() == pcbnew.SHAPE_T_RECT:
