@@ -1,0 +1,9 @@
+*/fab/
+*-backups/
+*.kicad_prl
+*.lck
+fp-info-cache
+*.dsn
+*.ses
+*-unrouted.kicad_pcb
+*-best.kicad_pcb

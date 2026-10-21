@@ -1,6 +1,7 @@
 # Wiring
 
-Everything hangs off a stock **Seeed Studio XIAO ESP32-C3**. No custom board.
+Everything hangs off a stock **Seeed Studio XIAO ESP32-C3**. No custom board. For four MX keys on a
+PCB instead, see [`pcb/`](pcb/).
 
 ```
                  XIAO ESP32-C3 (top view, USB-C at the top)

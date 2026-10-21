@@ -1,0 +1,488 @@
+# SPDX-FileCopyrightText: 2026 edgecoil
+# SPDX-License-Identifier: CERN-OHL-S-2.0
+"""Generate the two tune-button PCBs: a KiCad schematic and an unrouted board for each.
+
+    xiao  - sockets for a Seeed XIAO ESP32-C3 on 2.54 mm headers
+    c3    - an ESP32-C3-WROOM-02 module on the board, with USB-C, charger and regulator
+
+Both have four Cherry MX switches in a 2 x 2 grid. The netlist below is the single source of
+truth: the schematic (labels on every pin) and the board are both written from it, and check.py
+compares the netlist KiCad reads back from the schematic against the board's pads.
+
+    python3 gen.py [xiao|c3 ...]     then ./build.sh to route, check and export
+"""
+import os
+import re
+import sys
+import uuid
+
+import pcbnew
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SYMDIR = os.environ.get("KICAD_SYMBOL_DIR", "/usr/share/kicad/symbols")
+FPDIR = os.environ.get("KICAD_FOOTPRINT_DIR", "/usr/share/kicad/footprints")
+NS = uuid.UUID("6d1c5f0e-6f0a-4c43-9a59-2b1b8f3a7e10")
+
+KEY_PITCH = 19.05
+W = 46.0  # board width; both versions
+
+
+def uid(*parts):
+    return str(uuid.uuid5(NS, "/".join(parts)))
+
+
+class Part:
+    def __init__(self, ref, sym, fp, value, pins, at, rot=0, mpn="", note=""):
+        self.ref, self.sym, self.fp, self.value = ref, sym, fp, value
+        self.pins = pins  # pin number -> net name; unlisted pins are no-connect
+        self.at, self.rot, self.mpn, self.note = at, rot, mpn, note
+
+
+R0603 = "Resistor_SMD:R_0603_1608Metric"
+C0603 = "Capacitor_SMD:C_0603_1608Metric"
+C0805 = "Capacitor_SMD:C_0805_2012Metric"
+LED0603 = "LED_SMD:LED_0603_1608Metric"
+
+
+def R(ref, value, a, b, at, rot=0):
+    return Part(ref, "Device:R", R0603, value, {"1": a, "2": b}, at, rot)
+
+
+def C(ref, value, a, b, at, rot=0, fp=C0603):
+    return Part(ref, "Device:C", fp, value, {"1": a, "2": b}, at, rot)
+
+
+def keys(top):
+    """Four MX switches, 2 x 2, centred across the board; `top` is the upper row's centre y.
+
+    The KiCad footprint's origin is pin 1, 2.54 mm right of and 5.08 mm above the switch centre."""
+    parts = []
+    for i, net in enumerate(["K1", "K2", "K3", "K4"]):
+        cx = W / 2 + (-0.5 if i % 2 == 0 else 0.5) * KEY_PITCH
+        cy = top + (i // 2) * KEY_PITCH
+        parts.append(Part(f"SW{i + 1}", "Switch:SW_Push", "Button_Switch_Keyboard:SW_Cherry_MX_1.00u_PCB",
+                          "MX switch", {"1": net, "2": "GND"}, (cx + 2.54, cy - 5.08), mpn="Cherry MX (3 or 5 pin)"))
+    return parts
+
+
+def holes(points):
+    return [Part(f"H{i + 1}", None, "MountingHole:MountingHole_2.2mm_M2", "M2", {}, p) for i, p in enumerate(points)]
+
+
+def variant_xiao():
+    """XIAO on two 1x7 sockets, USB-C at the top edge. Pin 1 of each socket is at the USB end.
+
+    Only GPIO2-5 are both broken out and able to wake the C3 from deep sleep, and the battery needs
+    an ADC1 pin (GPIO0-4). So K1-K3 get D1-D3, the battery divider keeps D0, and K4 is read on D4
+    and ORed onto K3's wake line through a Schottky: a K4 press wakes on GPIO5 with D4 low."""
+    x0, x1 = W / 2 - 7.62, W / 2 + 7.62  # 15.24 mm between rows: CHECK with calipers
+    y1 = 4.4
+    parts = [
+        Part("J1", "Connector_Generic:Conn_01x07", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
+             "XIAO left", {"1": "VBAT_SENSE", "2": "K1", "3": "K2", "4": "K3", "5": "K4", "6": "LED", "7": ""},
+             (x0, y1), note="D0-D6, USB end first"),
+        Part("J2", "Connector_Generic:Conn_01x07", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
+             "XIAO right", {"1": "", "2": "GND", "3": "", "4": "", "5": "", "6": "", "7": ""},
+             (x1, y1), note="5V GND 3V3 D10 D9 D8 D7"),
+        Part("J3", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+             "LiPo", {"1": "VBAT", "2": "GND"}, (7.0, 13.0), rot=270, mpn="JST S2B-PH-SM4-TB"),
+        Part("J4", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+             "to XIAO BAT", {"1": "VBAT", "2": "GND"}, (4.0, 20.5), note="wire to the XIAO's BAT+/BAT- pads"),
+        R("R1", "220k", "VBAT", "VBAT_SENSE", (11.5, 19.4), 90),
+        R("R2", "220k", "VBAT_SENSE", "GND", (11.5, 22.8), 90),
+        C("C1", "100n", "VBAT_SENSE", "GND", (9.0, 22.0), 90),
+        Part("D1", "Diode:BAT54W", "Package_TO_SOT_SMD:SOT-323_SC-70", "BAT54W", {"1": "K3", "2": "", "3": "K4"},
+             (38.5, 16.0), mpn="BAT54W"),
+        R("R3", "1k", "LED", "LED_A", (38.5, 6.0), 0),
+        Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180),
+    ]
+    top = 33.5
+    parts += keys(top)
+    H = top + KEY_PITCH + 9.5 + 2.5
+    parts += holes([(3.5, 3.5), (W - 3.5, 3.5), (3.5, H - 3.5), (W - 3.5, H - 3.5)])
+    silk = [("rect", W / 2 - 8.75, y1 - 2.9, W / 2 + 8.75, y1 + 18.1), ("text", W / 2, y1 + 6.5, "XIAO"),
+            ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
+            ("text", 11.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
+            ("text", 4.0, 25.7, "BAT")]
+    return parts, H, [], silk
+
+
+def variant_c3():
+    """ESP32-C3-WROOM-02 with its antenna at the top edge, native USB on USB-C, MCP73831 charger,
+    load sharing (a P-FET from the cell, a Schottky from VBUS) and a 1.6 uA MCP1700 regulator."""
+    mx, my = 14.0, 13.2  # module origin; the antenna end is flush with the top edge
+    parts = [
+        Part("U1", "RF_Module:ESP32-C3-WROOM-02", "RF_Module:ESP32-C3-WROOM-02", "ESP32-C3-WROOM-02-N4",
+             {"1": "3V3", "2": "EN", "3": "K2", "4": "K3", "5": "", "6": "", "7": "IO8", "8": "IO9", "9": "GND",
+              "10": "LED", "11": "RXD", "12": "TXD", "13": "USB_DN", "14": "USB_DP", "15": "K1", "16": "IO2",
+              "17": "VBAT_SENSE", "18": "K4", "19": "GND"}, (mx, my), mpn="ESP32-C3-WROOM-02-N4"),
+        # USB-C, mouth at the top edge.
+        Part("J1", "Connector:USB_C_Receptacle_USB2.0_16P", "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
+             "USB-C", {"A1": "GND", "A4": "VBUS", "A5": "CC1", "A6": "USB_DP", "A7": "USB_DN", "A8": "",
+                       "A9": "VBUS", "A12": "GND", "B1": "GND", "B4": "VBUS", "B5": "CC2", "B6": "USB_DP",
+                       "B7": "USB_DN", "B8": "", "B9": "VBUS", "B12": "GND", "S1": "GND"},
+             (37.0, 4.6), rot=180, mpn="HRO TYPE-C-31-M-12"),
+        R("R1", "5.1k", "CC1", "GND", (32.0, 11.5), 90),
+        R("R2", "5.1k", "CC2", "GND", (42.0, 11.5), 90),
+        Part("U2", "Power_Protection:USBLC6-2SC6", "Package_TO_SOT_SMD:SOT-23-6", "USBLC6-2SC6",
+             {"1": "USB_DP", "2": "GND", "3": "USB_DN", "4": "USB_DN", "5": "VBUS", "6": "USB_DP"},
+             (37.0, 12.5), 90, mpn="USBLC6-2SC6"),
+        # Charger.
+        Part("U3", "Battery_Management:MCP73831-2-OT", "Package_TO_SOT_SMD:SOT-23-5", "MCP73831-2",
+             {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VBUS", "5": "PROG"}, (37.0, 19.0), 0,
+             mpn="MCP73831T-2ACI/OT"),
+        R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # 1000 V / 4.7 k = 213 mA
+        C("C1", "4.7u", "VBUS", "GND", (32.5, 16.5), 90),
+        C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
+        R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
+        Part("D1", "Device:LED", LED0603, "CHG red", {"1": "STAT", "2": "CHG_A"}, (32.5, 24.0), 90),
+        # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
+        Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
+             {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A"),
+        R("R5", "100k", "VBUS", "GND", (41.5, 27.0), 90),
+        Part("D2", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBUS"},
+             (37.0, 23.0), 0, mpn="1N5819WS"),
+        # 3.3 V.
+        Part("U4", "Regulator_Linear:MCP1700x-330xxTT", "Package_TO_SOT_SMD:SOT-23", "MCP1700-3302E",
+             {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="MCP1700T-3302E/TT"),
+        C("C3", "1u", "VSYS", "GND", (27.5, 22.0), 0),
+        C("C4", "22u", "3V3", "GND", (27.5, 14.5), 0, fp=C0805),
+        C("C5", "100n", "3V3", "GND", (3.0, 9.2), 90),
+        # Reset, boot and straps. IO9 has an internal pull-up; IO2 and IO8 must read high at reset.
+        R("R6", "10k", "3V3", "EN", (3.0, 12.7), 90),
+        C("C6", "1u", "EN", "GND", (3.0, 16.2), 90),
+        R("R7", "10k", "3V3", "IO8", (3.0, 19.7), 90),
+        R("R9", "10k", "3V3", "IO2", (25.5, 10.2), 180),
+        Part("SW5", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "RESET",
+             {"1": "EN", "2": "GND"}, (8.8, 24.0), mpn="XKB TS-1187A"),
+        Part("SW6", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "BOOT",
+             {"1": "IO9", "2": "GND"}, (21.0, 24.0), mpn="XKB TS-1187A"),
+        # Battery, its divider, the LED.
+        Part("J2", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+             "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 34.5), rot=90, mpn="JST S2B-PH-SM4-TB"),
+        R("R10", "220k", "VBAT", "VBAT_SENSE", (28.0, 26.0), 0),
+        R("R11", "220k", "VBAT_SENSE", "GND", (28.0, 28.5), 0),
+        C("C7", "100n", "VBAT_SENSE", "GND", (24.5, 28.5), 90),
+        R("R12", "1k", "LED", "LED_A", (14.7, 23.0), 0),
+        Part("D3", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (14.7, 25.5), 180),
+        Part("TP1", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+             "UART", {"1": "TXD", "2": "RXD"}, (3.0, 28.0), 0, note="debug UART, optional"),
+    ]
+    top = 46.0
+    parts += keys(top)
+    H = top + KEY_PITCH + 9.5 + 2.5
+    parts += holes([(W - 3.5, H - 3.5), (3.5, H - 3.5), (3.5, 35.5), (W - 3.0, 42.5)])
+    # Antenna keep-out: no copper on either layer from the top edge to the antenna's lower end, 5 mm
+    # either side of the module (the footprint's own drawing).
+    keepout = [(mx - 14.3, 0), (mx + 14.3, 0), (mx + 14.3, my - 6.5), (mx - 14.3, my - 6.5)]
+    silk = [("text", 35.6, 35.5, "+"), ("text", 8.8, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
+            ("text", 5.0, 28.0, "TX"), ("text", 5.0, 30.54, "RX")]
+    return parts, H, [keepout], silk
+
+
+VARIANTS = {"xiao": variant_xiao, "c3": variant_c3}
+
+
+# ---------------------------------------------------------------- symbol library handling
+
+def block(text, start):
+    """The balanced s-expression starting at text[start] == '('."""
+    depth, i, instr = 0, start, False
+    while True:
+        ch = text[i]
+        if instr:
+            if ch == "\\":
+                i += 1
+            elif ch == '"':
+                instr = False
+        elif ch == '"':
+            instr = True
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+        i += 1
+
+
+_libs = {}
+
+
+def lib_symbol(lib_id):
+    lib, name = lib_id.split(":")
+    if lib not in _libs:
+        _libs[lib] = open(os.path.join(SYMDIR, lib + ".kicad_sym")).read()
+    text = _libs[lib]
+    m = re.search(r'\n\t\(symbol "%s"' % re.escape(name), text)
+    if not m:
+        raise SystemExit(f"symbol {lib_id} not found")
+    blk = block(text, m.start() + 2)
+    ext = re.search(r'\(extends "([^"]+)"\)', blk)
+    if ext:
+        parent = lib_symbol(f"{lib}:{ext.group(1)}")
+        props = [block(blk, mm.start()) for mm in re.finditer(r"\(property ", blk)]
+        body = re.sub(r'^\(symbol "[^"]+"', "", parent[0])
+        body = re.sub(r"\n\t*\(property .*?\n\t\t\)", "", body, flags=re.S)  # drop parent's properties
+        body = body.replace(f'"{ext.group(1)}_', f'"{name}_')
+        head = f'(symbol "{lib_id}"'
+        # Properties go after the pin_names/exclude flags; inserting them first is accepted too.
+        return head + "\n" + "\n".join(props) + body, parent[1]
+    pins = {}
+    for pm in re.finditer(r"\(pin \w+ \w+\s*\(at ([-\d.]+) ([-\d.]+) (\d+)\)", blk):
+        pb = block(blk, pm.start())
+        num = re.search(r'\(number "([^"]*)"', pb).group(1)
+        unit = re.findall(r'\(symbol "%s_(\d+)_(\d+)"' % re.escape(name), blk[:pm.start()])
+        if unit and unit[-1][1] == "2":
+            continue  # De Morgan alternate body
+        pname = re.search(r'\(name "([^"]*)"', pb).group(1)
+        pins.setdefault(num, []).append((float(pm.group(1)), float(pm.group(2)), int(pm.group(3)), pname))
+    out = blk.replace(f'(symbol "{name}"', f'(symbol "{lib_id}"', 1)
+    return out, pins
+
+
+# ---------------------------------------------------------------- schematic
+
+def fmt(v):
+    return f"{v:.2f}".rstrip("0").rstrip(".")
+
+
+def write_schematic(name, parts, path):
+    root = uid(name, "root")
+    used = {}
+    for p in parts:
+        if p.sym:
+            used[p.sym] = lib_symbol(p.sym)
+    used["power:PWR_FLAG"] = lib_symbol("power:PWR_FLAG")
+    out = [f'(kicad_sch\n\t(version 20250114)\n\t(generator "tune-button-gen")\n\t(generator_version "9.0")'
+           f'\n\t(uuid "{root}")\n\t(paper "A3")',
+           f'\t(title_block\n\t\t(title "tune-button {name}")\n\t\t(company "edgecoil")\n\t\t'
+           f'(comment 1 "Generated by hardware/pcb/gen.py - edit the script, not this file")\n\t)',
+           "\t(lib_symbols"]
+    out += ["\t\t" + s.replace("\n", "\n\t\t") for s, _ in used.values()]
+    out.append("\t)")
+
+    def instance(lib_id, ref, value, fp, x, y, pins, extra=()):
+        su = uid(name, "sym", ref)
+        s = [f'\t(symbol\n\t\t(lib_id "{lib_id}")\n\t\t(at {fmt(x)} {fmt(y)} 0)\n\t\t(unit 1)'
+             f'\n\t\t(exclude_from_sim no)\n\t\t(in_bom {"no" if ref.startswith("#") else "yes"})'
+             f'\n\t\t(on_board {"no" if ref.startswith("#") else "yes"})\n\t\t(dnp no)\n\t\t(uuid "{su}")']
+        hide = " (hide yes)" if ref.startswith("#") else ""
+        for k, v, dy, h in [("Reference", ref, -2.54, hide), ("Value", value, 2.54, ""),
+                            ("Footprint", fp, 5.08, " (hide yes)"), ("Datasheet", "", 0, " (hide yes)")] + list(extra):
+            s.append(f'\t\t(property "{k}" "{v}"\n\t\t\t(at {fmt(x)} {fmt(y + dy)} 0)\n\t\t\t(effects (font (size 1.27 1.27)){h})\n\t\t)')
+        for num in pins:
+            s.append(f'\t\t(pin "{num}" (uuid "{uid(name, "pin", ref, num)}"))')
+        s.append(f'\t\t(instances\n\t\t\t(project "tune-button-{name}"\n\t\t\t\t(path "/{root}"\n\t\t\t\t\t'
+                 f'(reference "{ref}")\n\t\t\t\t\t(unit 1)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n\t)')
+        return "\n".join(s)
+
+    def labels(x, y, pins, nets):
+        s = []
+        for num, locs in pins.items():
+            net = nets.get(num, "")
+            for (px, py, ang, _) in locs[:1]:
+                ax, ay = round(x + px, 2), round(y - py, 2)
+                if not net:
+                    s.append(f'\t(no_connect (at {fmt(ax)} {fmt(ay)}) (uuid "{uid(name, "nc", str(x), str(y), num)}"))')
+                    continue
+                la = {0: 180, 180: 0, 90: 270, 270: 90}[ang]
+                just = "right" if la in (180, 270) else "left"
+                # Global labels, so the nets keep their bare names (a local label's net is "/NAME").
+                s.append(f'\t(global_label "{net}"\n\t\t(shape passive)\n\t\t(at {fmt(ax)} {fmt(ay)} {la})'
+                         f'\n\t\t(fields_autoplaced yes)\n\t\t(effects (font (size 1.27 1.27)) (justify {just}))'
+                         f'\n\t\t(uuid "{uid(name, "lbl", str(x), str(y), num)}")'
+                         f'\n\t\t(property "Intersheetrefs" "${{INTERSHEET_REFS}}"\n\t\t\t(at {fmt(ax)} {fmt(ay)} 0)'
+                         f'\n\t\t\t(effects (font (size 1.27 1.27)) (hide yes))\n\t\t)\n\t)')
+        return s
+
+    # Grid placement: big symbols in the first row, everything else after.
+    x, y, col = 40.64, 50.8, 0
+    order = sorted([p for p in parts if p.sym], key=lambda p: (0 if p.ref.startswith(("U", "J")) else 1, p.ref))
+    for p in order:
+        _, pins = used[p.sym]
+        ys = [loc[1] for locs in pins.values() for loc in locs]
+        span = (max(ys) - min(ys)) if ys else 0
+        cell_h = max(25.4, span + 17.78)
+        if y + cell_h > 280:
+            x, y = x + 76.2, 50.8
+        cy = round((y + span / 2 + 5.08) / 2.54) * 2.54
+        extra = [("MPN", p.mpn, 7.62, " (hide yes)")] if p.mpn else []
+        out.append(instance(p.sym, p.ref, p.value, p.fp, x, cy, pins, extra))
+        out += labels(x, cy, pins, p.pins)
+        y += cell_h
+    # PWR_FLAGs on the supply nets, so ERC knows they are driven.
+    # (Not on nets a power-output pin already drives: the charger's VBAT and the regulator's 3V3.)
+    driven = {"3V3", "VBAT"} if "VBUS" in {n for p in parts for n in p.pins.values()} else set()
+    supplies = sorted(({n for p in parts for n in p.pins.values()} & {"GND", "VBAT", "VBUS", "VSYS", "3V3"}) - driven)
+    _, fpins = used["power:PWR_FLAG"]
+    for i, net in enumerate(supplies):
+        fx, fy = 360.68, 50.8 + i * 15.24
+        out.append(instance("power:PWR_FLAG", f"#FLG0{i + 1}", "PWR_FLAG", "", fx, fy, fpins))
+        out += labels(fx, fy, fpins, {"1": net})
+    out.append(f'\t(sheet_instances\n\t\t(path "/"\n\t\t\t(page "1")\n\t\t)\n\t)\n\t(embedded_fonts no)\n)')
+    open(path, "w").write("\n".join(out) + "\n")
+    return root
+
+
+# ---------------------------------------------------------------- board
+
+def mm(x, y):
+    return pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y))
+
+
+def outline(board, w, h, r=2.5):
+    def seg(a, b):
+        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
+        s.SetStart(mm(*a)); s.SetEnd(mm(*b)); s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(s)
+
+    def arc(c, start, mid, end):
+        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_ARC)
+        s.SetArcGeometry(mm(*start), mm(*mid), mm(*end)); s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(s)
+    k = r * (1 - 0.7071067811865476)
+    seg((r, 0), (w - r, 0)); seg((w, r), (w, h - r)); seg((w - r, h), (r, h)); seg((0, h - r), (0, r))
+    arc(None, (w - r, 0), (w - k, k), (w, r)); arc(None, (w, h - r), (w - k, h - k), (w - r, h))
+    arc(None, (r, h), (k, h - k), (0, h - r)); arc(None, (0, r), (k, k), (r, 0))
+
+
+def zone(board, net, layer, pts, keepout=False):
+    z = pcbnew.ZONE(board)
+    if keepout:
+        z.SetIsRuleArea(True)
+        z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowZoneFills(True) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(True)
+        z.SetDoNotAllowFootprints(False)
+    else:
+        z.SetLayer(layer); z.SetNet(net)
+        z.SetLocalClearance(pcbnew.FromMM(0.3)) if hasattr(z, "SetLocalClearance") else None
+        z.SetMinThickness(pcbnew.FromMM(0.25))
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)  # SMD pads solid, THT relieved
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+        z.SetThermalReliefGap(pcbnew.FromMM(0.4)); z.SetThermalReliefSpokeWidth(pcbnew.FromMM(0.4))
+    ol = z.Outline(); ol.NewOutline()
+    for p in pts:
+        ol.Append(mm(*p))
+    board.Add(z)
+
+
+def write_board(name, parts, h, keepouts, silk, path, root):
+    board = pcbnew.BOARD()
+    board.SetFileName(path)
+    ds = board.GetDesignSettings()
+    ds.SetCopperLayerCount(2)
+    nets = {}
+    for netname in sorted({n for p in parts for n in p.pins.values() if n}):
+        ni = pcbnew.NETINFO_ITEM(board, netname)
+        board.Add(ni)
+        nets[netname] = ni
+    for p in parts:
+        lib, fpname = p.fp.split(":")
+        fp = pcbnew.FootprintLoad(os.path.join(FPDIR, lib + ".pretty"), fpname)
+        fp.SetFPIDAsString(p.fp)
+        fp.SetReference(p.ref)
+        fp.SetValue(p.value)
+        if not p.sym:
+            fp.SetBoardOnly(True)  # mounting holes have no symbol
+            fp.Reference().SetVisible(False)
+        if p.sym:
+            fp.SetPath(pcbnew.KIID_PATH(f"/{uid(name, 'sym', p.ref)}"))
+            fp.SetSheetname("Root"); fp.SetSheetfile(f"tune-button-{name}.kicad_sch")
+        board.Add(fp)
+        fp.SetPosition(mm(*p.at))
+        fp.SetOrientationDegrees(p.rot)
+        pins = lib_symbol(p.sym)[1] if p.sym else {}
+        for pad in fp.Pads():
+            num = pad.GetNumber()
+            net = p.pins.get(num, "")
+            if not net and num in pins:
+                # The name KiCad's schematic gives an unconnected pin's net, so parity checks pass.
+                net = f"unconnected-({p.ref}-{pins[num][0][3]}-Pad{num})"
+                if net not in nets:
+                    nets[net] = pcbnew.NETINFO_ITEM(board, net)
+                    board.Add(nets[net])
+            if net:
+                pad.SetNet(nets[net])
+        if p.mpn:
+            fp.SetField("MPN", p.mpn)
+            fp.GetFieldByName("MPN").SetVisible(False)
+    outline(board, W, h)
+    inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
+    zone(board, nets["GND"], pcbnew.F_Cu, inset)
+    zone(board, nets["GND"], pcbnew.B_Cu, inset)
+    for k in keepouts:
+        zone(board, None, None, k, keepout=True)
+    for item in silk:
+        if item[0] == "rect":
+            x0, y0, x1, y1 = item[1:]
+            r = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_RECT)
+            r.SetStart(mm(x0, y0)); r.SetEnd(mm(x1, y1)); r.SetLayer(pcbnew.F_SilkS); r.SetWidth(pcbnew.FromMM(0.15))
+            board.Add(r)
+        else:
+            t = pcbnew.PCB_TEXT(board)
+            t.SetText(item[3]); t.SetPosition(mm(item[1], item[2])); t.SetLayer(pcbnew.F_SilkS)
+            t.SetTextSize(mm(0.8, 0.8)); t.SetTextThickness(pcbnew.FromMM(0.12))
+            board.Add(t)
+    t = pcbnew.PCB_TEXT(board)
+    t.SetText(f"tune-button {name}\nedgecoil  rev A")
+    t.SetPosition(mm(W / 2, h - 1.8)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
+    t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
+    board.Add(t)
+    board.Save(path)
+
+
+def write_project(name, path):
+    """Design rules sized for a 2-layer JLCPCB/PCBWay order, and a wider class for supply nets."""
+    import json
+    pro = {
+        "board": {"design_settings": {
+            "defaults": {"board_outline_line_width": 0.1, "copper_line_width": 0.2, "copper_text_size_h": 1.5,
+                         "silk_line_width": 0.15, "silk_text_size_h": 1.0, "silk_text_size_v": 1.0},
+            "rules": {"min_clearance": 0.2, "min_track_width": 0.2, "min_via_diameter": 0.6,
+                      "min_through_hole_diameter": 0.2, "min_copper_edge_clearance": 0.25,
+                      "min_hole_to_hole": 0.25, "min_hole_clearance": 0.25, "min_silk_clearance": 0.0},
+            "rule_severities": {"silk_overlap": "ignore", "silk_over_copper": "ignore",
+                                "silk_edge_clearance": "ignore", "lib_footprint_mismatch": "ignore",
+                                "lib_footprint_issues": "ignore", "text_height": "ignore",
+                                "courtyards_overlap": "error"},
+            "track_widths": [0.0, 0.25, 0.5], "via_dimensions": [{"diameter": 0.0, "drill": 0.0},
+                                                                   {"diameter": 0.6, "drill": 0.3}],
+        }},
+        "meta": {"filename": f"tune-button-{name}.kicad_pro", "version": 3},
+        "net_settings": {
+            "classes": [
+                {"name": "Default", "clearance": 0.2, "track_width": 0.25, "via_diameter": 0.6, "via_drill": 0.3,
+                 "diff_pair_width": 0.2, "diff_pair_gap": 0.25, "microvia_diameter": 0.3, "microvia_drill": 0.1,
+                 "wire_width": 6, "bus_width": 12, "line_style": 0, "pcb_color": "rgba(0, 0, 0, 0.000)",
+                 "schematic_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647},
+                {"name": "Power", "clearance": 0.2, "track_width": 0.4, "via_diameter": 0.8, "via_drill": 0.4,
+                 "diff_pair_width": 0.2, "diff_pair_gap": 0.25, "microvia_diameter": 0.3, "microvia_drill": 0.1,
+                 "wire_width": 6, "bus_width": 12, "line_style": 0, "pcb_color": "rgba(0, 0, 0, 0.000)",
+                 "schematic_color": "rgba(0, 0, 0, 0.000)", "priority": 0},
+            ],
+            "meta": {"version": 4},
+            "netclass_patterns": [{"netclass": "Power", "pattern": n} for n in ["GND", "VBAT", "VBUS", "VSYS", "3V3"]],
+        },
+        "schematic": {"legacy_lib_dir": "", "legacy_lib_list": []},
+        "sheets": [[uid(name, "root"), "Root"]],
+    }
+    open(path, "w").write(json.dumps(pro, indent=2) + "\n")
+
+
+def main(names):
+    for name in names:
+        parts, h, keepouts, silk = VARIANTS[name]()
+        d = os.path.join(HERE, name)
+        os.makedirs(d, exist_ok=True)
+        base = os.path.join(d, f"tune-button-{name}")
+        write_project(name, base + ".kicad_pro")
+        root = write_schematic(name, parts, base + ".kicad_sch")
+        write_board(name, parts, h, keepouts, silk, base + ".kicad_pcb", root)
+        write_project(name, base + ".kicad_pro")  # Save() may have rewritten it
+        print(f"{name}: {W:.1f} x {h:.1f} mm, {len(parts)} footprints")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:] or list(VARIANTS))

@@ -1,0 +1,84 @@
+# Four-key PCBs
+
+Two boards for a four-key tune-button, each with four Cherry MX switches in a 2 × 2 grid at the
+standard 19.05 mm pitch:
+
+| | `xiao/` | `c3/` |
+|---|---|---|
+| Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module, PCB antenna |
+| Size | 46 × 64.5 mm | 46 × 77 mm |
+| USB-C, charger, regulator | On the XIAO | On the board: USB-C, MCP73831 charger (≈ 210 mA), load sharing, MCP1700 3.3 V (1.6 µA quiescent) |
+| Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
+| Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Single-sided SMD (PCBA or hand), then the MX switches |
+
+**Rev A is unbuilt and untested.** Both boards pass KiCad's electrical rules check and its design
+rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
+or powered, and the firmware does not support four keys yet (see *Firmware*).
+
+## Pin map
+
+| Signal | XIAO board | C3 board | Notes |
+|---|---|---|---|
+| K1 (top left) | D1 / GPIO3 | GPIO3 | Same as the like button today |
+| K2 (top right) | D2 / GPIO4 | GPIO4 | Same as the playlist button today |
+| K3 (bottom left) | D3 / GPIO5 | GPIO5 | |
+| K4 (bottom right) | D4 / GPIO6, and through D1 (BAT54W) onto GPIO5 | GPIO0 | See below |
+| Battery divider (2 × 220 kΩ) | D0 / GPIO2 | GPIO1 | ADC1 |
+| LED (1 kΩ) | D5 / GPIO7 | GPIO10 | |
+| USB D− / D+ | (XIAO) | GPIO18 / GPIO19 | Native USB, used for flashing too |
+| Straps | (XIAO) | GPIO2 and GPIO8 pulled up 10 kΩ; GPIO9 to BOOT | |
+
+Every key switches to ground and uses the chip's internal pull-up, as now.
+
+**The XIAO board's K4 is a compromise.** The C3 can wake from deep sleep only on GPIO0–5, and the
+XIAO brings out only GPIO2–5 of those. GPIO2 is needed for the battery reading, which has to be on
+ADC1 (GPIO0–4). So K4 is read on D4 and also pulls K3's line low through a Schottky. A K4 press wakes
+the chip on GPIO5 with D4 low; a K3 press wakes it on GPIO5 with D4 high. If the key is already
+released by the time the firmware reads D4, a quick tap on K4 would read as K3. A deep-sleep wake stub
+can read D4 within about a millisecond of waking. The C3 board has GPIO0 and GPIO1 free, so all four
+keys are direct wake pins there.
+
+## Before ordering
+
+Check these against the parts in hand. Each is a one-line change in `gen.py`.
+
+1. **XIAO header rows: 15.24 mm apart, centre to centre.** That is the 0.6″ spacing the common
+   XIAO footprints use. I took it from those footprints and a Seeed forum answer, not from Seeed's
+   drawing. Measure across the two rows of pins on the XIAO.
+2. **Battery lead order.** Pin 1 of the JST-PH is marked **+** on the silkscreen. JST-PH LiPo
+   leads are not wired consistently between sellers, and neither board protects against a reversed
+   cell, so check the plug before you plug it in.
+3. **C3 regulator headroom.** The MCP1700 was chosen for its 1.6 µA quiescent current, which
+   matters more than anything else for a board that sleeps for months. It is rated at 250 mA. That
+   covers BLE, and the 22 µF bulk capacitor is there for the start-up calibration burst, but a
+   Wi-Fi sketch (like the bench test) may brown out on it.
+4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
+   The boards are not hot-swap.
+
+## Firmware
+
+The firmware is written for one or two buttons. Four keys need a build flag per board with the pin
+map above, two more button codes in [`protocol/spec.md`](../../protocol/spec.md) (byte 11), and app
+actions for them. For the XIAO board, a wake stub should read D4. None of that is written yet.
+
+## Rebuilding
+
+Everything is generated: [`gen.py`](gen.py) holds the parts, nets and placement for both boards.
+It writes the schematic, with a label on every pin, and an unrouted board from the same netlist.
+[`route.py`](route.py) autoroutes with Freerouting, adds ground stitching vias and fills the pours.
+It retries until KiCad's DRC is clean. [`build.sh`](build.sh) runs both steps, then ERC and DRC
+with the schematic parity check, then exports gerbers, drill files, BOM, pick-and-place, a schematic
+PDF and renders into `<board>/fab/`.
+
+```sh
+KICAD_SYMBOL_DIR=/path/to/kicad/symbols FREEROUTING=/path/to/freerouting-2.1.0.jar ./build.sh
+```
+
+It needs KiCad 9, Java 21 and Freerouting 2.1.0 (later Freerouting releases need Java 25). Edit
+`gen.py` and rebuild rather than editing the KiCad files: a rebuild overwrites them. To hand-route
+instead, stop after `gen.py` and open the project in KiCad.
+
+For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, any colour). For their
+assembly service, add the BOM and the `-cpl.csv` placement file. You will need to fill in LCSC part
+numbers, and the placement rotations need checking in their preview, as KiCad and JLC differ for
+some packages.

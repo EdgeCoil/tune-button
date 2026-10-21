@@ -26,7 +26,7 @@ API.
 | [`protocol/`](protocol/) | The wire format, plus `gen_vectors.py`, which generates the test vectors both sides check against |
 | [`firmware/`](firmware/) | PlatformIO / Arduino firmware for the XIAO ESP32-C3 (NimBLE) |
 | [`android/`](android/) | The companion app (Kotlin, Android 8+) |
-| [`hardware/`](hardware/) | Wiring, parts list, and a parametric OpenSCAD case with ready STLs |
+| [`hardware/`](hardware/) | Wiring, parts list, a parametric OpenSCAD case with ready STLs, and two four-key PCBs (KiCad, generated) |
 | [`docs/design.md`](docs/design.md) | How it works, security, power budget, bench tests |
 
 ## What you need
@@ -108,7 +108,7 @@ Episodes work too.
 
 | What | Licence |
 |---|---|
-| The case: `hardware/case/` (OpenSCAD source and STLs) | [CERN-OHL-S-2.0](LICENSES/CERN-OHL-S-2.0.txt) |
+| The case and PCBs: `hardware/case/`, `hardware/pcb/` (OpenSCAD and KiCad sources, STLs) | [CERN-OHL-S-2.0](LICENSES/CERN-OHL-S-2.0.txt) |
 | Firmware, app, protocol tools | [MIT](LICENSES/MIT.txt) |
 | The Gradle wrapper (`android/gradlew*`, `android/gradle/wrapper/`), as shipped by Gradle | [Apache-2.0](LICENSES/Apache-2.0.txt) |
 | Documentation (`README.md`, `docs/`, `hardware/wiring.md`, `protocol/spec.md`) | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
