@@ -32,7 +32,7 @@ class Pairer(private val ctx: Context, private val status: (msg: String, done: B
     private var finished = false
 
     fun start() {
-        status("Looking for tune-button in pairing mode (hold both buttons for 3 s)…", false)
+        status("Looking for tune-button in pairing mode (hold both buttons 3 s, or one button 5 s)…", false)
         val cb = object : ScanCallback() {
             override fun onScanResult(type: Int, result: ScanResult) {
                 stopScan()

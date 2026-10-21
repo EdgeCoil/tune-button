@@ -109,7 +109,7 @@ class MainActivity : Activity() {
         section("3 · Device")
         text(store.device?.let { "Paired: device ${hex(it.id)} · last press #${store.lastCounter}" } ?: "Not paired")
         pairStatus?.let { text(it) }
-        button(if (pairer == null) "Pair (hold both buttons 3 s first)" else "Cancel pairing") { pair() }
+        button(if (pairer == null) "Pair (first hold both buttons 3 s, or one button 5 s)" else "Cancel pairing") { pair() }
 
         section("4 · Keep listening in the background")
         val problems = backgroundProblems()

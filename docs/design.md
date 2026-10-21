@@ -44,6 +44,15 @@ no clock sync. To measure:
 
 Pick `TB_BURST_MS` at about 1.5 × the worst "heard" figure in the chosen mode, then rebuild.
 
+### Measurements so far
+
+| Date | Phone | Scan mode | Screen | Presses | Heard |
+|---|---|---|---|---|---|
+| 2026-10-21 | older Samsung, app 0.1.0, one-button build | Balanced | locked | 1 | 0.83 s |
+
+One press is not a distribution: the 10-press run above is still to do. It does put the first figure
+well inside the 10 s burst.
+
 Two outcomes would change the design:
 
 - **Some presses are never heard** (gaps in the counter in the log) at any sane burst length. Then the
