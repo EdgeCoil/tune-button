@@ -50,7 +50,7 @@ LED0805 = "LED_SMD:LED_0805_2012Metric"
 
 
 # JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
-LCSC_R0603 = {"1": "C22936", "1k": "C21190", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
+LCSC_R0603 = {"1": "C22936", "1k": "C21190", "3.3k": "C22978", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
               "220k": "C22961"}
 LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
           ("22u", C0805): "C45783", ("10u", C0805): "C15850"}
@@ -178,12 +178,15 @@ def variant_c3():
              {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VBUS", "5": "PROG"}, (37.0, 19.0), 0,
              mpn="TP4054-42-SOT25R", lcsc="C32574"),
         R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # about 200 mA by the TP4054's own formula
-        # 1 ohm in series with the input capacitor damps the cable's ringing on plug-in, which
-        # otherwise peaks around 7 V (TP4054 datasheet, and simulated).
+        # 0.5 ohm (two 1 ohm Basic parts; 0.47 ohm is Extended) in series with the input capacitor
+        # damps the cable's ringing on plug-in, which otherwise peaks around 7 V. Simulated: 1 ohm
+        # still let a stiff 5.5 V source with no cell fitted reach 6.8 V on VSYS, past the RT9080's
+        # 6.5 V; 0.47 ohm keeps every cable corner under 6.4 V (0.68 ohm doesn't).
         # 10 uF (the most USB allows on VBUS) with R13, so low-resistance cables ring to about 5.6 V
         # rather than 6.1 V: the regulator's limit is 6.5 V.
         C("C1", "10u", "VBUS_C", "GND", (33.0, 16.5), 90, fp=C0805),
         R("R13", "1", "VBUS", "VBUS_C", (30.4, 16.5), 90),
+        R("R14", "1", "VBUS", "VBUS_C", (30.4, 13.4), 90),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
         # The LEDs face the keys, so they go on the back with the switches (hand-soldered, 0805).
@@ -191,9 +194,9 @@ def variant_c3():
         # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
         Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
              {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A", lcsc="C15127"),
-        # 10k, not 100k: pulls Q1's gate down within ~3 ms of unplugging, and holds it down against
-        # D2's reverse leakage when warm.
-        R("R5", "10k", "VBUS", "GND", (41.5, 27.0), 90),
+        # 3.3k: pulls Q1's gate (and C1) down within ~5-7 ms of unplugging, and holds it down against
+        # D2's reverse leakage when warm. 1.5 mA, only while on USB.
+        R("R5", "3.3k", "VBUS", "GND", (41.5, 27.0), 90),
         # Across Q1: for the few ms after unplugging, before Q1's gate is pulled down, the cell feeds
         # VSYS through this (0.35 V) rather than Q1's body diode (0.6 V), which kept 3V3 above brown-out.
         Part("D4", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBAT"},

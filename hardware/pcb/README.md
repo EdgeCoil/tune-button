@@ -58,10 +58,15 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    cell of about 3.5 V. Its input is rated to 5.5 V (6.5 V absolute), which is why C1 has a 1 Ω
    damping resistor against plug-in ringing. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
    footprint, not a drop-in.
-4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
+4. **Use cells with a protection board.** D4 (a Schottky across the battery FET) keeps the supply
+   up for the few ms after USB is unplugged, but its reverse leakage trickles into the cell while
+   on USB: negligible at room temperature (net discharge), about +15 µA at 60 °C. Once the charger
+   has finished, only the cell's own protection board would stop a hot, permanently plugged-in
+   board from slowly overcharging it. Ordinary LiPo cells with a PCM are fine.
+5. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
    The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
    front, where their leads and posts come through between the parts; trim the leads short.
-5. **C3 board, front side faces the case floor.** The tallest parts there are the JST socket
+6. **C3 board, front side faces the case floor.** The tallest parts there are the JST socket
    (4.8 mm) and the module and USB-C (about 3.3 mm), so the case needs that much room under the
    board, plus the battery. RESET and BOOT are on that side too, reachable with the case open.
 
