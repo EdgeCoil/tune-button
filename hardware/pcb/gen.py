@@ -666,7 +666,7 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stro
     x0, y0 = cx - width / 2, cy - h * res / 2
     step = round(stroke / res)
     for row in range(step // 2, h, step):  # sample each 0.15 mm band at its centre
-        col = 0
+        runs, col = [], 0
         while col < w:
             if alpha[col, row] < 128:
                 col += 1
@@ -674,8 +674,15 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stro
             start = col
             while col < w and alpha[col, row] >= 128:
                 col += 1
-            # The run covers [start, col) pixels; the stroke's caps add stroke/2 at each end.
-            a, b = x0 + start * res + stroke / 2, x0 + col * res - stroke / 2
+            runs.append([x0 + start * res, x0 + col * res])  # the run covers [start, col) pixels
+        # A gap narrower than the legend can print would fill in: open it to `stroke`.
+        for left, right in zip(runs, runs[1:]):
+            short = stroke - (right[0] - left[1])
+            if short > 0:
+                left[1] -= short / 2; right[0] += short / 2
+        for ra, rb in runs:
+            # The stroke's round caps add stroke/2 at each end.
+            a, b = ra + stroke / 2, rb - stroke / 2
             if b < a:
                 a = b = (a + b) / 2
             # Mirror x about the centre: the back is seen from the other side.

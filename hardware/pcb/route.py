@@ -92,6 +92,10 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
 def prune(board):
     """Remove track stubs that end on nothing (Freerouting occasionally leaves one)."""
     removed = 0
+    # Zero-length segments join nothing.
+    for t in [t for t in board.GetTracks() if t.GetClass() == "PCB_TRACK" and t.GetStart() == t.GetEnd()]:
+        board.Remove(t)
+        removed += 1
     while True:
         tracks = [t for t in board.GetTracks() if t.GetClass() == "PCB_TRACK"]
         ends = {}
@@ -151,8 +155,15 @@ def route_once(base, pristine):
     for f in (dsn, ses):
         os.remove(f)
     prune(board)
+    # Stitch with islands kept: a pocket of pour fenced in by tracks is otherwise removed before it
+    # can get a via, and the stitcher only places vias where both layers already have pour.
+    pours = [z for z in board.Zones() if not z.GetIsRuleArea()]
+    for z in pours:
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_NEVER)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     stitch(board)
+    for z in pours:
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(base + ".kicad_pcb")
     # Freerouting can still leave a sliver that KiCad calls dangling; let KiCad's DRC name them.
