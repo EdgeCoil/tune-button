@@ -69,4 +69,24 @@ the firmware detects that and sends `FF`.
 4. Plug the antenna in and stick it flat against the inside of a long wall at the XIAO end.
 5. Slide the XIAO onto its rails with USB-C into the end opening, the battery into its bay, and screw the lid on.
 
-Print files: [`case/`](case/). The OpenSCAD source is parametric, so measure your parts and adjust.
+Print files: [`case/`](case/).
+
+## Case for the one-button build
+
+[`case/tune-button-1btn.scad`](case/tune-button-1btn.scad) is a round puck, Ø 76 × 47 mm, for a
+**22 mm panel-mount push button** in the middle of the top. It suits a big anti-vandal or mushroom
+button rather than a 12 mm tactile switch. The base plate holds the LiPo flat and the XIAO beside it on
+rails, with USB-C through the side wall. The button hangs from the top above them. Three M2 × 6
+self-tapping screws hold the base on from below.
+
+- **Print** the body top face down and the base flat side down, with no supports.
+- **Check the dimensions first.** The cell's width and length and the button's thread diameter were
+  measured. The cell thickness and the button's depth behind the panel are estimates, marked
+  `ESTIMATE` in the source. The file stops with an error, rather than producing a case that can't be
+  assembled, if the battery or the posts would collide.
+- **Keep the antenna off the switch.** A steel switch body right next to the FPC antenna detunes it.
+  Stick the antenna flat on the inside wall, in the upper half, on the side away from the USB-C.
+- **Hold the XIAO in place.** A dab of hot glue or a foam pad on top keeps it on its rails. The plug
+  pushes it into the stop at the rails' inner end.
+- **Check the panel thickness.** The top is 3 mm thick, which suits most 22 mm buttons. If the nut
+  won't catch, reduce `top_t`. The OpenSCAD source is parametric, so measure your parts and adjust.
