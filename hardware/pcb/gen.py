@@ -112,7 +112,7 @@ def variant_xiao():
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
             ("text", 11.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
             ("text", 1.5, 21.77, "BAT", 90)]
-    return parts, H, [], silk
+    return parts, H, [], silk, None
 
 
 def variant_c3():
@@ -124,17 +124,17 @@ def variant_c3():
              {"1": "3V3", "2": "EN", "3": "K2", "4": "K3", "5": "", "6": "", "7": "IO8", "8": "IO9", "9": "GND",
               "10": "LED", "11": "RXD", "12": "TXD", "13": "USB_DN", "14": "USB_DP", "15": "K1", "16": "IO2",
               "17": "VBAT_SENSE", "18": "K4", "19": "GND"}, (mx, my), mpn="ESP32-C3-WROOM-02-N4"),
-        # USB-C, mouth at the top edge.
+        # USB-C on the bottom edge, as far from the antenna as the board allows (placed below).
         Part("J1", "Connector:USB_C_Receptacle_USB2.0_16P", "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
              "USB-C", {"A1": "GND", "A4": "VBUS", "A5": "CC1", "A6": "USB_DP", "A7": "USB_DN", "A8": "",
                        "A9": "VBUS", "A12": "GND", "B1": "GND", "B4": "VBUS", "B5": "CC2", "B6": "USB_DP",
                        "B7": "USB_DN", "B8": "", "B9": "VBUS", "B12": "GND", "S1": "GND"},
-             (37.0, 4.6), rot=180, mpn="HRO TYPE-C-31-M-12"),
-        R("R1", "5.1k", "CC1", "GND", (32.0, 11.5), 90),
-        R("R2", "5.1k", "CC2", "GND", (42.0, 11.5), 90),
+             None, mpn="HRO TYPE-C-31-M-12"),
+        R("R1", "5.1k", "CC1", "GND", None, 90),
+        R("R2", "5.1k", "CC2", "GND", None, 90),
         Part("U2", "Power_Protection:USBLC6-2SC6", "Package_TO_SOT_SMD:SOT-23-6", "USBLC6-2SC6",
              {"1": "USB_DP", "2": "GND", "3": "USB_DN", "4": "USB_DN", "5": "VBUS", "6": "USB_DP"},
-             (37.0, 12.5), 90, mpn="USBLC6-2SC6"),
+             None, 90, mpn="USBLC6-2SC6"),
         # Charger.
         Part("U3", "Battery_Management:MCP73831-2-OT", "Package_TO_SOT_SMD:SOT-23-5", "MCP73831-2",
              {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VBUS", "5": "PROG"}, (37.0, 19.0), 0,
@@ -179,14 +179,27 @@ def variant_c3():
     top = 46.0
     parts += keys(top)
     H, hy = below_keys(top)
+    # USB-C centred on the bottom edge, its face 0.2 mm proud of the edge so a plug's moulding clears
+    # the board; the board is long enough for its courtyard to clear the lower switches'.
+    usb_face = 3.65  # footprint origin to the receptacle's front face
+    H = max(H, top + KEY_PITCH + 6.6 + 0.1 + 5.27 + usb_face - 0.2)
+    at = {"J1": (W / 2, H - usb_face + 0.2), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
+          "R2": (W / 2 + 1.0, H - 15.7)}
+    for p in parts:
+        if p.ref in at:
+            p.at = at[p.ref]
     # The upper pair sit above the left keycap and beside the right one (the battery socket is above it).
     parts += holes([(W - 3.5, hy), (3.5, hy), (3.5, 34.8), (W - 2.4, 42.5)])
     # Antenna keep-out: no copper on either layer from the top edge to the antenna's lower end, 5 mm
     # either side of the module (the footprint's own drawing).
-    keepout = [(mx - 14.3, 0), (mx + 14.3, 0), (mx + 14.3, my - 6.5), (mx - 14.3, my - 6.5)]
+    # Antenna: no board under it at all. Espressif's guidelines prefer the antenna clear of the base
+    # board; this notch takes out the board below it and 5 mm to its right (the footprint's keep-out
+    # drawing), and the left edge is already within 5 mm. It stops 0.3 mm short of the antenna's end so
+    # the module's top row of pads keeps its 0.25 mm copper-to-edge clearance.
+    notch = (mx + 14.3, my - 6.8)
     silk = [("text", 35.6, 35.5, "+"), ("text", 8.8, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
             ("text", 5.0, 27.4, "TX"), ("text", 5.0, 29.94, "RX")]
-    return parts, H, [keepout], silk
+    return parts, H, [], silk, notch
 
 
 VARIANTS = {"xiao": variant_xiao, "c3": variant_c3}
@@ -340,20 +353,38 @@ def mm(x, y):
     return pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y))
 
 
-def outline(board, w, h, r=2.5):
-    def seg(a, b):
-        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
-        s.SetStart(mm(*a)); s.SetEnd(mm(*b)); s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(pcbnew.FromMM(0.1))
-        board.Add(s)
+def outline(board, w, h, notch=None, r=2.5, rn=1.0):
+    """Rounded-rectangle board edge, optionally with the top-left corner cut away to `notch` (x, y).
+    The notch's corners get a smaller radius; its inside corner is what the router bit leaves anyway."""
+    if notch:
+        nx, ny = notch
+        corners = [((nx, 0), rn), ((w, 0), r), ((w, h), r), ((0, h), r), ((0, ny), rn), ((nx, ny), rn)]
+    else:
+        corners = [((0, 0), r), ((w, 0), r), ((w, h), r), ((0, h), r)]
 
-    def arc(c, start, mid, end):
-        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_ARC)
-        s.SetArcGeometry(mm(*start), mm(*mid), mm(*end)); s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(pcbnew.FromMM(0.1))
-        board.Add(s)
-    k = r * (1 - 0.7071067811865476)
-    seg((r, 0), (w - r, 0)); seg((w, r), (w, h - r)); seg((w - r, h), (r, h)); seg((0, h - r), (0, r))
-    arc(None, (w - r, 0), (w - k, k), (w, r)); arc(None, (w, h - r), (w - k, h - k), (w - r, h))
-    arc(None, (r, h), (k, h - k), (0, h - r)); arc(None, (0, r), (k, k), (r, 0))
+    def unit(a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        n = (dx * dx + dy * dy) ** 0.5
+        return dx / n, dy / n
+
+    ends = []
+    for i, (c, rad) in enumerate(corners):
+        d1 = unit(corners[i - 1][0], c)                     # direction arriving at this corner
+        d2 = unit(c, corners[(i + 1) % len(corners)][0])    # direction leaving it
+        a = (c[0] - d1[0] * rad, c[1] - d1[1] * rad)
+        b = (c[0] + d2[0] * rad, c[1] + d2[1] * rad)
+        centre = (a[0] + d2[0] * rad, a[1] + d2[1] * rad)
+        k = rad / 2 ** 0.5
+        mid = (centre[0] + (d1[0] - d2[0]) * k, centre[1] + (d1[1] - d2[1]) * k)
+        arc = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_ARC)
+        arc.SetArcGeometry(mm(*a), mm(*mid), mm(*b)); arc.SetLayer(pcbnew.Edge_Cuts); arc.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(arc)
+        ends.append((a, b))
+    for i in range(len(ends)):
+        seg = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
+        seg.SetStart(mm(*ends[i][1])); seg.SetEnd(mm(*ends[(i + 1) % len(ends)][0]))
+        seg.SetLayer(pcbnew.Edge_Cuts); seg.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(seg)
 
 
 def zone(board, net, layer, pts, keepout=False):
@@ -377,7 +408,7 @@ def zone(board, net, layer, pts, keepout=False):
     board.Add(z)
 
 
-def write_board(name, parts, h, keepouts, silk, path, root):
+def write_board(name, parts, h, keepouts, silk, notch, path, root):
     board = pcbnew.BOARD()
     board.SetFileName(path)
     ds = board.GetDesignSettings()
@@ -417,7 +448,7 @@ def write_board(name, parts, h, keepouts, silk, path, root):
         if p.mpn:
             fp.SetField("MPN", p.mpn)
             fp.GetFieldByName("MPN").SetVisible(False)
-    outline(board, W, h)
+    outline(board, W, h, notch)
     inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
     zone(board, nets["GND"], pcbnew.B_Cu, inset)
@@ -438,7 +469,7 @@ def write_board(name, parts, h, keepouts, silk, path, root):
             board.Add(t)
     t = pcbnew.PCB_TEXT(board)
     t.SetText(f"tune-button {name}\nedgecoil  rev A")
-    t.SetPosition(mm(W / 2, h - 1.8)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
+    t.SetPosition(mm(W / 2, h - 12.0)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
     t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
     board.Add(t)
     place_labels(board, h)
@@ -554,13 +585,13 @@ def write_project(name, path):
 
 def main(names):
     for name in names:
-        parts, h, keepouts, silk = VARIANTS[name]()
+        parts, h, keepouts, silk, notch = VARIANTS[name]()
         d = os.path.join(HERE, name)
         os.makedirs(d, exist_ok=True)
         base = os.path.join(d, f"tune-button-{name}")
         write_project(name, base + ".kicad_pro")
         root = write_schematic(name, parts, base + ".kicad_sch")
-        write_board(name, parts, h, keepouts, silk, base + ".kicad_pcb", root)
+        write_board(name, parts, h, keepouts, silk, notch, base + ".kicad_pcb", root)
         write_project(name, base + ".kicad_pro")  # Save() may have rewritten it
         print(f"{name}: {W:.1f} x {h:.1f} mm, {len(parts)} footprints")
 

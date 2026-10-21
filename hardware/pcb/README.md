@@ -5,8 +5,9 @@ standard 19.05 mm pitch:
 
 | | `xiao/` | `c3/` |
 |---|---|---|
-| Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module, PCB antenna |
-| Size | 46 × 67 mm | 46 × 79.5 mm |
+| Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its PCB antenna sits over a notch cut out of the top-left corner, with no board under it |
+| Size | 46 × 67 mm | 46 × 80.5 mm |
+| USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, MCP73831 charger (≈ 210 mA), load sharing, MCP1700 3.3 V (1.6 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
