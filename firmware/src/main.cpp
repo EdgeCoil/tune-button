@@ -36,6 +36,7 @@ constexpr bool HAS_PLAYLIST = TB_BUTTONS >= 2;
 constexpr uint32_t PAIR_HOLD_MS = HAS_PLAYLIST ? 3000 : 5000;
 constexpr uint32_t PAIR_WINDOW_MS = 60000;
 constexpr uint32_t AGE_UPDATE_MS = 200;
+constexpr uint32_t DEBOUNCE_MS = 30;
 
 const char *SERVICE_UUID = "7b1e0001-5f3a-4c1e-9b7a-2e6c0d1a7b00";
 const char *KEY_CHR_UUID = "7b1e0002-5f3a-4c1e-9b7a-2e6c0d1a7b00";
@@ -127,18 +128,25 @@ void burst(uint8_t button) {
   led(true);
   uint32_t pressed_at = millis();
   uint32_t last_update = pressed_at;
-  bool was_down = true;
+  // Debounced button state. A switch bounces on press and on release, and an undebounced edge
+  // here sent each physical press as up to three presses (bench, 2026-10-21).
+  uint8_t stable = pressed_button();
+  uint8_t raw = stable;
+  uint32_t raw_since = millis();
   while (millis() - pressed_at < TB_BURST_MS) {
-    delay(10);
+    delay(5);
     uint8_t b = pressed_button();
-    if (b && !was_down) {
-      // A new press during the burst: new counter, restart the clock.
-      tb::encode_press(ident.id, ident.key, next_counter(), b, battery, 0, payload);
-      pressed_at = millis();
-      set_press_advert(adv, payload);
-      led(true);
+    if (b != raw) { raw = b; raw_since = millis(); }
+    if (raw != stable && millis() - raw_since >= DEBOUNCE_MS) {
+      stable = raw;
+      if (stable) {
+        // A new press during the burst: new counter, restart the clock.
+        tb::encode_press(ident.id, ident.key, next_counter(), stable, battery, 0, payload);
+        pressed_at = millis();
+        set_press_advert(adv, payload);
+        led(true);
+      }
     }
-    was_down = b != 0;
     if (millis() - pressed_at > 150) led(false);
     if (millis() - last_update >= AGE_UPDATE_MS) {
       uint32_t age = (millis() - pressed_at) / 100;
