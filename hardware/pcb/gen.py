@@ -593,6 +593,32 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     place_labels(board, h, extras.get("notch"))
     board.Save(path)
+    set_stackup(path)
+
+
+# Black solder mask, white legend, 1.6 mm FR4. The Python API doesn't reach the stackup, so it is
+# written into the file; KiCad's renders and the gerber job file take their colours from it.
+STACKUP = """\t\t(stackup
+\t\t\t(layer "F.SilkS" (type "Top Silk Screen") (color "White"))
+\t\t\t(layer "F.Paste" (type "Top Solder Paste"))
+\t\t\t(layer "F.Mask" (type "Top Solder Mask") (color "Black") (thickness 0.01))
+\t\t\t(layer "F.Cu" (type "copper") (thickness 0.035))
+\t\t\t(layer "dielectric 1" (type "core") (color "FR4 natural") (thickness 1.51) (material "FR4")
+\t\t\t\t(epsilon_r 4.5) (loss_tangent 0.02))
+\t\t\t(layer "B.Cu" (type "copper") (thickness 0.035))
+\t\t\t(layer "B.Mask" (type "Bottom Solder Mask") (color "Black") (thickness 0.01))
+\t\t\t(layer "B.Paste" (type "Bottom Solder Paste"))
+\t\t\t(layer "B.SilkS" (type "Bottom Silk Screen") (color "White"))
+\t\t\t(copper_finish "HAL lead-free")
+\t\t\t(dielectric_constraints no)
+\t\t)
+"""
+
+
+def set_stackup(path):
+    src = open(path).read()
+    src = re.sub(r"\t\t\(stackup\n.*?\n\t\t\)\n", "", src, flags=re.S)
+    open(path, "w").write(src.replace("\t(setup\n", "\t(setup\n" + STACKUP, 1))
 
 
 def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stroke=0.15, res=0.025):
