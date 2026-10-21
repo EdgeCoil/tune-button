@@ -10,7 +10,7 @@ standard 19.05 mm pitch:
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
-| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, MCP1700 3.3 V (250 mA, about 1.6 µA quiescent) |
+| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
 | Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
 
@@ -51,14 +51,13 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
 2. **Battery lead order.** Pin 1 of the JST-PH is marked **+** on the silkscreen. JST-PH LiPo
    leads are not wired consistently between sellers, and neither board protects against a reversed
    cell, so check the plug before you plug it in.
-3. **C3 regulator headroom.** The MCP1700 was chosen for its quiescent current (about 1.6 µA),
-   which matters more than anything else for a board that sleeps for months. It is rated at 250 mA.
-   That covers BLE with room to spare, and the 22 µF bulk capacitor is there for the start-up
-   calibration burst and Wi-Fi transmit peaks, which run past 250 mA for a few hundred microseconds.
-   The XC6206 (JLC Basic, same pinout, 200 mA) is the cheaper fallback. In simulation, BLE events
-   (about 100 mA) hold 3.3 V down to a 3.4 V cell, but 350 mA Wi-Fi bursts pull it to about 2.97 V
-   even on a full cell, near the brown-out threshold. For Wi-Fi, a 500 mA low-Iq part (such as the
-   RT9080) is the step up. Treat 3.5 V as the cell's usable cut-off.
+3. **C3 regulator.** The RT9080 is rated at 600 mA (its current limit is at least 610 mA) and draws
+   about 2 µA when idle, which matters most for a board that sleeps for months. Espressif asks for a
+   supply of at least 500 mA, because Wi-Fi transmit peaks run to about 350 mA. Its dropout is
+   0.31 V at 600 mA (about 0.2 V at 350 mA), so the rail holds 3.3 V through those peaks down to a
+   cell of about 3.5 V. Its input is rated to 5.5 V (6.5 V absolute), which is why C1 has a 1 Ω
+   damping resistor against plug-in ringing. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
+   footprint, not a drop-in.
 4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
    The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
    front, where their leads and posts come through between the parts; trim the leads short.
@@ -93,7 +92,7 @@ For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, any 
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
 its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you.
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
-footprint differs from KiCad's (MCP1700, AO3401A, SRV05-4, TP4054, USB-C), checked against JLC's own
+footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C), checked against JLC's own
 footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
 shorts VBUS.
 
@@ -105,7 +104,7 @@ the bottom edge and the antenna overhangs the notch at the top.
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diode
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)
 are **Preferred** parts, which also carry no fee. Four types are **Extended**, at a fee per type per
-order: the ESP32-C3-WROOM-02 module, the USB-C socket, the JST battery socket and the MCP1700
+order: the ESP32-C3-WROOM-02 module, the USB-C socket, the JST battery socket and the RT9080
 regulator. Catalogue status changes; the build doesn't check it.
 
 The EdgeCoil mark, name and URL on the back silkscreen are not covered by the board licence (see
