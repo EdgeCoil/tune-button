@@ -24,6 +24,8 @@ FPDIR = os.environ.get("KICAD_FOOTPRINT_DIR", "/usr/share/kicad/footprints")
 NS = uuid.UUID("6d1c5f0e-6f0a-4c43-9a59-2b1b8f3a7e10")
 
 KEY_PITCH = 19.05
+KEYCAP = 18.0  # a 1u cap's footprint; screw heads and labels stay outside it so they can be reached
+SCREW_HEAD = 4.0  # M2 pan head, with a little room for the driver
 W = 46.0  # board width; both versions
 
 
@@ -65,6 +67,12 @@ def keys(top):
     return parts
 
 
+def below_keys(top):
+    """Board height that leaves a row of screw heads clear below the lower keycaps: (height, hole y)."""
+    y = top + KEY_PITCH + KEYCAP / 2 + SCREW_HEAD / 2 + 0.5
+    return y + 3.0, y
+
+
 def holes(points):
     return [Part(f"H{i + 1}", None, "MountingHole:MountingHole_2.2mm_M2", "M2", {}, p) for i, p in enumerate(points)]
 
@@ -98,12 +106,12 @@ def variant_xiao():
     ]
     top = 33.5
     parts += keys(top)
-    H = top + KEY_PITCH + 9.5 + 2.5
-    parts += holes([(3.5, 3.5), (W - 3.5, 3.5), (3.5, H - 3.5), (W - 3.5, H - 3.5)])
+    H, hy = below_keys(top)
+    parts += holes([(3.5, 3.5), (W - 3.5, 3.5), (3.5, hy), (W - 3.5, hy)])
     silk = [("rect", W / 2 - 8.75, y1 - 2.9, W / 2 + 8.75, y1 + 18.1), ("text", W / 2, y1 + 6.5, "XIAO"),
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
             ("text", 11.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
-            ("text", 4.0, 25.7, "BAT")]
+            ("text", 1.5, 21.77, "BAT", 90)]
     return parts, H, [], silk
 
 
@@ -166,17 +174,18 @@ def variant_c3():
         R("R12", "1k", "LED", "LED_A", (14.7, 23.0), 0),
         Part("D3", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (14.7, 25.5), 180),
         Part("TP1", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-             "UART", {"1": "TXD", "2": "RXD"}, (3.0, 28.0), 0, note="debug UART, optional"),
+             "UART", {"1": "TXD", "2": "RXD"}, (3.0, 27.4), 0, note="debug UART, optional"),
     ]
     top = 46.0
     parts += keys(top)
-    H = top + KEY_PITCH + 9.5 + 2.5
-    parts += holes([(W - 3.5, H - 3.5), (3.5, H - 3.5), (3.5, 35.5), (W - 3.0, 42.5)])
+    H, hy = below_keys(top)
+    # The upper pair sit above the left keycap and beside the right one (the battery socket is above it).
+    parts += holes([(W - 3.5, hy), (3.5, hy), (3.5, 34.8), (W - 2.4, 42.5)])
     # Antenna keep-out: no copper on either layer from the top edge to the antenna's lower end, 5 mm
     # either side of the module (the footprint's own drawing).
     keepout = [(mx - 14.3, 0), (mx + 14.3, 0), (mx + 14.3, my - 6.5), (mx - 14.3, my - 6.5)]
     silk = [("text", 35.6, 35.5, "+"), ("text", 8.8, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
-            ("text", 5.0, 28.0, "TX"), ("text", 5.0, 30.54, "RX")]
+            ("text", 5.0, 27.4, "TX"), ("text", 5.0, 29.94, "RX")]
     return parts, H, [keepout], silk
 
 
@@ -424,13 +433,85 @@ def write_board(name, parts, h, keepouts, silk, path, root):
             t = pcbnew.PCB_TEXT(board)
             t.SetText(item[3]); t.SetPosition(mm(item[1], item[2])); t.SetLayer(pcbnew.F_SilkS)
             t.SetTextSize(mm(0.8, 0.8)); t.SetTextThickness(pcbnew.FromMM(0.12))
+            if len(item) > 4:
+                t.SetTextAngleDegrees(item[4])
             board.Add(t)
     t = pcbnew.PCB_TEXT(board)
     t.SetText(f"tune-button {name}\nedgecoil  rev A")
     t.SetPosition(mm(W / 2, h - 1.8)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
     t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
     board.Add(t)
+    place_labels(board, h)
     board.Save(path)
+
+
+def place_labels(board, h):
+    """Put each part's reference in the first spot beside it that covers no pad, no part body and no
+    other label, so the silkscreen stays readable once the parts are on. MX switch labels stay where
+    the footprint puts them: their caps cover that whole area anyway."""
+    def grow(b, d):
+        b = pcbnew.BOX2I(b.GetPosition(), b.GetSize())
+        b.Inflate(pcbnew.FromMM(d))
+        return b
+
+    # A part's body is its fab-layer outline and its pads. (Not the courtyard: the module's takes in
+    # the antenna clearance, which is the whole column beside it.)
+    bodies = {}
+    for fp in board.Footprints():
+        box = pcbnew.BOX2I()
+        for item in list(fp.GraphicalItems()) + list(fp.Pads()):
+            if item.IsOnLayer(pcbnew.F_Fab) or isinstance(item, pcbnew.PAD):
+                box.Merge(item.GetBoundingBox())
+        bodies[fp.GetReference()] = box
+    # A silkscreen outline marks something that sits over the board (the XIAO): nothing goes under it.
+    for d in board.Drawings():
+        if isinstance(d, pcbnew.PCB_SHAPE) and d.GetLayer() == pcbnew.F_SilkS:
+            bodies[f"outline-{len(bodies)}"] = d.GetBoundingBox()
+    pads = [grow(p.GetBoundingBox(), 0.15) for p in board.GetPads()]
+    texts = [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
+             if isinstance(d, pcbnew.PCB_TEXT) and d.GetLayer() == pcbnew.F_SilkS]
+    area = pcbnew.BOX2I(mm(0.6, 0.6), mm(W - 1.2, h - 1.2))
+    # Small parts first: they have the fewest places to go.
+    order = sorted((fp for fp in board.Footprints() if fp.Reference().IsVisible()),
+                   key=lambda fp: bodies[fp.GetReference()].GetArea())
+    for fp in order:
+        ref = fp.Reference()
+        if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:"):
+            texts.append(grow(ref.GetBoundingBox(), 0.1))
+            continue
+        ref.SetTextSize(mm(0.8, 0.8)); ref.SetTextThickness(pcbnew.FromMM(0.12))
+        ref.SetKeepUpright(True)
+        body = bodies[fp.GetReference()]
+        c, half_w, half_h = body.GetCenter(), body.GetWidth() // 2, body.GetHeight() // 2
+        gap = pcbnew.FromMM(0.25)
+
+        def spots():
+            # Horizontal above, below and beside; then vertical beside (for parts in a narrow column).
+            for angle in (0, 90):
+                ref.SetTextAngleDegrees(angle)
+                ref.SetPosition(c)
+                tw, th = ref.GetBoundingBox().GetWidth() // 2, ref.GetBoundingBox().GetHeight() // 2
+                ox, oy = half_w + tw + gap, half_h + th + gap
+                near = [(0, -oy), (0, oy), (-ox, 0), (ox, 0)] if angle == 0 else [(-ox, 0), (ox, 0)]
+                near += [(sx * ox, sy * oy) for sx in (-1, 1) for sy in (-1, 1)]
+                near += [(sx * pcbnew.FromMM(d), sy * oy) for d in (1, 2, 3) for sx in (-1, 1) for sy in (-1, 1)]
+                near += [(sx * ox, sy * pcbnew.FromMM(d)) for d in (1, 2, 3) for sx in (-1, 1) for sy in (-1, 1)]
+                for dx, dy in near:
+                    yield angle, dx, dy
+
+        for angle, dx, dy in spots():
+            ref.SetTextAngleDegrees(angle)
+            ref.SetPosition(pcbnew.VECTOR2I(c.x + dx, c.y + dy))
+            b = ref.GetBoundingBox()
+            if (area.Contains(b.GetOrigin()) and area.Contains(b.GetEnd())
+                    and not any(b.Intersects(o) for o in pads + texts)
+                    and not any(b.Intersects(v) for v in bodies.values())):
+                break
+        else:
+            print(f"{fp.GetReference()}: no clear spot for its label; hidden", file=sys.stderr)
+            ref.SetVisible(False)
+            continue
+        texts.append(grow(ref.GetBoundingBox(), 0.1))
 
 
 def write_project(name, path):
