@@ -2815,7 +2815,7 @@
 				)
 				(embedded_fonts no)
 			)
-		(symbol "Regulator_Linear:XC6206PxxxMR"
+		(symbol "Regulator_Linear:MCP1700x-330xxTT"
 		(property "Reference" "U"
 					(at -3.81 3.175 0)
 					(effects
@@ -2824,7 +2824,7 @@
 						)
 					)
 				)
-		(property "Value" "XC6206PxxxMR"
+		(property "Value" "MCP1700x-330xxTT"
 					(at 0 3.175 0)
 					(effects
 						(font
@@ -2833,17 +2833,16 @@
 						(justify left)
 					)
 				)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-3"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
 					(at 0 5.715 0)
 					(effects
 						(font
 							(size 1.27 1.27)
-							(italic yes)
 						)
 						(hide yes)
 					)
 				)
-		(property "Datasheet" "https://www.torexsemi.com/file/xc6206/XC6206.pdf"
+		(property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/20001826D.pdf"
 					(at 0 0 0)
 					(effects
 						(font
@@ -2852,7 +2851,7 @@
 						(hide yes)
 					)
 				)
-		(property "Description" "Positive 60-250mA Low Dropout Regulator, Fixed Output, SOT-23"
+		(property "Description" "250mA Low Quiscent Current LDO, 3.3V output, SOT-23"
 					(at 0 0 0)
 					(effects
 						(font
@@ -2861,7 +2860,7 @@
 						(hide yes)
 					)
 				)
-		(property "ki_keywords" "Torex LDO Voltage Regulator Fixed Positive"
+		(property "ki_keywords" "regulator linear ldo"
 					(at 0 0 0)
 					(effects
 						(font
@@ -2870,7 +2869,7 @@
 						(hide yes)
 					)
 				)
-		(property "ki_fp_filters" "SOT?23?3*"
+		(property "ki_fp_filters" "SOT?23*"
 					(at 0 0 0)
 					(effects
 						(font
@@ -2885,7 +2884,7 @@
 				(exclude_from_sim no)
 				(in_bom yes)
 				(on_board yes)
-				(symbol "XC6206PxxxMR_0_1"
+				(symbol "MCP1700x-330xxTT_0_1"
 					(rectangle
 						(start -5.08 1.905)
 						(end 5.08 -5.08)
@@ -2898,7 +2897,7 @@
 						)
 					)
 				)
-				(symbol "XC6206PxxxMR_1_1"
+				(symbol "MCP1700x-330xxTT_1_1"
 					(pin power_in line
 						(at -7.62 0 0)
 						(length 2.54)
@@ -4109,7 +4108,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Regulator_Linear:XC6206PxxxMR")
+		(lib_id "Regulator_Linear:MCP1700x-330xxTT")
 		(at 116.84 60.96 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -4121,7 +4120,7 @@
 			(at 116.84 58.42 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Value" "XC6206P332MR"
+		(property "Value" "MCP1700-3.3"
 			(at 116.84 63.5 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -4133,11 +4132,11 @@
 			(at 116.84 60.96 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "MPN" "XC6206P332MR-G"
+		(property "MPN" "MCP1700T-3302E/TT"
 			(at 116.84 68.58 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C5446"
+		(property "LCSC" "C39051"
 			(at 116.84 71.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

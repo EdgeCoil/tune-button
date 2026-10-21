@@ -112,7 +112,11 @@ Episodes work too.
 | Firmware, app, protocol tools | [MIT](LICENSES/MIT.txt) |
 | The Gradle wrapper (`android/gradlew*`, `android/gradle/wrapper/`), as shipped by Gradle | [Apache-2.0](LICENSES/Apache-2.0.txt) |
 | Documentation (`README.md`, `docs/`, `hardware/wiring.md`, `protocol/spec.md`) | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
+| The EdgeCoil mark (`hardware/pcb/edgecoil-mark.svg` and the silkscreen drawn from it), name and URL | [All rights reserved](LICENSES/LicenseRef-EdgeCoil-Mark.txt) |
 
 Each source file carries an SPDX header, and [`REUSE.toml`](REUSE.toml) covers the rest by path.
+
+The board licence does not cover the EdgeCoil mark, name or URL on the silkscreen. If you make or
+sell boards from these designs, take them off.
 
 Spotify is a trademark of Spotify AB. This project is not affiliated with or endorsed by Spotify.

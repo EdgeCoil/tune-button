@@ -147,8 +147,8 @@ def variant_xiao():
 
 def variant_c3():
     """ESP32-C3-WROOM-02 with its antenna over a notch in the top edge, native USB on USB-C at the
-    bottom, TP4054 charger, load sharing (a P-FET from the cell, a Schottky from VBUS) and a ~1 uA
-    XC6206 regulator."""
+    bottom, TP4054 charger, load sharing (a P-FET from the cell, a Schottky from VBUS) and a ~1.6 uA
+    MCP1700 regulator."""
     mx, my = 14.0, 13.2  # module origin; the antenna end is flush with the top edge
     parts = [
         Part("U1", "RF_Module:ESP32-C3-WROOM-02", "RF_Module:ESP32-C3-WROOM-02", "ESP32-C3-WROOM-02-N4",
@@ -185,9 +185,10 @@ def variant_c3():
         R("R5", "100k", "VBUS", "GND", (41.5, 27.0), 90),
         Part("D2", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBUS"},
              (37.0, 23.0), 0, mpn="1N5819WS", lcsc="C191023"),
-        # 3.3 V: XC6206, about 1 uA quiescent, 200 mA (a JLC Basic part; MCP1700's pinout).
-        Part("U4", "Regulator_Linear:XC6206PxxxMR", "Package_TO_SOT_SMD:SOT-23", "XC6206P332MR",
-             {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="XC6206P332MR-G", lcsc="C5446"),
+        # 3.3 V: MCP1700, 250 mA with about 1.6 uA quiescent (a JLC Extended part; the Basic XC6206
+        # shares its pinout but stops at 200 mA).
+        Part("U4", "Regulator_Linear:MCP1700x-330xxTT", "Package_TO_SOT_SMD:SOT-23", "MCP1700-3.3",
+             {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="MCP1700T-3302E/TT", lcsc="C39051"),
         C("C3", "1u", "VSYS", "GND", (27.5, 22.0), 0),
         C("C4", "22u", "3V3", "GND", (27.5, 14.5), 0, fp=C0805),
         C("C5", "100n", "3V3", "GND", (3.0, 8.4), 90),
@@ -239,7 +240,7 @@ def variant_c3():
     extras = {"notch": notch, "part_free": key_pin_zones(top),
               "logo": (14.5, 13.5, 17.0),
               "back_text": [(37.0, 11.0, "tune-button", 1.5), (37.0, 13.6, "c3 · rev A", 1.0),
-                            (14.5, 22.0, "edgecoil", 1.2), (40.0, 22.0, "CHG", 0.8),
+                            (14.5, 22.0, "edgecoil.dev", 1.2), (40.0, 22.0, "CHG", 0.8),
                             (34.0, 22.0, "LED", 0.8)]}
     return parts, H, [], silk, extras
 
@@ -526,7 +527,7 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
             if len(item) > 4:
                 t.SetTextAngleDegrees(item[4])
             board.Add(t)
-    back_text = extras.get("back_text", [(W / 2, h - 12.0, f"tune-button {name}\nedgecoil  rev A", 1.0)])
+    back_text = extras.get("back_text", [(W / 2, h - 12.0, f"tune-button {name}\nedgecoil.dev  rev A", 1.0)])
     for x, y, text, size in back_text:
         t = pcbnew.PCB_TEXT(board)
         t.SetText(text); t.SetPosition(mm(x, y)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)

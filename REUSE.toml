@@ -13,6 +13,13 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 edgecoil"
 SPDX-License-Identifier = "CC-BY-4.0"
 
+# The EdgeCoil mark is brand artwork, not part of the open hardware licence.
+[[annotations]]
+path = ["hardware/pcb/edgecoil-mark.svg"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 edgecoil"
+SPDX-License-Identifier = "LicenseRef-EdgeCoil-Mark"
+
 # Generated test vectors and build settings.
 [[annotations]]
 path = ["protocol/vectors.json", "firmware/test/test_packet/vectors.h", "android/gradle.properties"]

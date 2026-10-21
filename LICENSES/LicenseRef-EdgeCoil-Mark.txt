@@ -1,0 +1,12 @@
+EdgeCoil mark and name
+
+Copyright 2026 edgecoil. All rights reserved.
+
+The EdgeCoil mark (hardware/pcb/edgecoil-mark.svg, and the silkscreen artwork drawn from it in the
+board files and their exports) and the names "EdgeCoil" and "edgecoil.dev" are not licensed under
+CERN-OHL-S-2.0, CC-BY-4.0, MIT or any other licence in this repository. No permission is granted to
+copy, modify, distribute or use them, except to reproduce this repository unmodified.
+
+The board designs remain licensed under CERN-OHL-S-2.0. Anyone making or distributing a board, case
+or other product from them must remove the EdgeCoil mark, name and URL from it, and must not present
+it as made or endorsed by EdgeCoil.
