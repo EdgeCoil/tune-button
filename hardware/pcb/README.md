@@ -9,7 +9,7 @@ standard 19.05 mm pitch:
 | Size | 46 × 67 mm | 46 × 80.5 mm |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
-| USB-C, charger, regulator | On the XIAO | On the board: USB-C, MCP73831 charger (≈ 210 mA), load sharing, MCP1700 3.3 V (1.6 µA quiescent) |
+| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 210 mA), load sharing, XC6206 3.3 V (about 1 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
 | Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Single-sided SMD (PCBA or hand), then the MX switches |
 
@@ -50,10 +50,11 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
 2. **Battery lead order.** Pin 1 of the JST-PH is marked **+** on the silkscreen. JST-PH LiPo
    leads are not wired consistently between sellers, and neither board protects against a reversed
    cell, so check the plug before you plug it in.
-3. **C3 regulator headroom.** The MCP1700 was chosen for its 1.6 µA quiescent current, which
-   matters more than anything else for a board that sleeps for months. It is rated at 250 mA. That
-   covers BLE, and the 22 µF bulk capacitor is there for the start-up calibration burst, but a
-   Wi-Fi sketch (like the bench test) may brown out on it.
+3. **C3 regulator headroom.** The XC6206 was chosen for its quiescent current (about 1 µA), which
+   matters more than anything else for a board that sleeps for months, and because it is a JLC Basic
+   part. It is rated at 200 mA. That covers BLE, and the 22 µF bulk capacitor is there for the
+   start-up calibration burst, but a Wi-Fi sketch (like the bench test) will likely brown out on it.
+   The MCP1700 (250 mA, same pinout) is the drop-in upgrade if that matters.
 4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
    The boards are not hot-swap.
 
@@ -81,6 +82,12 @@ It needs KiCad 9, Java 21 and Freerouting 2.1.0 (later Freerouting releases need
 instead, stop after `gen.py` and open the project in KiCad.
 
 For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, any colour). For their
-assembly service, add the BOM and the `-cpl.csv` placement file. You will need to fill in LCSC part
-numbers, and the placement rotations need checking in their preview, as KiCad and JLC differ for
-some packages.
+assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
+its LCSC number; the MX switches, keycaps, UART header and battery are left for you. Check the
+placement rotations in JLC's preview, as KiCad and JLC differ for some packages.
+
+Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diode,
+the tact switches and the regulator are JLC **Basic** parts, and the charger (TP4054) and USB ESD
+part (SRV05-4) are **Preferred** parts, which also carry no fee. Three types remain **Extended**,
+at a fee per type per order: the ESP32-C3-WROOM-02 module, the USB-C socket and the JST battery
+socket. Catalogue status changes; the build doesn't check it.

@@ -34,10 +34,10 @@ def uid(*parts):
 
 
 class Part:
-    def __init__(self, ref, sym, fp, value, pins, at, rot=0, mpn="", note=""):
+    def __init__(self, ref, sym, fp, value, pins, at, rot=0, mpn="", note="", lcsc=""):
         self.ref, self.sym, self.fp, self.value = ref, sym, fp, value
         self.pins = pins  # pin number -> net name; unlisted pins are no-connect
-        self.at, self.rot, self.mpn, self.note = at, rot, mpn, note
+        self.at, self.rot, self.mpn, self.note, self.lcsc = at, rot, mpn, note, lcsc
 
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
@@ -46,12 +46,20 @@ C0805 = "Capacitor_SMD:C_0805_2012Metric"
 LED0603 = "LED_SMD:LED_0603_1608Metric"
 
 
+# JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
+LCSC_R0603 = {"1k": "C21190", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
+              "220k": "C22961"}
+LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
+          ("22u", C0805): "C45783"}
+LCSC_LED_RED = "C2286"
+
+
 def R(ref, value, a, b, at, rot=0):
-    return Part(ref, "Device:R", R0603, value, {"1": a, "2": b}, at, rot)
+    return Part(ref, "Device:R", R0603, value, {"1": a, "2": b}, at, rot, lcsc=LCSC_R0603[value])
 
 
 def C(ref, value, a, b, at, rot=0, fp=C0603):
-    return Part(ref, "Device:C", fp, value, {"1": a, "2": b}, at, rot)
+    return Part(ref, "Device:C", fp, value, {"1": a, "2": b}, at, rot, lcsc=LCSC_C[(value, fp)])
 
 
 def keys(top):
@@ -102,7 +110,7 @@ def variant_xiao():
         Part("D1", "Diode:BAT54W", "Package_TO_SOT_SMD:SOT-323_SC-70", "BAT54W", {"1": "K3", "2": "", "3": "K4"},
              (38.5, 16.0), mpn="BAT54W"),
         R("R3", "1k", "LED", "LED_A", (38.5, 6.0), 0),
-        Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180),
+        Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180, lcsc=LCSC_LED_RED),
     ]
     top = 33.5
     parts += keys(top)
@@ -116,43 +124,48 @@ def variant_xiao():
 
 
 def variant_c3():
-    """ESP32-C3-WROOM-02 with its antenna at the top edge, native USB on USB-C, MCP73831 charger,
-    load sharing (a P-FET from the cell, a Schottky from VBUS) and a 1.6 uA MCP1700 regulator."""
+    """ESP32-C3-WROOM-02 with its antenna over a notch in the top edge, native USB on USB-C at the
+    bottom, TP4054 charger, load sharing (a P-FET from the cell, a Schottky from VBUS) and a ~1 uA
+    XC6206 regulator."""
     mx, my = 14.0, 13.2  # module origin; the antenna end is flush with the top edge
     parts = [
         Part("U1", "RF_Module:ESP32-C3-WROOM-02", "RF_Module:ESP32-C3-WROOM-02", "ESP32-C3-WROOM-02-N4",
              {"1": "3V3", "2": "EN", "3": "K2", "4": "K3", "5": "", "6": "", "7": "IO8", "8": "IO9", "9": "GND",
               "10": "LED", "11": "RXD", "12": "TXD", "13": "USB_DN", "14": "USB_DP", "15": "K1", "16": "IO2",
-              "17": "VBAT_SENSE", "18": "K4", "19": "GND"}, (mx, my), mpn="ESP32-C3-WROOM-02-N4"),
+              "17": "VBAT_SENSE", "18": "K4", "19": "GND"}, (mx, my), mpn="ESP32-C3-WROOM-02-N4",
+             lcsc="C2934560"),
         # USB-C on the bottom edge, as far from the antenna as the board allows (placed below).
         Part("J1", "Connector:USB_C_Receptacle_USB2.0_16P", "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
              "USB-C", {"A1": "GND", "A4": "VBUS", "A5": "CC1", "A6": "USB_DP", "A7": "USB_DN", "A8": "",
                        "A9": "VBUS", "A12": "GND", "B1": "GND", "B4": "VBUS", "B5": "CC2", "B6": "USB_DP",
                        "B7": "USB_DN", "B8": "", "B9": "VBUS", "B12": "GND", "S1": "GND"},
-             None, mpn="HRO TYPE-C-31-M-12"),
+             None, mpn="HRO TYPE-C-31-M-12", lcsc="C165948"),
         R("R1", "5.1k", "CC1", "GND", None, 90),
         R("R2", "5.1k", "CC2", "GND", None, 90),
-        Part("U2", "Power_Protection:USBLC6-2SC6", "Package_TO_SOT_SMD:SOT-23-6", "USBLC6-2SC6",
+        # USB ESD: SRV05-4 is a JLC "preferred" part with USBLC6-2SC6's pinout, so no feeder fee.
+        Part("U2", "Power_Protection:SRV05-4", "Package_TO_SOT_SMD:SOT-23-6", "SRV05-4",
              {"1": "USB_DP", "2": "GND", "3": "USB_DN", "4": "USB_DN", "5": "VBUS", "6": "USB_DP"},
-             None, 90, mpn="USBLC6-2SC6"),
-        # Charger.
-        Part("U3", "Battery_Management:MCP73831-2-OT", "Package_TO_SOT_SMD:SOT-23-5", "MCP73831-2",
+             None, 90, mpn="SRV05-4-P-T7", lcsc="C85364"),
+        # Charger: TP4054 (the LTC4054's pinout and PROG formula; a JLC "preferred" part). Pin 1 pulls
+        # low while charging, which lights D1.
+        Part("U3", "Battery_Management:LTC4054ES5-4.2", "Package_TO_SOT_SMD:SOT-23-5", "TP4054",
              {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VBUS", "5": "PROG"}, (37.0, 19.0), 0,
-             mpn="MCP73831T-2ACI/OT"),
+             mpn="TP4054-42-SOT25R", lcsc="C32574"),
         R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # 1000 V / 4.7 k = 213 mA
         C("C1", "4.7u", "VBUS", "GND", (32.5, 16.5), 90),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
-        Part("D1", "Device:LED", LED0603, "CHG red", {"1": "STAT", "2": "CHG_A"}, (32.5, 24.0), 90),
+        Part("D1", "Device:LED", LED0603, "CHG red", {"1": "STAT", "2": "CHG_A"}, (32.5, 24.0), 90,
+             lcsc=LCSC_LED_RED),
         # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
         Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
-             {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A"),
+             {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A", lcsc="C15127"),
         R("R5", "100k", "VBUS", "GND", (41.5, 27.0), 90),
         Part("D2", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBUS"},
-             (37.0, 23.0), 0, mpn="1N5819WS"),
-        # 3.3 V.
-        Part("U4", "Regulator_Linear:MCP1700x-330xxTT", "Package_TO_SOT_SMD:SOT-23", "MCP1700-3302E",
-             {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="MCP1700T-3302E/TT"),
+             (37.0, 23.0), 0, mpn="1N5819WS", lcsc="C191023"),
+        # 3.3 V: XC6206, about 1 uA quiescent, 200 mA (a JLC Basic part; MCP1700's pinout).
+        Part("U4", "Regulator_Linear:XC6206PxxxMR", "Package_TO_SOT_SMD:SOT-23", "XC6206P332MR",
+             {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="XC6206P332MR-G", lcsc="C5446"),
         C("C3", "1u", "VSYS", "GND", (27.5, 22.0), 0),
         C("C4", "22u", "3V3", "GND", (27.5, 14.5), 0, fp=C0805),
         C("C5", "100n", "3V3", "GND", (3.0, 9.2), 90),
@@ -162,17 +175,19 @@ def variant_c3():
         R("R7", "10k", "3V3", "IO8", (3.0, 19.7), 90),
         R("R9", "10k", "3V3", "IO2", (25.5, 10.2), 180),
         Part("SW5", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "RESET",
-             {"1": "EN", "2": "GND"}, (8.8, 24.0), mpn="XKB TS-1187A"),
+             {"1": "EN", "2": "GND"}, (8.8, 24.0), mpn="XKB TS-1187A-B-A-B", lcsc="C318884"),
         Part("SW6", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "BOOT",
-             {"1": "IO9", "2": "GND"}, (21.0, 24.0), mpn="XKB TS-1187A"),
+             {"1": "IO9", "2": "GND"}, (21.0, 24.0), mpn="XKB TS-1187A-B-A-B", lcsc="C318884"),
         # Battery, its divider, the LED.
         Part("J2", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
-             "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 34.5), rot=90, mpn="JST S2B-PH-SM4-TB"),
+             "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 34.5), rot=90, mpn="JST S2B-PH-SM4-TB",
+             lcsc="C295747"),
         R("R10", "220k", "VBAT", "VBAT_SENSE", (28.0, 26.0), 0),
         R("R11", "220k", "VBAT_SENSE", "GND", (28.0, 28.5), 0),
         C("C7", "100n", "VBAT_SENSE", "GND", (24.5, 28.5), 90),
         R("R12", "1k", "LED", "LED_A", (14.7, 23.0), 0),
-        Part("D3", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (14.7, 25.5), 180),
+        Part("D3", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (14.7, 25.5), 180,
+             lcsc=LCSC_LED_RED),
         Part("TP1", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
              "UART", {"1": "TXD", "2": "RXD"}, (3.0, 27.4), 0, note="debug UART, optional"),
     ]
@@ -330,6 +345,7 @@ def write_schematic(name, parts, path):
             x, y = x + 76.2, 50.8
         cy = round((y + span / 2 + 5.08) / 2.54) * 2.54
         extra = [("MPN", p.mpn, 7.62, " (hide yes)")] if p.mpn else []
+        extra += [("LCSC", p.lcsc, 10.16, " (hide yes)")] if p.lcsc else []
         out.append(instance(p.sym, p.ref, p.value, p.fp, x, cy, pins, extra))
         out += labels(x, cy, pins, p.pins)
         y += cell_h
@@ -448,6 +464,9 @@ def write_board(name, parts, h, keepouts, silk, notch, path, root):
         if p.mpn:
             fp.SetField("MPN", p.mpn)
             fp.GetFieldByName("MPN").SetVisible(False)
+        if p.lcsc:
+            fp.SetField("LCSC", p.lcsc)
+            fp.GetFieldByName("LCSC").SetVisible(False)
     outline(board, W, h, notch)
     inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)

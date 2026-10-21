@@ -31,11 +31,17 @@ for v in "${variants[@]}"; do
   kicad-cli pcb export drill --format excellon --excellon-separate-th --generate-map --map-format gerberx2 \
     -o "$out/gerber/" "$base.kicad_pcb" >/dev/null
   python3 -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', sys.argv[2])" "$out/tune-button-$v-gerbers" "$out/gerber"
-  kicad-cli sch export bom --fields 'Reference,Value,Footprint,MPN,${QUANTITY}' \
-    --labels 'Designator,Value,Footprint,MPN,Qty' --group-by 'Value,Footprint,MPN' --exclude-dnp \
+  kicad-cli sch export bom --fields 'Reference,Value,Footprint,MPN,LCSC,${QUANTITY}' \
+    --labels 'Designator,Value,Footprint,MPN,LCSC,Qty' --group-by 'Value,Footprint,MPN,LCSC' --exclude-dnp \
     -o "$out/tune-button-$v-bom.csv" "$base.kicad_sch" >/dev/null
   kicad-cli pcb export pos --format csv --units mm --side front --exclude-dnp \
-    -o "$out/tune-button-$v-cpl.csv" "$base.kicad_pcb" >/dev/null
+    -o "$out/tune-button-$v-pos.csv" "$base.kicad_pcb" >/dev/null
+  # JLCPCB assembly: only the parts with an LCSC number, in JLC's column names.
+  kicad-cli sch export bom --fields 'Value,Reference,Footprint,LCSC' --group-by 'Value,Footprint,LCSC' \
+    --exclude-dnp -o "$out/kicad-bom-lcsc.csv" "$base.kicad_sch" >/dev/null
+  python3 fab_jlc.py "$out/kicad-bom-lcsc.csv" "$out/tune-button-$v-pos.csv" \
+    "$out/tune-button-$v-jlc-bom.csv" "$out/tune-button-$v-jlc-cpl.csv"
+  rm "$out/kicad-bom-lcsc.csv"
   kicad-cli sch export pdf -o "$out/tune-button-$v-schematic.pdf" "$base.kicad_sch" >/dev/null
   for side in top bottom; do
     kicad-cli pcb render --side "$side" -w 920 -h 1300 --quality basic -o "$out/tune-button-$v-$side.png" \
