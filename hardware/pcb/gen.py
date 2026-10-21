@@ -50,7 +50,7 @@ LED0805 = "LED_SMD:LED_0805_2012Metric"
 
 
 # JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
-LCSC_R0603 = {"1k": "C21190", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
+LCSC_R0603 = {"1": "C22936", "1k": "C21190", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
               "220k": "C22961"}
 LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
           ("22u", C0805): "C45783"}
@@ -166,16 +166,21 @@ def variant_c3():
         R("R1", "5.1k", "CC1", "GND", None, 90),
         R("R2", "5.1k", "CC2", "GND", None, 90),
         # USB ESD: SRV05-4 is a JLC "preferred" part with USBLC6-2SC6's pinout, so no feeder fee.
+        # Its rail is 3V3, not VBUS: on battery, the chip's D+ pull-up would otherwise leak through
+        # the steering diode onto VBUS (simulated at 2.6 V) and half turn Q1 off.
         Part("U2", "Power_Protection:SRV05-4", "Package_TO_SOT_SMD:SOT-23-6", "SRV05-4",
-             {"1": "USB_DP", "2": "GND", "3": "USB_DN", "4": "USB_DN", "5": "VBUS", "6": "USB_DP"},
+             {"1": "USB_DP", "2": "GND", "3": "USB_DN", "4": "USB_DN", "5": "3V3", "6": "USB_DP"},
              None, 90, mpn="SRV05-4-P-T7", lcsc="C85364"),
         # Charger: TP4054 (the LTC4054's pinout and PROG formula; a JLC "preferred" part). Pin 1 pulls
         # low while charging, which lights D1.
         Part("U3", "Battery_Management:LTC4054ES5-4.2", "Package_TO_SOT_SMD:SOT-23-5", "TP4054",
              {"1": "STAT", "2": "GND", "3": "VBAT", "4": "VBUS", "5": "PROG"}, (37.0, 19.0), 0,
              mpn="TP4054-42-SOT25R", lcsc="C32574"),
-        R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # 1000 V / 4.7 k = 213 mA
-        C("C1", "4.7u", "VBUS", "GND", (32.5, 16.5), 90),
+        R("R3", "4.7k", "PROG", "GND", (41.5, 19.0), 90),  # about 200 mA by the TP4054's own formula
+        # 1 ohm in series with the input capacitor damps the cable's ringing on plug-in, which
+        # otherwise peaks around 7 V (TP4054 datasheet, and simulated).
+        C("C1", "4.7u", "VBUS_C", "GND", (32.5, 16.5), 90),
+        R("R13", "1", "VBUS", "VBUS_C", (30.4, 16.5), 90),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
         # The LEDs face the keys, so they go on the back with the switches (hand-soldered, 0805).
@@ -183,7 +188,9 @@ def variant_c3():
         # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
         Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
              {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A", lcsc="C15127"),
-        R("R5", "100k", "VBUS", "GND", (41.5, 27.0), 90),
+        # 10k, not 100k: pulls Q1's gate down within ~3 ms of unplugging, and holds it down against
+        # D2's reverse leakage when warm.
+        R("R5", "10k", "VBUS", "GND", (41.5, 27.0), 90),
         Part("D2", "Diode:1N5819WS", "Diode_SMD:D_SOD-323", "1N5819WS", {"1": "VSYS", "2": "VBUS"},
              (37.0, 23.0), 0, mpn="1N5819WS", lcsc="C191023"),
         # 3.3 V: MCP1700, 250 mA with about 1.6 uA quiescent (a JLC Extended part; the Basic XC6206

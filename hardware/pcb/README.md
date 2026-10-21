@@ -10,7 +10,7 @@ standard 19.05 mm pitch:
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
-| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 210 mA), load sharing, MCP1700 3.3 V (250 mA, about 1.6 µA quiescent) |
+| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, MCP1700 3.3 V (250 mA, about 1.6 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
 | Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
 
@@ -55,7 +55,10 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    which matters more than anything else for a board that sleeps for months. It is rated at 250 mA.
    That covers BLE with room to spare, and the 22 µF bulk capacitor is there for the start-up
    calibration burst and Wi-Fi transmit peaks, which run past 250 mA for a few hundred microseconds.
-   The XC6206 (JLC Basic, same pinout, 200 mA) is the cheaper fallback.
+   The XC6206 (JLC Basic, same pinout, 200 mA) is the cheaper fallback. In simulation, BLE events
+   (about 100 mA) hold 3.3 V down to a 3.4 V cell, but 350 mA Wi-Fi bursts pull it to about 2.97 V
+   even on a full cell, near the brown-out threshold. For Wi-Fi, a 500 mA low-Iq part (such as the
+   RT9080) is the step up. Treat 3.5 V as the cell's usable cut-off.
 4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
    The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
    front, where their leads and posts come through between the parts; trim the leads short.
