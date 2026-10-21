@@ -141,7 +141,7 @@ def variant_xiao():
     parts += holes([(3.5, 3.5), (W - 3.5, 3.5), (3.5, hy), (W - 3.5, hy)])
     silk = [("rect", W / 2 - 8.75, y1 - 2.9, W / 2 + 8.75, y1 + 18.1), ("text", W / 2, y1 + 6.5, "XIAO"),
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
-            ("text", 11.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
+            ("text", 12.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
             ("text", 1.5, 21.77, "BAT", 90)]
     return parts, H, [], silk, {}
 
@@ -231,7 +231,9 @@ def variant_c3():
     # USB-C centred on the bottom edge, its face 0.2 mm proud of the edge so a plug's moulding clears
     # the board; the board is long enough for its courtyard to clear the lower switches' centre posts.
     usb_face = 3.65  # footprint origin to the receptacle's front face
-    H = max(H, top + KEY_PITCH + 2.5 + 0.1 + 5.27 + usb_face - 0.2)
+    # The USB-C shell legs come through to the key side: their pads (4.18 mm in from the footprint
+    # origin) stay 0.3 mm clear of the bottom switches' 14 mm housings.
+    H = max(H, top + KEY_PITCH + 7.0 + 0.3 + 4.18 + usb_face - 0.2)
     at = {"J1": (W / 2, H - usb_face + 0.2), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
           "R2": (W / 2 + 1.0, H - 15.7)}
     for p in parts:
@@ -244,14 +246,14 @@ def variant_c3():
     # drawing), and the left edge is already within 5 mm. It stops 0.3 mm short of the antenna's end so
     # the module's top row of pads keeps its 0.25 mm copper-to-edge clearance.
     notch = (mx + 14.3, my - 6.8)
-    silk = [("text", 35.6, 44.5, "+"), ("text", 9.4, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
+    silk = [("text", 34.9, 44.5, "+"), ("text", 9.4, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
             ("text", 5.6, 41.0, "TX"), ("text", 5.6, 43.54, "RX")]
     # The key side, above the keys, is the emptiest face: the mark and the name go there.
     extras = {"notch": notch, "part_free": key_pin_zones(top),
               # The mark goes over the right half, where the front has only SMD parts: the module's
               # ground-pad vias (pads x 13.5-16.4, y 12.0-14.8) would punch through it. The text sits
               # above and below those vias.
-              "logo": (37.0, 12.2, 14.0),
+              "logo": (37.0, 12.2, 15.0),
               "back_text": [(14.5, 8.3, "tune-button", 1.5), (14.5, 10.4, "c3 · rev A", 1.0),
                             (14.5, 17.0, "edgecoil.dev", 1.2), (40.0, 22.0, "CHG", 1.0),
                             (34.0, 22.0, "LED", 1.0)]}
@@ -525,10 +527,16 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         if p.lcsc:
             fp.SetField("LCSC", p.lcsc)
             fp.GetFieldByName("LCSC").SetVisible(False)
-            # Slotted legs (the USB-C shell) on a reflowed part: paste them, so they solder in reflow.
+            # Slotted legs (the USB-C shell) on a reflowed part: paste them, overprinted 0.2 mm, so
+            # they solder in reflow.
             for pad in fp.Pads():
                 if pad.HasHole() and pad.GetDrillShape() == pcbnew.PAD_DRILL_SHAPE_OBLONG:
                     layers = pad.GetLayerSet(); layers.AddLayer(pcbnew.F_Paste); pad.SetLayerSet(layers)
+                    pad.SetLocalSolderPasteMargin(pcbnew.FromMM(0.2))
+        # JLC's minimum legend line is 0.15 mm; library footprints draw 0.12.
+        for item in fp.GraphicalItems():
+            if item.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS) and isinstance(item, pcbnew.PCB_SHAPE):
+                item.SetWidth(max(item.GetWidth(), pcbnew.FromMM(0.15)))
     outline(board, W, h, extras.get("notch"))
     inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
@@ -581,20 +589,22 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     board.Save(path)
 
 
-def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), pitch=0.08):
+def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stroke=0.15, res=0.025):
     """The EdgeCoil mark in back silkscreen, `width` mm wide, centred on (cx, cy), mirrored so it reads
-    from the back. It is rasterised and drawn as one 0.15 mm stroke per row of pixels, which overlap
-    into solid silkscreen; every coloured part of the mark prints."""
+    from the back. It is drawn as horizontal 0.15 mm strokes, one row every 0.15 mm so the rows tile
+    without overlap, each run shortened by the stroke's round caps. So the print covers what the mark
+    covers and its gaps keep their drawn size, to the 0.15 mm the legend can resolve."""
     import subprocess
     import tempfile
     from PIL import Image
     with tempfile.NamedTemporaryFile(suffix=".png") as png:
-        subprocess.run(["rsvg-convert", "-w", str(round(width / pitch)), "-o", png.name, svg], check=True)
+        subprocess.run(["rsvg-convert", "-w", str(round(width / res)), "-o", png.name, svg], check=True)
         img = Image.open(png.name).convert("RGBA")
     w, h = img.size
     alpha = img.getchannel("A").load()
-    x0, y0 = cx - width / 2, cy - h * pitch / 2
-    for row in range(h):
+    x0, y0 = cx - width / 2, cy - h * res / 2
+    step = round(stroke / res)
+    for row in range(step // 2, h, step):  # sample each 0.15 mm band at its centre
         col = 0
         while col < w:
             if alpha[col, row] < 128:
@@ -603,12 +613,16 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), pitc
             start = col
             while col < w and alpha[col, row] >= 128:
                 col += 1
+            # The run covers [start, col) pixels; the stroke's caps add stroke/2 at each end.
+            a, b = x0 + start * res + stroke / 2, x0 + col * res - stroke / 2
+            if b < a:
+                a = b = (a + b) / 2
             # Mirror x about the centre: the back is seen from the other side.
-            xa, xb = cx - (x0 + start * pitch - cx), cx - (x0 + (col - 1) * pitch - cx)
-            y = y0 + row * pitch
+            xa, xb = 2 * cx - a, 2 * cx - b
+            y = y0 + (row + 0.5) * res
             seg = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
-            seg.SetStart(mm(xa, y)); seg.SetEnd(mm(xb + (0.001 if xa == xb else 0), y))
-            seg.SetLayer(pcbnew.B_SilkS); seg.SetWidth(pcbnew.FromMM(0.15))
+            seg.SetStart(mm(xa, y)); seg.SetEnd(mm(xb - (0.001 if xa == xb else 0), y))
+            seg.SetLayer(pcbnew.B_SilkS); seg.SetWidth(pcbnew.FromMM(stroke))
             board.Add(seg)
 
 
@@ -648,6 +662,17 @@ def place_labels(board, h, notch=None):
                      if d.GetLayer() == layer and (isinstance(d, pcbnew.PCB_TEXT) or d.GetShape() == pcbnew.SHAPE_T_SEGMENT)]
              for layer in bodies}
     area = pcbnew.BOX2I(mm(0.6, 0.6), mm(W - 1.2, h - 1.2))
+
+    def owner(b, layer):
+        """The part whose body is nearest the label: a label must read as belonging to its own part."""
+        c = b.GetCenter()
+
+        def dist(box):
+            dx = max(box.GetLeft() - c.x, 0, c.x - box.GetRight())
+            dy = max(box.GetTop() - c.y, 0, c.y - box.GetBottom())
+            return math.hypot(dx, dy)
+        parts = {r: v for r, v in bodies[layer].items() if r in side_of}
+        return min(parts, key=lambda r: dist(parts[r]))
     # Small parts first: they have the fewest places to go.
     order = sorted((fp for fp in board.Footprints() if fp.Reference().IsVisible()),
                    key=lambda fp: bodies[side_of[fp.GetReference()]][fp.GetReference()].GetArea())
@@ -683,7 +708,8 @@ def place_labels(board, h, notch=None):
             b = ref.GetBoundingBox()
             if (area.Contains(b.GetOrigin()) and area.Contains(b.GetEnd())
                     and not any(b.Intersects(o) for o in pads + texts[layer])
-                    and not any(b.Intersects(v) for v in bodies[layer].values())):
+                    and not any(b.Intersects(v) for v in bodies[layer].values())
+                    and owner(b, layer) == fp.GetReference()):
                 break
         else:
             print(f"{fp.GetReference()}: no clear spot for its label; hidden", file=sys.stderr)

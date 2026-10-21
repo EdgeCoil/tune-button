@@ -88,7 +88,7 @@ It needs KiCad 9, Java 21 and Freerouting 2.1.0 (later Freerouting releases need
 `gen.py` and rebuild rather than editing the KiCad files: a rebuild overwrites them. To hand-route
 instead, stop after `gen.py` and open the project in KiCad.
 
-For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, any colour). For their
+For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm; Economic assembly limits the colours, green is safe). For their
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
 its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you.
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's

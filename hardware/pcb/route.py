@@ -38,10 +38,16 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
     gap = pcbnew.FromMM(drill / 2 + 0.35)
 
     no_vias = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowVias()]
+    # Keep clear of SMD pads' mask and paste openings, or solder wicks down the via.
+    smd = [p.GetBoundingBox() for p in board.GetPads() if not p.HasHole() or p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+    smd += [p.GetBoundingBox() for p in board.GetPads() if p.HasHole() and p.GetDrillSize().x < pcbnew.FromMM(0.4)]
+    for b in smd:
+        b.Inflate(pcbnew.FromMM(via / 2 + 0.2))
 
     def clear(p):
         return (all((p - h).EuclideanNorm() >= r + gap for h, r in holes)
-                and not any(z.Outline().Collide(p, pcbnew.FromMM(via / 2)) for z in no_vias))
+                and not any(z.Outline().Collide(p, pcbnew.FromMM(via / 2)) for z in no_vias)
+                and not any(b.Contains(p) for b in smd))
 
     def add(p):
         holes.append((p, pcbnew.FromMM(drill / 2)))

@@ -38,3 +38,9 @@ with open(pos_in, newline="") as f, open(cpl_out, "w", newline="") as g:
             x, y = x + ox * math.cos(a) - oy * math.sin(a), y + ox * math.sin(a) + oy * math.cos(a)
             w.writerow([row["Ref"], f"{x:.6f}mm", f"{y:.6f}mm", row["Side"].capitalize(),
                         f"{(rot + ROTATE.get(lcsc, 0)) % 360:.6f}"])
+
+# Every part JLC is asked to fit must have a placement, or it is silently left off.
+placed = {row["Ref"] for row in csv.DictReader(open(pos_in, newline=""))}
+missing = sorted(set(fitted) - placed)
+if missing:
+    sys.exit(f"fab_jlc: no placement for {', '.join(missing)} (a designator range in the BOM?)")

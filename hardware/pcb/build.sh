@@ -38,7 +38,7 @@ for v in "${variants[@]}"; do
     -o "$out/tune-button-$v-pos.csv" "$base.kicad_pcb" >/dev/null
   # JLCPCB assembly: only the parts with an LCSC number, in JLC's column names.
   kicad-cli sch export bom --fields 'Value,Reference,Footprint,LCSC' --group-by 'Value,Footprint,LCSC' \
-    --exclude-dnp -o "$out/kicad-bom-lcsc.csv" "$base.kicad_sch" >/dev/null
+    --ref-range-delimiter "" --exclude-dnp -o "$out/kicad-bom-lcsc.csv" "$base.kicad_sch" >/dev/null
   python3 fab_jlc.py "$out/kicad-bom-lcsc.csv" "$out/tune-button-$v-pos.csv" \
     "$out/tune-button-$v-jlc-bom.csv" "$out/tune-button-$v-jlc-cpl.csv"
   rm "$out/kicad-bom-lcsc.csv"
