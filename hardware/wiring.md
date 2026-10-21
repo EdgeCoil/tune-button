@@ -33,6 +33,9 @@ Everything hangs off a stock **Seeed Studio XIAO ESP32-C3**. No custom board.
 | D3 | 5 | Optional LED via 1 kΩ | Digital only. GPIO5 is ADC2, which is unreliable on the C3, so it can't be the battery input |
 | BAT+ / BAT− (back pads) | | LiPo | The XIAO's charger fills the cell from USB-C |
 
+**One button:** wire only the like button to D1 and build the `xiao_esp32c3_1btn` firmware
+environment. Leave D2 unconnected; that build never wakes on it.
+
 The buttons use the chip's internal pull-ups, so nothing else is needed. If the bench shows spurious
 wakes, add a 100 kΩ pull-up from each button pin to 3V3.
 

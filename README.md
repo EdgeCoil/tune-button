@@ -67,6 +67,10 @@ again, hold **BOOT** (the small button next to USB-C) while plugging it in.
 Build options in `platformio.ini`: `TB_BURST_MS` (how long a press is broadcast) and
 `TB_LED_PIN`.
 
+**One button only?** Build `pio run -e xiao_esp32c3_1btn` (or `sh scripts/merge.sh xiao_esp32c3_1btn`
+for a single image) and wire just the like button to D1. A press likes the song when you let go.
+Holding the button for 5 seconds pairs it instead. The app needs no change; leave the playlist unset.
+
 ### 3. App
 
 ```bash
@@ -79,8 +83,10 @@ In the app, work through the screen top to bottom:
 
 1. Paste the client ID and **Sign in to Spotify**.
 2. **Choose playlist** for the + button.
-3. **Pair**: hold both buttons for 3 seconds (the LED flickers), then tap Pair. Accept the Bluetooth
-   pairing prompt if one appears. Each pairing makes a fresh key, so the previous phone stops working.
+3. **Pair**: hold both buttons for 3 seconds (on the one-button build, hold the button for 5 seconds)
+   until the LED flickers, then tap Pair. Accept the Bluetooth pairing prompt if one appears. Each
+   pairing makes a fresh key, so the previous phone stops working. A pairing that no phone completes
+   changes nothing.
 4. Fix everything listed under *Keep listening in the background*. **On Samsung phones, also add the
    app to *Never sleeping apps*.** Otherwise presses stop being heard after a while.
 5. Use **Test without the device** to check the Spotify side on its own.

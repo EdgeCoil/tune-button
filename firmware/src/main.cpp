@@ -5,6 +5,7 @@
 //
 // The device sleeps in deep sleep. A button press wakes it, and it broadcasts a signed press advert
 // (protocol/spec.md) for TB_BURST_MS, then sleeps again. Holding both buttons for 3 s enters pairing.
+// With TB_BUTTONS=1 only the like button is fitted: a press likes on release, and a 5 s hold pairs.
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include <Preferences.h>
@@ -20,6 +21,9 @@
 #ifndef TB_LED_PIN
 #define TB_LED_PIN -1
 #endif
+#ifndef TB_BUTTONS
+#define TB_BUTTONS 2
+#endif
 
 namespace {
 
@@ -27,7 +31,9 @@ namespace {
 constexpr gpio_num_t PIN_LIKE = GPIO_NUM_3;      // XIAO D1
 constexpr gpio_num_t PIN_PLAYLIST = GPIO_NUM_4;  // XIAO D2
 constexpr int PIN_VBAT = 2;                      // XIAO A0, via 2 × 220 kΩ divider from BAT+
-constexpr uint32_t PAIR_HOLD_MS = 3000;
+constexpr bool HAS_PLAYLIST = TB_BUTTONS >= 2;
+// One button can't use a two-button chord, so it needs a hold long enough not to happen by accident.
+constexpr uint32_t PAIR_HOLD_MS = HAS_PLAYLIST ? 3000 : 5000;
 constexpr uint32_t PAIR_WINDOW_MS = 60000;
 constexpr uint32_t AGE_UPDATE_MS = 200;
 
@@ -49,11 +55,15 @@ void led(bool on) {
   if (TB_LED_PIN >= 0) digitalWrite(TB_LED_PIN, on ? HIGH : LOW);
 }
 
+void save_identity() {
+  prefs.putBytes("id", ident.id, sizeof ident.id);
+  prefs.putBytes("key", ident.key, sizeof ident.key);
+}
+
 void new_identity() {
   esp_fill_random(ident.id, sizeof ident.id);
   esp_fill_random(ident.key, sizeof ident.key);
-  prefs.putBytes("id", ident.id, sizeof ident.id);
-  prefs.putBytes("key", ident.key, sizeof ident.key);
+  save_identity();
 }
 
 void load_identity() {
@@ -96,7 +106,7 @@ void set_press_advert(NimBLEAdvertising *adv, const uint8_t payload[tb::PAYLOAD_
 // Which button a press means. 0 if neither is down.
 uint8_t pressed_button() {
   if (down(PIN_LIKE)) return tb::LIKE;
-  if (down(PIN_PLAYLIST)) return tb::PLAYLIST;
+  if (HAS_PLAYLIST && down(PIN_PLAYLIST)) return tb::PLAYLIST;
   return 0;
 }
 
@@ -151,7 +161,11 @@ class KeyCallbacks : public NimBLECharacteristicCallbacks {
 };
 
 void pairing() {
-  new_identity();
+  // Offer a fresh key, but keep the old one until a phone has read it: an aborted or accidental
+  // pairing must not unpair the phone that already works.
+  Identity old = ident;
+  esp_fill_random(ident.id, sizeof ident.id);
+  esp_fill_random(ident.key, sizeof ident.key);
   uint8_t value[tb::ID_LEN + tb::KEY_LEN + 4];
   memcpy(value, ident.id, tb::ID_LEN);
   memcpy(value + tb::ID_LEN, ident.key, tb::KEY_LEN);
@@ -190,18 +204,24 @@ void pairing() {
   led(false);
   NimBLEDevice::deinit(true);
   if (done_at) {
+    save_identity();
     for (int i = 0; i < 3; i++) { led(true); delay(80); led(false); delay(80); }
+  } else {
+    ident = old;
   }
+  memset(&old, 0, sizeof old);
 }
 
 [[noreturn]] void sleep_now() {
   // Level-triggered wake: a button still held would wake us at once, so wait for release.
   uint32_t t = millis();
-  while ((down(PIN_LIKE) || down(PIN_PLAYLIST)) && millis() - t < 10000) delay(10);
+  while (pressed_button() && millis() - t < 10000) delay(10);
+  // An unfitted D2 is left out of the wake mask, so a floating pin can never wake the device.
+  uint64_t all = (1ULL << PIN_LIKE) | (HAS_PLAYLIST ? 1ULL << PIN_PLAYLIST : 0);
   uint64_t mask = 0;
   if (!down(PIN_LIKE)) mask |= 1ULL << PIN_LIKE;
-  if (!down(PIN_PLAYLIST)) mask |= 1ULL << PIN_PLAYLIST;
-  if (mask != ((1ULL << PIN_LIKE) | (1ULL << PIN_PLAYLIST)))
+  if (HAS_PLAYLIST && !down(PIN_PLAYLIST)) mask |= 1ULL << PIN_PLAYLIST;
+  if (mask != all)
     esp_sleep_enable_timer_wakeup(60ULL * 1000000);  // a stuck button: look again in a minute
   for (gpio_num_t p : {PIN_LIKE, PIN_PLAYLIST}) {
     gpio_pullup_en(p);
@@ -225,9 +245,18 @@ void setup() {
   uint64_t wake_pins = woke_by_button ? esp_sleep_get_gpio_wakeup_status() : 0;
   delay(30);  // debounce
 
-  if (down(PIN_LIKE) && down(PIN_PLAYLIST)) {
+  if (HAS_PLAYLIST && down(PIN_LIKE) && down(PIN_PLAYLIST)) {
     uint32_t t = millis();
     while (down(PIN_LIKE) && down(PIN_PLAYLIST) && millis() - t < PAIR_HOLD_MS) delay(10);
+    if (millis() - t >= PAIR_HOLD_MS) {
+      pairing();
+      sleep_now();
+    }
+  }
+  if (!HAS_PLAYLIST && woke_by_button && down(PIN_LIKE)) {
+    // A press and the start of a pairing hold look the same, so wait for release (or the hold).
+    uint32_t t = millis();
+    while (down(PIN_LIKE) && millis() - t < PAIR_HOLD_MS) delay(10);
     if (millis() - t >= PAIR_HOLD_MS) {
       pairing();
       sleep_now();
@@ -236,7 +265,7 @@ void setup() {
 
   uint8_t button = 0;
   if (wake_pins & (1ULL << PIN_LIKE)) button = tb::LIKE;
-  else if (wake_pins & (1ULL << PIN_PLAYLIST)) button = tb::PLAYLIST;
+  else if (HAS_PLAYLIST && (wake_pins & (1ULL << PIN_PLAYLIST))) button = tb::PLAYLIST;
   else if (woke_by_button) button = pressed_button();
   // A cold boot (battery connected, USB plugged, reset) is not a press.
   if (button) burst(button);

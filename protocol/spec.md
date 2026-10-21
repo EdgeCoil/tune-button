@@ -47,15 +47,18 @@ press with the next counter.
 
 ## Pairing
 
-Hold **both buttons for 3 s** from sleep. The device then:
+Hold **both buttons for 3 s** from sleep (one-button build: hold the button for **5 s**; a shorter
+press is sent on release). The device then:
 
-1. generates a **new** device id and key (the previous phone stops being accepted) and stores them,
+1. generates a **new** device id and key, but keeps them only in RAM,
 2. advertises *connectable* for up to 60 s, with the name `tune-button` and service UUID
    `7b1e0001-5f3a-4c1e-9b7a-2e6c0d1a7b00`,
 3. exposes one characteristic, `7b1e0002-5f3a-4c1e-9b7a-2e6c0d1a7b00`, that can be read only over an
    **encrypted** link (LE Secure Connections, Just Works, bonded). Reading it triggers pairing on the
    phone. It returns 24 bytes: `device id (4) | key (16) | counter (4, LE)`.
 4. leaves pairing mode after one successful read (or after the 60 s timeout) and goes back to sleep.
+   Only a successful read stores the new id and key, and from then on the previous phone is no longer
+   accepted. After a timeout the old ones stay, so an accidental hold does not unpair anything.
 
 Just Works has no MITM protection, so anyone within range during the 60 s window could also read
 the key. This is a deliberate trade-off for a device with no display or keypad. If pairing fails

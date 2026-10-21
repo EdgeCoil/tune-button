@@ -97,7 +97,8 @@ None of these has been done yet.
 | 2 | Deep-sleep current from the battery (meter in series with BAT+) | ≤ 60 µA |
 | 3 | Each button wakes it and sends the right button (nRF Connect shows the payload, byte 11) | 01 / 02 |
 | 4 | Holding a button down does not leave it awake or wake-looping | Timer wake once a minute, otherwise asleep |
-| 5 | Hold both 3 s → LED flashes, the app pairs, and the LED triple-flashes | Paired |
+| 5 | Hold both 3 s (one-button build: hold 5 s) → LED flashes, the app pairs, and the LED triple-flashes | Paired |
+| 5a | Hold to pair but don't pair from the app; let the 60 s window lapse | The phone that was already paired still works |
 | 6 | Screen off, app swiped away: the like button likes the current song | Notification, and the song is in Liked Songs |
 | 7 | Same for the playlist button | The song is in the playlist |
 | 8 | Replay: record an advert with nRF Connect and re-broadcast it | Nothing happens; no log entry |
