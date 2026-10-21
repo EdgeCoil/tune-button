@@ -37,8 +37,11 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
     holes += [(p.GetPosition(), max(p.GetDrillSize().x, p.GetDrillSize().y) / 2) for p in board.GetPads() if p.HasHole()]
     gap = pcbnew.FromMM(drill / 2 + 0.35)
 
+    no_vias = [z for z in board.Zones() if z.GetIsRuleArea() and z.GetDoNotAllowVias()]
+
     def clear(p):
-        return all((p - h).EuclideanNorm() >= r + gap for h, r in holes)
+        return (all((p - h).EuclideanNorm() >= r + gap for h, r in holes)
+                and not any(z.Outline().Collide(p, pcbnew.FromMM(via / 2)) for z in no_vias))
 
     def add(p):
         holes.append((p, pcbnew.FromMM(drill / 2)))

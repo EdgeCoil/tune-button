@@ -88,8 +88,16 @@ instead, stop after `gen.py` and open the project in KiCad.
 
 For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, any colour). For their
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
-its LCSC number; the MX switches, keycaps, UART header and battery are left for you. Check the
-placement rotations in JLC's preview, as KiCad and JLC differ for some packages.
+its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you.
+Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
+footprint differs from KiCad's (MCP1700, AO3401A, SRV05-4, TP4054, USB-C), checked against JLC's own
+footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
+shorts VBUS.
+
+The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order Economic, or ask
+for a panel. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
+rule, so if JLC asks for rails, have them on the **left and right edges only**: the USB-C overhangs
+the bottom edge and the antenna overhangs the notch at the top.
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diode
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)

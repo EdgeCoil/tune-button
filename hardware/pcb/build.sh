@@ -26,9 +26,9 @@ for v in "${variants[@]}"; do
   kicad-cli pcb drc --schematic-parity --severity-all --exit-code-violations -o "$out/drc.rpt" "$base.kicad_pcb" >/dev/null \
     || { echo "$v: DRC, unconnected or parity problems, see $out/drc.rpt"; exit 1; }
 
-  kicad-cli pcb export gerbers --layers F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts \
+  kicad-cli pcb export gerbers --layers F.Cu,B.Cu,F.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts \
     --subtract-soldermask -o "$out/gerber/" "$base.kicad_pcb" >/dev/null
-  kicad-cli pcb export drill --format excellon --excellon-separate-th --generate-map --map-format gerberx2 \
+  kicad-cli pcb export drill --format excellon --excellon-separate-th \
     -o "$out/gerber/" "$base.kicad_pcb" >/dev/null
   python3 -c "import shutil, sys; shutil.make_archive(sys.argv[1], 'zip', sys.argv[2])" "$out/tune-button-$v-gerbers" "$out/gerber"
   kicad-cli sch export bom --fields 'Reference,Value,Footprint,MPN,LCSC,${QUANTITY}' \

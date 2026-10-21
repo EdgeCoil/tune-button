@@ -92,7 +92,8 @@ def key_pin_zones(top):
         for col in (-0.5, 0.5):
             cx, cy = W / 2 + col * KEY_PITCH, top + row * KEY_PITCH
             # Mirrored footprint: pin 1, pin 2, the centre post, the two side posts.
-            zones += [(cx - 2.54, cy - 5.08, 1.6), (cx + 3.81, cy - 2.54, 1.6), (cx, cy, 2.5),
+            # The pins get 2.5 mm: room for the iron without reflowing a front-side part.
+            zones += [(cx - 2.54, cy - 5.08, 2.5), (cx + 3.81, cy - 2.54, 2.5), (cx, cy, 2.5),
                       (cx - 5.08, cy, 1.35), (cx + 5.08, cy, 1.35)]
     return zones
 
@@ -205,9 +206,9 @@ def variant_c3():
         Part("J2", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
              "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 43.5), rot=90, mpn="JST S2B-PH-SM4-TB",
              lcsc="C295747"),
-        R("R10", "220k", "VBAT", "VBAT_SENSE", (28.0, 26.0), 0),
-        R("R11", "220k", "VBAT_SENSE", "GND", (28.0, 28.5), 0),
-        C("C7", "100n", "VBAT_SENSE", "GND", (24.5, 28.5), 90),
+        R("R10", "220k", "VBAT", "VBAT_SENSE", (26.5, 26.0), 0),
+        R("R11", "220k", "VBAT_SENSE", "GND", (26.5, 28.5), 0),
+        C("C7", "100n", "VBAT_SENSE", "GND", (24.0, 28.5), 90),
         R("R12", "1k", "LED", "LED_A", (15.3, 23.0), 0),
         Part("D3", "Device:LED", LED0805, "LED", {"1": "GND", "2": "LED_A"}, (34.0, 20.0), 0, side="B"),
         Part("TP1", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
@@ -235,13 +236,16 @@ def variant_c3():
     # the module's top row of pads keeps its 0.25 mm copper-to-edge clearance.
     notch = (mx + 14.3, my - 6.8)
     silk = [("text", 35.6, 44.5, "+"), ("text", 9.4, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
-            ("text", 5.0, 41.0, "TX"), ("text", 5.0, 43.54, "RX")]
+            ("text", 5.6, 41.0, "TX"), ("text", 5.6, 43.54, "RX")]
     # The key side, above the keys, is the emptiest face: the mark and the name go there.
     extras = {"notch": notch, "part_free": key_pin_zones(top),
-              "logo": (14.5, 13.5, 17.0),
-              "back_text": [(37.0, 11.0, "tune-button", 1.5), (37.0, 13.6, "c3 · rev A", 1.0),
-                            (14.5, 22.0, "edgecoil.dev", 1.2), (40.0, 22.0, "CHG", 0.8),
-                            (34.0, 22.0, "LED", 0.8)]}
+              # The mark goes over the right half, where the front has only SMD parts: the module's
+              # ground-pad vias (pads x 13.5-16.4, y 12.0-14.8) would punch through it. The text sits
+              # above and below those vias.
+              "logo": (37.0, 12.2, 14.0),
+              "back_text": [(14.5, 8.3, "tune-button", 1.5), (14.5, 10.4, "c3 · rev A", 1.0),
+                            (14.5, 17.0, "edgecoil.dev", 1.2), (40.0, 22.0, "CHG", 1.0),
+                            (34.0, 22.0, "LED", 1.0)]}
     return parts, H, [], silk, extras
 
 
@@ -431,9 +435,16 @@ def outline(board, w, h, notch=None, r=2.5, rn=1.0):
         board.Add(seg)
 
 
-def zone(board, net, layer, pts, keepout=False, part_free=False):
+def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False):
     z = pcbnew.ZONE(board)
-    if part_free:
+    if via_free:
+        # Under silkscreen artwork: a via's hole would punch through the print.
+        z.SetIsRuleArea(True)
+        z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        z.SetDoNotAllowTracks(False); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowZoneFills(False) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(False)
+        z.SetDoNotAllowFootprints(False)
+    elif part_free:
         # Front-side parts only: tracks, vias and copper are fine here.
         z.SetIsRuleArea(True)
         front = pcbnew.LSET(); front.AddLayer(pcbnew.F_Cu)
@@ -451,7 +462,7 @@ def zone(board, net, layer, pts, keepout=False, part_free=False):
         z.SetLayer(layer); z.SetNet(net)
         z.SetLocalClearance(pcbnew.FromMM(0.3)) if hasattr(z, "SetLocalClearance") else None
         z.SetMinThickness(pcbnew.FromMM(0.25))
-        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THT_THERMAL)  # SMD pads solid, THT relieved
+        z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)  # spokes on every pad: even reflow, easy rework
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
         z.SetThermalReliefGap(pcbnew.FromMM(0.4)); z.SetThermalReliefSpokeWidth(pcbnew.FromMM(0.4))
     ol = z.Outline(); ol.NewOutline()
@@ -505,6 +516,10 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         if p.lcsc:
             fp.SetField("LCSC", p.lcsc)
             fp.GetFieldByName("LCSC").SetVisible(False)
+            # Slotted legs (the USB-C shell) on a reflowed part: paste them, so they solder in reflow.
+            for pad in fp.Pads():
+                if pad.HasHole() and pad.GetDrillShape() == pcbnew.PAD_DRILL_SHAPE_OBLONG:
+                    layers = pad.GetLayerSet(); layers.AddLayer(pcbnew.F_Paste); pad.SetLayerSet(layers)
     outline(board, W, h, extras.get("notch"))
     inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
@@ -523,11 +538,11 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         else:
             t = pcbnew.PCB_TEXT(board)
             t.SetText(item[3]); t.SetPosition(mm(item[1], item[2])); t.SetLayer(pcbnew.F_SilkS)
-            t.SetTextSize(mm(0.8, 0.8)); t.SetTextThickness(pcbnew.FromMM(0.12))
+            t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
             if len(item) > 4:
                 t.SetTextAngleDegrees(item[4])
             board.Add(t)
-    back_text = extras.get("back_text", [(W / 2, h - 12.0, f"tune-button {name}\nedgecoil.dev  rev A", 1.0)])
+    back_text = extras.get("back_text", [(W / 2, h - 6.0, f"tune-button {name}\nedgecoil.dev  rev A", 1.0)])
     for x, y, text, size in back_text:
         t = pcbnew.PCB_TEXT(board)
         t.SetText(text); t.SetPosition(mm(x, y)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
@@ -535,6 +550,24 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         board.Add(t)
     if "logo" in extras:
         logo(board, *extras["logo"])
+    # Keep vias out from under the back-side text and the mark.
+    art, logo_box = [], pcbnew.BOX2I()
+    for d in board.Drawings():
+        if d.GetLayer() == pcbnew.B_SilkS:
+            if isinstance(d, pcbnew.PCB_SHAPE) and d.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+                logo_box.Merge(d.GetBoundingBox())
+            else:
+                art.append(d.GetBoundingBox())
+    if logo_box.GetWidth():
+        art.append(logo_box)
+    for b in art:
+        b.Inflate(pcbnew.FromMM(0.4))
+        # Footprint holes (the module's ground-pad vias, switch pins) can't be routed around.
+        for pad in board.GetPads():
+            if pad.HasHole() and b.Intersects(pad.GetBoundingBox()):
+                raise SystemExit(f"{name}: hole in {pad.GetParentFootprint().GetReference()} under back artwork")
+        x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
+        zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     place_labels(board, h, extras.get("notch"))
     board.Save(path)
 
@@ -615,7 +648,7 @@ def place_labels(board, h, notch=None):
         if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:"):
             texts[layer].append(grow(ref.GetBoundingBox(), 0.1))
             continue
-        ref.SetTextSize(mm(0.8, 0.8)); ref.SetTextThickness(pcbnew.FromMM(0.12))
+        ref.SetTextSize(mm(1.0, 1.0)); ref.SetTextThickness(pcbnew.FromMM(0.15))
         ref.SetKeepUpright(True)
         body = bodies[layer][fp.GetReference()]
         c, half_w, half_h = body.GetCenter(), body.GetWidth() // 2, body.GetHeight() // 2
@@ -658,7 +691,7 @@ def write_project(name, path):
             "defaults": {"board_outline_line_width": 0.1, "copper_line_width": 0.2, "copper_text_size_h": 1.5,
                          "silk_line_width": 0.15, "silk_text_size_h": 1.0, "silk_text_size_v": 1.0},
             "rules": {"min_clearance": 0.2, "min_track_width": 0.2, "min_via_diameter": 0.6,
-                      "min_through_hole_diameter": 0.2, "min_copper_edge_clearance": 0.25,
+                      "min_through_hole_diameter": 0.2, "min_copper_edge_clearance": 0.3,
                       "min_hole_to_hole": 0.25, "min_hole_clearance": 0.25, "min_silk_clearance": 0.0},
             "rule_severities": {"silk_overlap": "ignore", "silk_over_copper": "ignore",
                                 "silk_edge_clearance": "ignore", "lib_footprint_mismatch": "ignore",
