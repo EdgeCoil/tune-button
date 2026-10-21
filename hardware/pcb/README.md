@@ -6,12 +6,13 @@ standard 19.05 mm pitch:
 | | `xiao/` | `c3/` |
 |---|---|---|
 | Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its PCB antenna sits over a notch cut out of the top-left corner, with no board under it |
-| Size | 46 × 67 mm | 46 × 80.5 mm |
+| Size | 46 × 67 mm | 46 × 69.5 mm |
+| Sides | Everything on top | Keys, LEDs, logo and name on the back (the key side); all the electronics on the front, facing into the case |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 210 mA), load sharing, XC6206 3.3 V (about 1 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
-| Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Single-sided SMD (PCBA or hand), then the MX switches |
+| Assembly | Hand: 6 SMD passives, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
 
 **Rev A is unbuilt and untested.** Both boards pass KiCad's electrical rules check and its design
 rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
@@ -56,7 +57,11 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    start-up calibration burst, but a Wi-Fi sketch (like the bench test) will likely brown out on it.
    The MCP1700 (250 mA, same pinout) is the drop-in upgrade if that matters.
 4. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
-   The boards are not hot-swap.
+   The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
+   front, where their leads and posts come through between the parts; trim the leads short.
+5. **C3 board, front side faces the case floor.** The tallest parts there are the JST socket
+   (4.8 mm) and the module and USB-C (about 3.3 mm), so the case needs that much room under the
+   board, plus the battery. RESET and BOOT are on that side too, reachable with the case open.
 
 ## Firmware
 

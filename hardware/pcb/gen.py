@@ -11,6 +11,7 @@ compares the netlist KiCad reads back from the schematic against the board's pad
 
     python3 gen.py [xiao|c3 ...]     then ./build.sh to route, check and export
 """
+import math
 import os
 import re
 import sys
@@ -34,16 +35,18 @@ def uid(*parts):
 
 
 class Part:
-    def __init__(self, ref, sym, fp, value, pins, at, rot=0, mpn="", note="", lcsc=""):
+    def __init__(self, ref, sym, fp, value, pins, at, rot=0, mpn="", note="", lcsc="", side="F"):
         self.ref, self.sym, self.fp, self.value = ref, sym, fp, value
         self.pins = pins  # pin number -> net name; unlisted pins are no-connect
         self.at, self.rot, self.mpn, self.note, self.lcsc = at, rot, mpn, note, lcsc
+        self.side = side  # "B" parts are flipped to the back; `at` is still in front-view coordinates
 
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 C0805 = "Capacitor_SMD:C_0805_2012Metric"
 LED0603 = "LED_SMD:LED_0603_1608Metric"
+LED0805 = "LED_SMD:LED_0805_2012Metric"
 
 
 # JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
@@ -62,17 +65,36 @@ def C(ref, value, a, b, at, rot=0, fp=C0603):
     return Part(ref, "Device:C", fp, value, {"1": a, "2": b}, at, rot, lcsc=LCSC_C[(value, fp)])
 
 
-def keys(top):
+def keys(top, back=False):
     """Four MX switches, 2 x 2, centred across the board; `top` is the upper row's centre y.
 
-    The KiCad footprint's origin is pin 1, 2.54 mm right of and 5.08 mm above the switch centre."""
+    The KiCad footprint's origin is pin 1, 2.54 mm right of and 5.08 mm above the switch centre.
+    With `back`, the switches go on the back and the board is used key side up: K1 is still top left
+    as you look at the keys, which is top right in KiCad's (front) view, and each footprint is
+    mirrored, so its pin 1 is 2.54 mm left of the centre."""
     parts = []
     for i, net in enumerate(["K1", "K2", "K3", "K4"]):
-        cx = W / 2 + (-0.5 if i % 2 == 0 else 0.5) * KEY_PITCH
+        left = (i % 2 == 0) != back
+        cx = W / 2 + (-0.5 if left else 0.5) * KEY_PITCH
         cy = top + (i // 2) * KEY_PITCH
+        at = (cx - 2.54, cy - 5.08) if back else (cx + 2.54, cy - 5.08)
         parts.append(Part(f"SW{i + 1}", "Switch:SW_Push", "Button_Switch_Keyboard:SW_Cherry_MX_1.00u_PCB",
-                          "MX switch", {"1": net, "2": "GND"}, (cx + 2.54, cy - 5.08), mpn="Cherry MX (3 or 5 pin)"))
+                          "MX switch", {"1": net, "2": "GND"}, at, mpn="Cherry MX (3 or 5 pin)",
+                          side="B" if back else "F"))
     return parts
+
+
+def key_pin_zones(top):
+    """For back-mounted switches: circles on the front around every switch pin and post, where the
+    leads and posts come through, so no front-side part is placed on them. (cx, cy, r) in mm."""
+    zones = []
+    for row in range(2):
+        for col in (-0.5, 0.5):
+            cx, cy = W / 2 + col * KEY_PITCH, top + row * KEY_PITCH
+            # Mirrored footprint: pin 1, pin 2, the centre post, the two side posts.
+            zones += [(cx - 2.54, cy - 5.08, 1.6), (cx + 3.81, cy - 2.54, 1.6), (cx, cy, 2.5),
+                      (cx - 5.08, cy, 1.35), (cx + 5.08, cy, 1.35)]
+    return zones
 
 
 def below_keys(top):
@@ -120,7 +142,7 @@ def variant_xiao():
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
             ("text", 11.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
             ("text", 1.5, 21.77, "BAT", 90)]
-    return parts, H, [], silk, None
+    return parts, H, [], silk, {}
 
 
 def variant_c3():
@@ -155,8 +177,8 @@ def variant_c3():
         C("C1", "4.7u", "VBUS", "GND", (32.5, 16.5), 90),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
-        Part("D1", "Device:LED", LED0603, "CHG red", {"1": "STAT", "2": "CHG_A"}, (32.5, 24.0), 90,
-             lcsc=LCSC_LED_RED),
+        # The LEDs face the keys, so they go on the back with the switches (hand-soldered, 0805).
+        Part("D1", "Device:LED", LED0805, "CHG red", {"1": "STAT", "2": "CHG_A"}, (40.0, 20.0), 0, side="B"),
         # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
         Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
              {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A", lcsc="C15127"),
@@ -168,53 +190,58 @@ def variant_c3():
              {"1": "GND", "2": "3V3", "3": "VSYS"}, (27.5, 18.0), 180, mpn="XC6206P332MR-G", lcsc="C5446"),
         C("C3", "1u", "VSYS", "GND", (27.5, 22.0), 0),
         C("C4", "22u", "3V3", "GND", (27.5, 14.5), 0, fp=C0805),
-        C("C5", "100n", "3V3", "GND", (3.0, 9.2), 90),
+        C("C5", "100n", "3V3", "GND", (3.0, 8.4), 90),
         # Reset, boot and straps. IO9 has an internal pull-up; IO2 and IO8 must read high at reset.
-        R("R6", "10k", "3V3", "EN", (3.0, 12.7), 90),
-        C("C6", "1u", "EN", "GND", (3.0, 16.2), 90),
-        R("R7", "10k", "3V3", "IO8", (3.0, 19.7), 90),
+        R("R6", "10k", "3V3", "EN", (3.0, 11.4), 90),
+        C("C6", "1u", "EN", "GND", (3.0, 14.4), 90),
+        R("R7", "10k", "3V3", "IO8", (3.0, 17.4), 90),
         R("R9", "10k", "3V3", "IO2", (25.5, 10.2), 180),
         Part("SW5", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "RESET",
-             {"1": "EN", "2": "GND"}, (8.8, 24.0), mpn="XKB TS-1187A-B-A-B", lcsc="C318884"),
+             {"1": "EN", "2": "GND"}, (9.4, 24.0), mpn="XKB TS-1187A-B-A-B", lcsc="C318884"),
         Part("SW6", "Switch:SW_Push", "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A", "BOOT",
              {"1": "IO9", "2": "GND"}, (21.0, 24.0), mpn="XKB TS-1187A-B-A-B", lcsc="C318884"),
-        # Battery, its divider, the LED.
+        # Battery (on the right edge, between the key rows), its divider, the LED.
         Part("J2", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
-             "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 34.5), rot=90, mpn="JST S2B-PH-SM4-TB",
+             "LiPo", {"1": "VBAT", "2": "GND"}, (40.5, 43.5), rot=90, mpn="JST S2B-PH-SM4-TB",
              lcsc="C295747"),
         R("R10", "220k", "VBAT", "VBAT_SENSE", (28.0, 26.0), 0),
         R("R11", "220k", "VBAT_SENSE", "GND", (28.0, 28.5), 0),
         C("C7", "100n", "VBAT_SENSE", "GND", (24.5, 28.5), 90),
-        R("R12", "1k", "LED", "LED_A", (14.7, 23.0), 0),
-        Part("D3", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (14.7, 25.5), 180,
-             lcsc=LCSC_LED_RED),
+        R("R12", "1k", "LED", "LED_A", (15.3, 23.0), 0),
+        Part("D3", "Device:LED", LED0805, "LED", {"1": "GND", "2": "LED_A"}, (34.0, 20.0), 0, side="B"),
         Part("TP1", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-             "UART", {"1": "TXD", "2": "RXD"}, (3.0, 27.4), 0, note="debug UART, optional"),
+             "UART", {"1": "TXD", "2": "RXD"}, (3.0, 41.0), 0, note="debug UART, optional"),
     ]
-    top = 46.0
-    parts += keys(top)
+    # The switches go on the back, so the keys can sit behind the electronics: only their pins and
+    # posts, which come through to the front, need room there.
+    top = 36.0
+    parts += keys(top, back=True)
     H, hy = below_keys(top)
     # USB-C centred on the bottom edge, its face 0.2 mm proud of the edge so a plug's moulding clears
-    # the board; the board is long enough for its courtyard to clear the lower switches'.
+    # the board; the board is long enough for its courtyard to clear the lower switches' centre posts.
     usb_face = 3.65  # footprint origin to the receptacle's front face
-    H = max(H, top + KEY_PITCH + 6.6 + 0.1 + 5.27 + usb_face - 0.2)
+    H = max(H, top + KEY_PITCH + 2.5 + 0.1 + 5.27 + usb_face - 0.2)
     at = {"J1": (W / 2, H - usb_face + 0.2), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
           "R2": (W / 2 + 1.0, H - 15.7)}
     for p in parts:
         if p.ref in at:
             p.at = at[p.ref]
-    # The upper pair sit above the left keycap and beside the right one (the battery socket is above it).
-    parts += holes([(W - 3.5, hy), (3.5, hy), (3.5, 34.8), (W - 2.4, 42.5)])
-    # Antenna keep-out: no copper on either layer from the top edge to the antenna's lower end, 5 mm
-    # either side of the module (the footprint's own drawing).
+    # The upper pair sit above the keycaps on the left and beside them on the right.
+    parts += holes([(W - 3.5, hy), (3.5, hy), (3.0, 23.0), (W - 2.4, 31.0)])
     # Antenna: no board under it at all. Espressif's guidelines prefer the antenna clear of the base
     # board; this notch takes out the board below it and 5 mm to its right (the footprint's keep-out
     # drawing), and the left edge is already within 5 mm. It stops 0.3 mm short of the antenna's end so
     # the module's top row of pads keeps its 0.25 mm copper-to-edge clearance.
     notch = (mx + 14.3, my - 6.8)
-    silk = [("text", 35.6, 35.5, "+"), ("text", 8.8, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
-            ("text", 5.0, 27.4, "TX"), ("text", 5.0, 29.94, "RX")]
-    return parts, H, [], silk, notch
+    silk = [("text", 35.6, 44.5, "+"), ("text", 9.4, 28.0, "RESET"), ("text", 21.0, 28.0, "BOOT"),
+            ("text", 5.0, 41.0, "TX"), ("text", 5.0, 43.54, "RX")]
+    # The key side, above the keys, is the emptiest face: the mark and the name go there.
+    extras = {"notch": notch, "part_free": key_pin_zones(top),
+              "logo": (14.5, 13.5, 17.0),
+              "back_text": [(37.0, 11.0, "tune-button", 1.5), (37.0, 13.6, "c3 · rev A", 1.0),
+                            (14.5, 22.0, "edgecoil", 1.2), (40.0, 22.0, "CHG", 0.8),
+                            (34.0, 22.0, "LED", 0.8)]}
+    return parts, H, [], silk, extras
 
 
 VARIANTS = {"xiao": variant_xiao, "c3": variant_c3}
@@ -403,9 +430,17 @@ def outline(board, w, h, notch=None, r=2.5, rn=1.0):
         board.Add(seg)
 
 
-def zone(board, net, layer, pts, keepout=False):
+def zone(board, net, layer, pts, keepout=False, part_free=False):
     z = pcbnew.ZONE(board)
-    if keepout:
+    if part_free:
+        # Front-side parts only: tracks, vias and copper are fine here.
+        z.SetIsRuleArea(True)
+        front = pcbnew.LSET(); front.AddLayer(pcbnew.F_Cu)
+        z.SetLayerSet(front)
+        z.SetDoNotAllowTracks(False); z.SetDoNotAllowVias(False); z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowZoneFills(False) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(False)
+        z.SetDoNotAllowFootprints(True)
+    elif keepout:
         z.SetIsRuleArea(True)
         z.SetLayerSet(pcbnew.LSET.AllCuMask())
         z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(False)
@@ -424,7 +459,7 @@ def zone(board, net, layer, pts, keepout=False):
     board.Add(z)
 
 
-def write_board(name, parts, h, keepouts, silk, notch, path, root):
+def write_board(name, parts, h, keepouts, silk, extras, path, root):
     board = pcbnew.BOARD()
     board.SetFileName(path)
     ds = board.GetDesignSettings()
@@ -449,6 +484,8 @@ def write_board(name, parts, h, keepouts, silk, notch, path, root):
         board.Add(fp)
         fp.SetPosition(mm(*p.at))
         fp.SetOrientationDegrees(p.rot)
+        if p.side == "B":
+            fp.Flip(fp.GetPosition(), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
         pins = lib_symbol(p.sym)[1] if p.sym else {}
         for pad in fp.Pads():
             num = pad.GetNumber()
@@ -467,12 +504,15 @@ def write_board(name, parts, h, keepouts, silk, notch, path, root):
         if p.lcsc:
             fp.SetField("LCSC", p.lcsc)
             fp.GetFieldByName("LCSC").SetVisible(False)
-    outline(board, W, h, notch)
+    outline(board, W, h, extras.get("notch"))
     inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
     zone(board, nets["GND"], pcbnew.B_Cu, inset)
     for k in keepouts:
         zone(board, None, None, k, keepout=True)
+    for cx, cy, r in extras.get("part_free", []):
+        circle = [(cx + r * math.cos(a * math.pi / 8), cy + r * math.sin(a * math.pi / 8)) for a in range(16)]
+        zone(board, None, None, circle, part_free=True)
     for item in silk:
         if item[0] == "rect":
             x0, y0, x1, y1 = item[1:]
@@ -486,16 +526,50 @@ def write_board(name, parts, h, keepouts, silk, notch, path, root):
             if len(item) > 4:
                 t.SetTextAngleDegrees(item[4])
             board.Add(t)
-    t = pcbnew.PCB_TEXT(board)
-    t.SetText(f"tune-button {name}\nedgecoil  rev A")
-    t.SetPosition(mm(W / 2, h - 12.0)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
-    t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
-    board.Add(t)
-    place_labels(board, h)
+    back_text = extras.get("back_text", [(W / 2, h - 12.0, f"tune-button {name}\nedgecoil  rev A", 1.0)])
+    for x, y, text, size in back_text:
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText(text); t.SetPosition(mm(x, y)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
+        t.SetTextSize(mm(size, size)); t.SetTextThickness(pcbnew.FromMM(max(0.15, size * 0.15)))
+        board.Add(t)
+    if "logo" in extras:
+        logo(board, *extras["logo"])
+    place_labels(board, h, extras.get("notch"))
     board.Save(path)
 
 
-def place_labels(board, h):
+def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), pitch=0.08):
+    """The EdgeCoil mark in back silkscreen, `width` mm wide, centred on (cx, cy), mirrored so it reads
+    from the back. It is rasterised and drawn as one 0.15 mm stroke per row of pixels, which overlap
+    into solid silkscreen; every coloured part of the mark prints."""
+    import subprocess
+    import tempfile
+    from PIL import Image
+    with tempfile.NamedTemporaryFile(suffix=".png") as png:
+        subprocess.run(["rsvg-convert", "-w", str(round(width / pitch)), "-o", png.name, svg], check=True)
+        img = Image.open(png.name).convert("RGBA")
+    w, h = img.size
+    alpha = img.getchannel("A").load()
+    x0, y0 = cx - width / 2, cy - h * pitch / 2
+    for row in range(h):
+        col = 0
+        while col < w:
+            if alpha[col, row] < 128:
+                col += 1
+                continue
+            start = col
+            while col < w and alpha[col, row] >= 128:
+                col += 1
+            # Mirror x about the centre: the back is seen from the other side.
+            xa, xb = cx - (x0 + start * pitch - cx), cx - (x0 + (col - 1) * pitch - cx)
+            y = y0 + row * pitch
+            seg = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
+            seg.SetStart(mm(xa, y)); seg.SetEnd(mm(xb + (0.001 if xa == xb else 0), y))
+            seg.SetLayer(pcbnew.B_SilkS); seg.SetWidth(pcbnew.FromMM(0.15))
+            board.Add(seg)
+
+
+def place_labels(board, h, notch=None):
     """Put each part's reference in the first spot beside it that covers no pad, no part body and no
     other label, so the silkscreen stays readable once the parts are on. MX switch labels stay where
     the footprint puts them: their caps cover that whole area anyway."""
@@ -506,32 +580,43 @@ def place_labels(board, h):
 
     # A part's body is its fab-layer outline and its pads. (Not the courtyard: the module's takes in
     # the antenna clearance, which is the whole column beside it.)
-    bodies = {}
+    # Each side is placed against its own parts and silkscreen; pads (through-hole ones come through)
+    # count on both.
+    bodies = {pcbnew.F_SilkS: {}, pcbnew.B_SilkS: {}}
+    side_of = {}
     for fp in board.Footprints():
+        back = fp.GetLayer() == pcbnew.B_Cu
+        fab, silk = (pcbnew.B_Fab, pcbnew.B_SilkS) if back else (pcbnew.F_Fab, pcbnew.F_SilkS)
         box = pcbnew.BOX2I()
         for item in list(fp.GraphicalItems()) + list(fp.Pads()):
-            if item.IsOnLayer(pcbnew.F_Fab) or isinstance(item, pcbnew.PAD):
+            if item.IsOnLayer(fab) or isinstance(item, pcbnew.PAD):
                 box.Merge(item.GetBoundingBox())
-        bodies[fp.GetReference()] = box
+        bodies[silk][fp.GetReference()] = box
+        side_of[fp.GetReference()] = silk
     # A silkscreen outline marks something that sits over the board (the XIAO): nothing goes under it.
     for d in board.Drawings():
-        if isinstance(d, pcbnew.PCB_SHAPE) and d.GetLayer() == pcbnew.F_SilkS:
-            bodies[f"outline-{len(bodies)}"] = d.GetBoundingBox()
+        if isinstance(d, pcbnew.PCB_SHAPE) and d.GetLayer() in bodies and d.GetShape() == pcbnew.SHAPE_T_RECT:
+            bodies[d.GetLayer()][f"outline-{len(bodies[d.GetLayer()])}"] = d.GetBoundingBox()
+    if notch:  # no board there
+        for layer in bodies:
+            bodies[layer]["notch"] = pcbnew.BOX2I(mm(0, 0), mm(notch[0] + 0.5, notch[1] + 0.5))
     pads = [grow(p.GetBoundingBox(), 0.15) for p in board.GetPads()]
-    texts = [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
-             if isinstance(d, pcbnew.PCB_TEXT) and d.GetLayer() == pcbnew.F_SilkS]
+    texts = {layer: [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
+                     if d.GetLayer() == layer and (isinstance(d, pcbnew.PCB_TEXT) or d.GetShape() == pcbnew.SHAPE_T_SEGMENT)]
+             for layer in bodies}
     area = pcbnew.BOX2I(mm(0.6, 0.6), mm(W - 1.2, h - 1.2))
     # Small parts first: they have the fewest places to go.
     order = sorted((fp for fp in board.Footprints() if fp.Reference().IsVisible()),
-                   key=lambda fp: bodies[fp.GetReference()].GetArea())
+                   key=lambda fp: bodies[side_of[fp.GetReference()]][fp.GetReference()].GetArea())
     for fp in order:
         ref = fp.Reference()
+        layer = side_of[fp.GetReference()]
         if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:"):
-            texts.append(grow(ref.GetBoundingBox(), 0.1))
+            texts[layer].append(grow(ref.GetBoundingBox(), 0.1))
             continue
         ref.SetTextSize(mm(0.8, 0.8)); ref.SetTextThickness(pcbnew.FromMM(0.12))
         ref.SetKeepUpright(True)
-        body = bodies[fp.GetReference()]
+        body = bodies[layer][fp.GetReference()]
         c, half_w, half_h = body.GetCenter(), body.GetWidth() // 2, body.GetHeight() // 2
         gap = pcbnew.FromMM(0.25)
 
@@ -554,14 +639,14 @@ def place_labels(board, h):
             ref.SetPosition(pcbnew.VECTOR2I(c.x + dx, c.y + dy))
             b = ref.GetBoundingBox()
             if (area.Contains(b.GetOrigin()) and area.Contains(b.GetEnd())
-                    and not any(b.Intersects(o) for o in pads + texts)
-                    and not any(b.Intersects(v) for v in bodies.values())):
+                    and not any(b.Intersects(o) for o in pads + texts[layer])
+                    and not any(b.Intersects(v) for v in bodies[layer].values())):
                 break
         else:
             print(f"{fp.GetReference()}: no clear spot for its label; hidden", file=sys.stderr)
             ref.SetVisible(False)
             continue
-        texts.append(grow(ref.GetBoundingBox(), 0.1))
+        texts[layer].append(grow(ref.GetBoundingBox(), 0.1))
 
 
 def write_project(name, path):
@@ -604,13 +689,13 @@ def write_project(name, path):
 
 def main(names):
     for name in names:
-        parts, h, keepouts, silk, notch = VARIANTS[name]()
+        parts, h, keepouts, silk, extras = VARIANTS[name]()
         d = os.path.join(HERE, name)
         os.makedirs(d, exist_ok=True)
         base = os.path.join(d, f"tune-button-{name}")
         write_project(name, base + ".kicad_pro")
         root = write_schematic(name, parts, base + ".kicad_sch")
-        write_board(name, parts, h, keepouts, silk, notch, base + ".kicad_pcb", root)
+        write_board(name, parts, h, keepouts, silk, extras, base + ".kicad_pcb", root)
         write_project(name, base + ".kicad_pro")  # Save() may have rewritten it
         print(f"{name}: {W:.1f} x {h:.1f} mm, {len(parts)} footprints")
 

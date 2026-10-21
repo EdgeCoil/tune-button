@@ -4637,16 +4637,12 @@
 			(at 116.84 261.62 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Footprint" "LED_SMD:LED_0603_1608Metric"
+		(property "Footprint" "LED_SMD:LED_0805_2012Metric"
 			(at 116.84 264.16 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" ""
 			(at 116.84 259.08 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "LCSC" "C2286"
-			(at 116.84 269.24 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "d5fa6e10-79cf-58b3-8432-1e392295b99a"))
@@ -4765,16 +4761,12 @@
 			(at 193.04 83.82 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Footprint" "LED_SMD:LED_0603_1608Metric"
+		(property "Footprint" "LED_SMD:LED_0805_2012Metric"
 			(at 193.04 86.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" ""
 			(at 193.04 81.28 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "LCSC" "C2286"
-			(at 193.04 91.44 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "d11dad61-845d-58db-9d90-afc33f8fbd72"))
