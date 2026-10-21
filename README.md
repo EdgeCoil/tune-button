@@ -62,7 +62,11 @@ Without PlatformIO, flash `tune-button-c3.bin` at offset `0x0` with
 `esptool.py --chip esp32c3 write_flash 0 tune-button-c3.bin`.
 
 **The firmware spends almost all its time in deep sleep, where the USB port disappears.** To flash it
-again, hold **BOOT** (the small button next to USB-C) while plugging it in.
+again, hold **BOOT** (the small button next to USB-C) while plugging it in. Pressing a button also brings the port
+back for the 10 s the device stays awake, which is long enough for an upload that is already waiting.
+
+**Flashing the merged image at `0x0` erases the stored pairing** (the gap it fills covers the NVS
+partition), so pair again afterwards. `pio run -t upload` leaves NVS alone.
 
 Build options in `platformio.ini`: `TB_BURST_MS` (how long a press is broadcast) and
 `TB_LED_PIN`.
