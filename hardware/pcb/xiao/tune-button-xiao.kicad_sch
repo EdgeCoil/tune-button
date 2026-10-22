@@ -1651,7 +1651,7 @@
 			(at 40.64 200.66 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Footprint" "Diode_SMD:D_SOD-323"
+		(property "Footprint" "Diode_SMD:D_SOD-323_HandSoldering"
 			(at 40.64 203.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1661,6 +1661,10 @@
 		)
 		(property "MPN" "1N4148WS"
 			(at 40.64 205.74 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "LCSC" "C2128"
+			(at 40.64 208.28 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "f5923207-2572-56ad-ad36-2d4f8a83acd6"))

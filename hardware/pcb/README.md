@@ -35,7 +35,7 @@ Every key switches to ground and uses the chip's internal pull-up, as now.
 
 **The XIAO board's K4 is a compromise.** The C3 can wake from deep sleep only on GPIO0–5, and the
 XIAO brings out only GPIO2–5 of those. GPIO2 is needed for the battery reading, which has to be on
-ADC1 (GPIO0–4). So K4 is read on D4 and also pulls K3's line low through a diode (a 1N4148WS: a Schottky leaks enough when warm to drag D4 low while K3 is held). A K4 press wakes
+ADC1 (GPIO0–4). So K4 is read on D4 and also pulls K3's line low through a diode: a 1N4148WS rated at most 0.715 V at 1 mA (C2128 is), since a Schottky leaks enough when warm to drag D4 low while K3 is held. A K4 press wakes
 the chip on GPIO5 with D4 low; a K3 press wakes it on GPIO5 with D4 high. If the key is already
 released by the time the firmware reads D4, a quick tap on K4 would read as K3. A deep-sleep wake stub
 can read D4 within about a millisecond of waking. The C3 board has GPIO0 and GPIO1 free, so all four

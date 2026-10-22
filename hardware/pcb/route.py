@@ -6,6 +6,7 @@
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -180,6 +181,25 @@ def route_once(base, pristine):
     return drc(base + ".kicad_pcb")[1]
 
 
+def dedupe(path):
+    """Drop track segments that exactly repeat another (Freerouting sometimes leaves stacked copies).
+    Done on the saved file: removing tracks through pcbnew's Python bindings crashes it later."""
+    src = open(path).read()
+    seen = set()
+
+    def keep(m):
+        key = re.sub(r'\(uuid "[^"]*"\)', "", m.group(0))
+        s, e = re.search(r"\(start ([^)]*)\)", key).group(1), re.search(r"\(end ([^)]*)\)", key).group(1)
+        key = re.sub(r"\((start|end) [^)]*\)", "", key) + "|".join(sorted((s, e)))
+        if key in seen:
+            return ""
+        seen.add(key)
+        return m.group(0)
+    out = re.sub(r"\t\(segment\n(?:\t\t[^\n]*\n)*?\t\)\n", keep, src)
+    if out != src:
+        open(path, "w").write(out)
+
+
 def main(name, attempts=8):
     """Freerouting's result varies from run to run, so route until KiCad finds nothing to complain
     about, keeping the best attempt if none is clean."""
@@ -196,6 +216,7 @@ def main(name, attempts=8):
             if problems == 0:
                 break
         shutil.copy(best, base + ".kicad_pcb")
+        dedupe(base + ".kicad_pcb")
     finally:
         for f in (pristine, best):
             if os.path.exists(f):

@@ -116,7 +116,7 @@ def variant_xiao():
 
     Only GPIO2-5 are both broken out and able to wake the C3 from deep sleep, and the battery needs
     an ADC1 pin (GPIO0-4). So K1-K3 get D1-D3, the battery divider keeps D0, and K4 is read on D4
-    and ORed onto K3's wake line through a Schottky: a K4 press wakes on GPIO5 with D4 low."""
+    and ORed onto K3's wake line through a diode: a K4 press wakes on GPIO5 with D4 low."""
     x0, x1 = W / 2 - 7.62, W / 2 + 7.62  # 15.24 mm between rows: CHECK with calipers
     y1 = 4.4
     parts = [
@@ -134,9 +134,10 @@ def variant_xiao():
         R("R2", "220k", "VBAT_SENSE", "GND", (11.5, 22.8), 90),
         C("C1", "100n", "VBAT_SENSE", "GND", (9.0, 22.0), 90),
         # 1N4148WS, not a Schottky: with K3 held, a BAT54's reverse leakage drags K4 low when warm
-        # (simulated: misread from about 60 C). Its ~0.5 V drop still reads low.
-        Part("D1", "Diode:1N4148WS", "Diode_SMD:D_SOD-323", "1N4148WS", {"1": "K4", "2": "K3"},
-             (38.5, 16.0), 90, mpn="1N4148WS"),
+        # (simulated: misread from about 60 C). The press must read below 0.25 x VDD, so the part needs
+        # VF <= 0.715 V at 1 mA, as C2128 (Changjing) specifies; hand-soldering pads, as this board is.
+        Part("D1", "Diode:1N4148WS", "Diode_SMD:D_SOD-323_HandSoldering", "1N4148WS", {"1": "K4", "2": "K3"},
+             (38.5, 16.0), 90, mpn="1N4148WS", lcsc="C2128"),
         R("R3", "1k", "LED", "LED_A", (38.5, 6.0), 0),
         Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180, lcsc=LCSC_LED_RED),
     ]
@@ -746,15 +747,15 @@ def place_labels(board, h, notch=None):
     area = pcbnew.BOX2I(mm(0.6, 0.6), mm(W - 1.2, h - 1.2))
 
     def owner(b, layer):
-        """The part whose body is nearest the label: a label must read as belonging to its own part."""
-        c = b.GetCenter()
-
-        def dist(box):
-            dx = max(box.GetLeft() - c.x, 0, c.x - box.GetRight())
-            dy = max(box.GetTop() - c.y, 0, c.y - box.GetBottom())
+        """The part whose body is clearly nearest the label (by 0.25 mm), so it reads as its own part's."""
+        def dist(box):  # edge to edge
+            dx = max(box.GetLeft() - b.GetRight(), 0, b.GetLeft() - box.GetRight())
+            dy = max(box.GetTop() - b.GetBottom(), 0, b.GetTop() - box.GetBottom())
             return math.hypot(dx, dy)
-        parts = {r: v for r, v in bodies[layer].items() if r in side_of}
-        return min(parts, key=lambda r: dist(parts[r]))
+        parts = sorted((dist(v), r) for r, v in bodies[layer].items() if r in side_of)
+        if len(parts) > 1 and parts[1][0] - parts[0][0] < pcbnew.FromMM(0.25):
+            return None
+        return parts[0][1]
     # Small parts first: they have the fewest places to go.
     order = sorted((fp for fp in board.Footprints() if fp.Reference().IsVisible()),
                    key=lambda fp: bodies[side_of[fp.GetReference()]][fp.GetReference()].GetArea())
