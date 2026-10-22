@@ -246,13 +246,15 @@ def variant_c3():
     top = 36.0
     parts += keys(top, back=True)
     H, hy = below_keys(top)
-    # USB-C centred on the bottom edge, its face 0.2 mm proud of the edge so a plug's moulding clears
-    # the board; the board is long enough for its courtyard to clear the lower switches' centre posts.
+    # USB-C centred on the bottom edge, its face 0.46 mm proud of the edge so a plug's moulding clears
+    # the board: HRO's recommended layout puts the edge 5.79 mm from the locating holes (2.6 mm
+    # behind the origin), and JLC cuts outlines to about +-0.2 mm.
     usb_face = 3.65  # footprint origin to the receptacle's front face
+    usb_overhang = 2.6 + 3.65 - 5.79
     # The USB-C shell legs come through to the key side: their pads (4.18 mm in from the footprint
     # origin) stay 0.3 mm clear of the bottom switches' 14 mm housings.
-    H = max(H, top + KEY_PITCH + 7.0 + 0.3 + 4.18 + usb_face - 0.2)
-    at = {"J1": (W / 2, H - usb_face + 0.2), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
+    H = max(H, top + KEY_PITCH + 7.0 + 0.3 + 4.18 + usb_face - usb_overhang)
+    at = {"J1": (W / 2, H - usb_face + usb_overhang), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
           "R2": (W / 2 + 1.0, H - 15.7)}
     for p in parts:
         if p.ref in at:
