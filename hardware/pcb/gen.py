@@ -469,15 +469,54 @@ def outline(board, w, h, notch=None, r=2.5, rn=1.0):
         board.Add(seg)
 
 
-def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False, gap_free=False):
+def usb_crossover(board, fp):
+    """Join the USB-C's doubled D+/D- pads, which interleave (B7 A6 A7 B6), so one pair has to cross.
+    Freerouting finds this in some runs and not others, with the shell keepout and U2 crowding it,
+    so it is laid here and locked: D+ joins across the inner tips, D- drops through two vias at the
+    outer tips (inside the open band of the keepout) and joins on the back."""
+    pads = {p.GetNumber(): p for p in fp.Pads()}
+    if not {"A6", "A7", "B6", "B7"} <= pads.keys():
+        return
+    def at(p, side, off):  # a point `off` mm out from the pad's inner (-1) or outer (+1) tip
+        box = p.GetBoundingBox()
+        y = box.GetTop() - pcbnew.FromMM(off) if side < 0 else box.GetBottom() + pcbnew.FromMM(off)
+        return pcbnew.VECTOR2I(p.GetPosition().x, y)
+    def track(net, layer, a, b):
+        t = pcbnew.PCB_TRACK(board)
+        t.SetStart(a); t.SetEnd(b); t.SetLayer(layer); t.SetWidth(pcbnew.FromMM(0.25))
+        t.SetNet(board.FindNet(net)); t.SetLocked(True)
+        board.Add(t)
+    def via(net, p):
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(p); v.SetDrill(pcbnew.FromMM(0.3)); v.SetWidth(pcbnew.FromMM(0.6))
+        v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu); v.SetNet(board.FindNet(net)); v.SetLocked(True)
+        board.Add(v)
+    # D+: up from both pads, 0.4 mm clear of A7's tip, and across.
+    a, b = at(pads["A6"], -1, 0.4), at(pads["B6"], -1, 0.4)
+    track("USB_DP", pcbnew.F_Cu, pads["A6"].GetPosition(), a)
+    track("USB_DP", pcbnew.F_Cu, pads["B6"].GetPosition(), b)
+    track("USB_DP", pcbnew.F_Cu, a, b)
+    # D-: down from both pads to a via each, joined underneath.
+    a, b = at(pads["B7"], 1, 0.65), at(pads["A7"], 1, 0.65)
+    for p, v in ((pads["B7"], a), (pads["A7"], b)):
+        track("USB_DN", pcbnew.F_Cu, p.GetPosition(), v)
+        via("USB_DN", v)
+    track("USB_DN", pcbnew.B_Cu, a, b)
+
+
+def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False, gap_free=False,
+         track_free=False):
     z = pcbnew.ZONE(board)
-    if gap_free:
-        # Between a hand-soldered part's pads, on its own side: nothing a solder bridge could reach.
+    if gap_free or track_free:
+        # gap_free: between a hand-soldered part's pads, on its own side: nothing a solder bridge
+        # could reach. track_free: under a metal-bodied part, where only mask would insulate a
+        # track (a tented via is a flat cap, so it may sit there).
         z.SetIsRuleArea(True)
         side = pcbnew.LSET(); side.AddLayer(layer)
         z.SetLayerSet(side)
-        z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(False)
-        z.SetDoNotAllowZoneFills(True) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(True)
+        z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(gap_free); z.SetDoNotAllowPads(False)
+        fills = gap_free
+        z.SetDoNotAllowZoneFills(fills) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(fills)
         z.SetDoNotAllowFootprints(False)
     elif via_free:
         # Under silkscreen artwork: a via's hole would punch through the print.
@@ -578,6 +617,20 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     for cx, cy, r in extras.get("part_free", []):
         circle = [(cx + r * math.cos(a * math.pi / 8), cy + r * math.sin(a * math.pi / 8)) for a in range(16)]
         zone(board, None, None, circle, part_free=True)
+    # The USB-C's shell sits flat on the board, grounded: no tracks under its body (ground pour is
+    # fine), where nothing but mask would separate them. The first 1.2 mm past the pad tips stays
+    # open so the D-/D+ pads can still cross over through a via right at the row.
+    for fp in board.Footprints():
+        if not fp.GetFPIDAsString().startswith("Connector_USB:"):
+            continue
+        body = pcbnew.BOX2I()
+        for item in fp.GraphicalItems():
+            if item.GetLayer() == pcbnew.F_Fab and isinstance(item, pcbnew.PCB_SHAPE):
+                body.Merge(item.GetBoundingBox())
+        row = max(pd.GetBoundingBox().GetBottom() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD)
+        x0, y0, x1, y1 = (v / 1e6 for v in (body.GetLeft(), row + pcbnew.FromMM(1.2), body.GetRight(), body.GetBottom()))
+        zone(board, None, pcbnew.F_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], track_free=True)
+        usb_crossover(board, fp)
     # Back-side SMD parts are soldered by hand: keep tracks and vias out from between their pads.
     for fp in board.Footprints():
         smd = [pd.GetBoundingBox() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]

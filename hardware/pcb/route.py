@@ -141,8 +141,10 @@ def route_once(base, pristine):
     # Load under the real name, so the board picks up (and saves back) the project's design rules.
     shutil.copy(pristine, base + ".kicad_pcb")
     board = pcbnew.LoadBoard(base + ".kicad_pcb")
+    fixed = [t for t in board.GetTracks() if t.IsLocked()]  # laid by gen.py; Freerouting keeps them
     for t in list(board.GetTracks()):
-        board.Remove(t)
+        if not t.IsLocked():
+            board.Remove(t)
     dsn, ses = base + ".dsn", base + ".ses"
     # Export without the top pour: Freerouting treats a pour as a solid plane, so top-side GND pads
     # would count as connected through it and get no via. With only the bottom plane, each one is
@@ -158,6 +160,10 @@ def route_once(base, pristine):
                    check=True, stdout=subprocess.DEVNULL)
     if not pcbnew.ImportSpecctraSES(board, ses):
         raise SystemExit("SES import failed")
+    lost = {(t.GetClass(), t.GetStart().x, t.GetStart().y, t.GetEnd().x, t.GetEnd().y) for t in fixed} - {
+        (t.GetClass(), t.GetStart().x, t.GetStart().y, t.GetEnd().x, t.GetEnd().y) for t in board.GetTracks()}
+    if lost:
+        raise SystemExit(f"SES import dropped {len(lost)} locked tracks")
     for f in (dsn, ses):
         os.remove(f)
     prune(board)
