@@ -973,6 +973,11 @@ def write_project(name, path):
         "sheets": [[uid(name, "root"), "Root"]],
     }
     open(path, "w").write(json.dumps(pro, indent=2) + "\n")
+    # The only through-hole pads off the GND net are hand-soldered pins (switches, sockets, headers):
+    # hold the pour as far from them as route.py holds other nets' tracks (PIN_GAP).
+    open(path[:-len(".kicad_pro")] + ".kicad_dru", "w").write(
+        '(version 1)\n(rule "hand-soldered pins to pour"\n  (constraint clearance (min 0.4mm))\n'
+        '  (condition "A.Pad_Type == \'Through-hole\' && B.Type == \'Zone\'"))\n')
 
 
 def main(names):

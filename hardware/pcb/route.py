@@ -233,7 +233,8 @@ def crowded_pins(board):
     copper close by, where a solder bridge could reach it under mask only. Checked on both layers
     for the switches, and on the solder side only for headers and sockets, whose body covers the
     other. A track crossing a header's row between two pins can't get further than 0.295 mm from
-    them, so it is held to THREAD_GAP instead. (A keepout ring round the pins would do this up
+    them, so it is held to THREAD_GAP instead. The pour is held off them by the .kicad_dru rule
+    that gen.py writes. (A keepout ring round the pins would do this up
     front, but Freerouting then can't reach them at all.) Returns the offending (ref, pin, net)."""
     out = []
     for fp in board.Footprints():
