@@ -30,7 +30,7 @@ PCB instead, see [`pcb/`](pcb/).
 |---|---|---|---|
 | D1 | 3 | Like button → GND | The C3 can wake from deep sleep only on GPIO0–5 |
 | D2 | 4 | Playlist button → GND | Same |
-| A0 (D0) | 2 | Battery divider midpoint | ADC1. GPIO2 is a strapping pin, and the divider holds it at about half the battery voltage, which reads high (the correct boot state). **Check that it still boots with the divider fitted.** |
+| A0 (D0) | 2 | Battery divider midpoint | ADC1. GPIO2 is a strapping pin, and the divider holds it at about half the battery voltage, which sits at 1.5–2.1 V, below the high threshold. That is fine: on the C3, GPIO2 does not select the boot mode (GPIO8 and GPIO9 do). **Check that it still boots with the divider fitted.** |
 | D3 | 5 | Optional LED via 1 kΩ | Digital only. GPIO5 is ADC2, which is unreliable on the C3, so it can't be the battery input |
 | BAT+ / BAT− (back pads) | | LiPo | The XIAO's charger fills the cell from USB-C |
 

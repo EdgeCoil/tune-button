@@ -25,7 +25,7 @@ or powered, and the firmware does not support four keys yet (see *Firmware*).
 | K1 (top left) | D1 / GPIO3 | GPIO3 | Same as the like button today |
 | K2 (top right) | D2 / GPIO4 | GPIO4 | Same as the playlist button today |
 | K3 (bottom left) | D3 / GPIO5 | GPIO5 | |
-| K4 (bottom right) | D4 / GPIO6, and through D1 (BAT54W) onto GPIO5 | GPIO0 | See below |
+| K4 (bottom right) | D4 / GPIO6, and through D1 (1N4148WS) onto GPIO5 | GPIO0 | See below |
 | Battery divider (2 × 220 kΩ) | D0 / GPIO2 | GPIO1 | ADC1 |
 | LED (1 kΩ) | D5 / GPIO7 | GPIO10 | |
 | USB D− / D+ | (XIAO) | GPIO18 / GPIO19 | Native USB, used for flashing too |
@@ -35,7 +35,7 @@ Every key switches to ground and uses the chip's internal pull-up, as now.
 
 **The XIAO board's K4 is a compromise.** The C3 can wake from deep sleep only on GPIO0–5, and the
 XIAO brings out only GPIO2–5 of those. GPIO2 is needed for the battery reading, which has to be on
-ADC1 (GPIO0–4). So K4 is read on D4 and also pulls K3's line low through a Schottky. A K4 press wakes
+ADC1 (GPIO0–4). So K4 is read on D4 and also pulls K3's line low through a diode (a 1N4148WS: a Schottky leaks enough when warm to drag D4 low while K3 is held). A K4 press wakes
 the chip on GPIO5 with D4 low; a K3 press wakes it on GPIO5 with D4 high. If the key is already
 released by the time the firmware reads D4, a quick tap on K4 would read as K3. A deep-sleep wake stub
 can read D4 within about a millisecond of waking. The C3 board has GPIO0 and GPIO1 free, so all four
@@ -75,6 +75,10 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
 The firmware is written for one or two buttons. Four keys need a build flag per board with the pin
 map above, two more button codes in [`protocol/spec.md`](../../protocol/spec.md) (byte 11), and app
 actions for them. For the XIAO board, a wake stub should read D4. None of that is written yet.
+The existing build's pins don't match either board: `TB_LED_PIN=5` would drive the XIAO board's
+K3 line (its LED is on D5, GPIO7), and the C3 board has no build environment (battery on GPIO1,
+LED on GPIO10). Below about 3.4 V a Wi-Fi-sized burst sags the C3's 3.3 V rail under 3.0 V, so the
+firmware should stop using radio-heavy features there.
 
 ## Rebuilding
 

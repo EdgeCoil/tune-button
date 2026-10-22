@@ -702,15 +702,8 @@
 				)
 				(embedded_fonts no)
 			)
-		(symbol "Diode:BAT54W"
-				(pin_names
-					(offset 1.016)
-					(hide yes)
-				)
-				(exclude_from_sim no)
-				(in_bom yes)
-				(on_board yes)
-				(property "Reference" "D"
+		(symbol "Diode:1N4148WS"
+		(property "Reference" "D"
 					(at 0 2.54 0)
 					(effects
 						(font
@@ -718,7 +711,7 @@
 						)
 					)
 				)
-				(property "Value" "BAT54W"
+		(property "Value" "1N4148WS"
 					(at 0 -2.54 0)
 					(effects
 						(font
@@ -726,7 +719,7 @@
 						)
 					)
 				)
-				(property "Footprint" "Package_TO_SOT_SMD:SOT-323_SC-70"
+		(property "Footprint" "Diode_SMD:D_SOD-323"
 					(at 0 -4.445 0)
 					(effects
 						(font
@@ -735,7 +728,7 @@
 						(hide yes)
 					)
 				)
-				(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/BAT54W_SER.pdf"
+		(property "Datasheet" "https://www.vishay.com/docs/85751/1n4148ws.pdf"
 					(at 0 0 0)
 					(effects
 						(font
@@ -744,7 +737,7 @@
 						(hide yes)
 					)
 				)
-				(property "Description" "Schottky barrier diode, SOT-323"
+		(property "Description" "75V 0.15A Fast switching Diode, SOD-323"
 					(at 0 0 0)
 					(effects
 						(font
@@ -753,7 +746,7 @@
 						(hide yes)
 					)
 				)
-				(property "ki_keywords" "schottky diode"
+		(property "ki_keywords" "diode"
 					(at 0 0 0)
 					(effects
 						(font
@@ -762,7 +755,7 @@
 						(hide yes)
 					)
 				)
-				(property "ki_fp_filters" "SOT?323*"
+		(property "ki_fp_filters" "D*SOD?323*"
 					(at 0 0 0)
 					(effects
 						(font
@@ -771,10 +764,19 @@
 						(hide yes)
 					)
 				)
-				(symbol "BAT54W_0_1"
+				(pin_numbers
+					(hide yes)
+				)
+				(pin_names
+					(hide yes)
+				)
+				(exclude_from_sim no)
+				(in_bom yes)
+				(on_board yes)
+				(symbol "1N4148WS_0_1"
 					(polyline
 						(pts
-							(xy -1.905 0.635) (xy -1.905 1.27) (xy -1.27 1.27) (xy -1.27 -1.27) (xy -0.635 -1.27) (xy -0.635 -0.635)
+							(xy -1.27 1.27) (xy -1.27 -1.27)
 						)
 						(stroke
 							(width 0.254)
@@ -809,7 +811,7 @@
 						)
 					)
 				)
-				(symbol "BAT54W_1_1"
+				(symbol "1N4148WS_1_1"
 					(pin passive line
 						(at -3.81 0 0)
 						(length 2.54)
@@ -820,26 +822,7 @@
 								)
 							)
 						)
-						(number "3"
-							(effects
-								(font
-									(size 1.27 1.27)
-								)
-							)
-						)
-					)
-					(pin no_connect line
-						(at 0 0 90)
-						(length 2.54)
-						(hide yes)
-						(name "NC"
-							(effects
-								(font
-									(size 1.27 1.27)
-								)
-							)
-						)
-						(number "2"
+						(number "1"
 							(effects
 								(font
 									(size 1.27 1.27)
@@ -857,7 +840,7 @@
 								)
 							)
 						)
-						(number "1"
+						(number "2"
 							(effects
 								(font
 									(size 1.27 1.27)
@@ -1652,7 +1635,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Diode:BAT54W")
+		(lib_id "Diode:1N4148WS")
 		(at 40.64 198.12 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -1664,11 +1647,11 @@
 			(at 40.64 195.58 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Value" "BAT54W"
+		(property "Value" "1N4148WS"
 			(at 40.64 200.66 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-323_SC-70"
+		(property "Footprint" "Diode_SMD:D_SOD-323"
 			(at 40.64 203.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
@@ -1676,13 +1659,12 @@
 			(at 40.64 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "MPN" "BAT54W"
+		(property "MPN" "1N4148WS"
 			(at 40.64 205.74 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(pin "3" (uuid "da638571-2095-5258-a1f5-df6942e7aedc"))
-		(pin "2" (uuid "e3fb0cf5-2840-5386-8e10-aa26358be668"))
 		(pin "1" (uuid "f5923207-2572-56ad-ad36-2d4f8a83acd6"))
+		(pin "2" (uuid "e3fb0cf5-2840-5386-8e10-aa26358be668"))
 		(instances
 			(project "tune-button-xiao"
 				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
@@ -1697,19 +1679,18 @@
 		(at 36.83 198.12 180)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "ab6bc1ad-b1fc-58fb-9f46-1ff6a06e49ab")
+		(uuid "3bc1ea70-3387-57b6-976a-6248d0716bfc")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 36.83 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
-	(no_connect (at 40.64 198.12) (uuid "bcaf9998-5807-5ad2-a832-7a69931ffaad"))
 	(global_label "K3"
 		(shape passive)
 		(at 44.45 198.12 0)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "3bc1ea70-3387-57b6-976a-6248d0716bfc")
+		(uuid "4390daed-01b3-55e0-af83-226058524efe")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 44.45 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))

@@ -43,6 +43,7 @@ class Part:
 
 
 R0603 = "Resistor_SMD:R_0603_1608Metric"
+R1206 = "Resistor_SMD:R_1206_3216Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 C0805 = "Capacitor_SMD:C_0805_2012Metric"
 LED0603 = "LED_SMD:LED_0603_1608Metric"
@@ -52,13 +53,15 @@ LED0805 = "LED_SMD:LED_0805_2012Metric"
 # JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
 LCSC_R0603 = {"1": "C22936", "1k": "C21190", "3.3k": "C22978", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
               "220k": "C22961"}
+LCSC_R1206 = {"1": "C17928"}
 LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
           ("22u", C0805): "C45783", ("10u", C0805): "C15850"}
 LCSC_LED_RED = "C2286"
 
 
-def R(ref, value, a, b, at, rot=0):
-    return Part(ref, "Device:R", R0603, value, {"1": a, "2": b}, at, rot, lcsc=LCSC_R0603[value])
+def R(ref, value, a, b, at, rot=0, fp=R0603):
+    lcsc = (LCSC_R1206 if fp == R1206 else LCSC_R0603)[value]
+    return Part(ref, "Device:R", fp, value, {"1": a, "2": b}, at, rot, lcsc=lcsc)
 
 
 def C(ref, value, a, b, at, rot=0, fp=C0603):
@@ -130,8 +133,10 @@ def variant_xiao():
         R("R1", "220k", "VBAT", "VBAT_SENSE", (11.5, 19.4), 90),
         R("R2", "220k", "VBAT_SENSE", "GND", (11.5, 22.8), 90),
         C("C1", "100n", "VBAT_SENSE", "GND", (9.0, 22.0), 90),
-        Part("D1", "Diode:BAT54W", "Package_TO_SOT_SMD:SOT-323_SC-70", "BAT54W", {"1": "K3", "2": "", "3": "K4"},
-             (38.5, 16.0), mpn="BAT54W"),
+        # 1N4148WS, not a Schottky: with K3 held, a BAT54's reverse leakage drags K4 low when warm
+        # (simulated: misread from about 60 C). Its ~0.5 V drop still reads low.
+        Part("D1", "Diode:1N4148WS", "Diode_SMD:D_SOD-323", "1N4148WS", {"1": "K4", "2": "K3"},
+             (38.5, 16.0), 90, mpn="1N4148WS"),
         R("R3", "1k", "LED", "LED_A", (38.5, 6.0), 0),
         Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180, lcsc=LCSC_LED_RED),
     ]
@@ -184,9 +189,11 @@ def variant_c3():
         # 6.5 V; 0.47 ohm keeps every cable corner under 6.4 V (0.68 ohm doesn't).
         # 10 uF (the most USB allows on VBUS) with R13, so low-resistance cables ring to about 5.6 V
         # rather than 6.1 V: the regulator's limit is 6.5 V.
-        C("C1", "10u", "VBUS_C", "GND", (33.0, 16.5), 90, fp=C0805),
-        R("R13", "1", "VBUS", "VBUS_C", (30.4, 16.5), 90),
-        R("R14", "1", "VBUS", "VBUS_C", (30.4, 13.4), 90),
+        C("C1", "10u", "VBUS_C", "GND", (33.0, 17.0), 90, fp=C0805),
+        # 1206: each takes a ~35 W, ~50 uJ pulse at every plug-in from a stiff source, about twice
+        # what an 0603 is rated to take repeatedly (Vishay CRCW chart); a 1206 has ~2.5x the capacity.
+        R("R13", "1", "VBUS", "VBUS_C", (31.9, 13.95), 0, fp=R1206),
+        R("R14", "1", "VBUS", "VBUS_C", (31.9, 11.55), 0, fp=R1206),
         C("C2", "4.7u", "VBAT", "GND", (41.5, 23.0), 90),
         R("R4", "1k", "VBUS", "CHG_A", (32.5, 20.5), 90),
         # The LEDs face the keys, so they go on the back with the switches (hand-soldered, 0805).
@@ -194,7 +201,7 @@ def variant_c3():
         # Load sharing: on USB, VBUS feeds VSYS through D2 and Q1 is off; on battery, Q1 is on.
         Part("Q1", "Transistor_FET:AO3401A", "Package_TO_SOT_SMD:SOT-23", "AO3401A",
              {"1": "VBUS", "2": "VSYS", "3": "VBAT"}, (37.0, 26.5), 0, mpn="AO3401A", lcsc="C15127"),
-        # 3.3k: pulls Q1's gate (and C1) down within ~5-7 ms of unplugging, and holds it down against
+        # 3.3k: pulls Q1's gate (and C1) down within ~5-8 ms of unplugging (up to ~15 ms at tolerance extremes), and holds it down against
         # D2's reverse leakage when warm. 1.5 mA, only while on USB.
         R("R5", "3.3k", "VBUS", "GND", (41.5, 27.0), 90),
         # Across Q1: for the few ms after unplugging, before Q1's gate is pulled down, the cell feeds
