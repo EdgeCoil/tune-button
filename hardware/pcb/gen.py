@@ -469,9 +469,17 @@ def outline(board, w, h, notch=None, r=2.5, rn=1.0):
         board.Add(seg)
 
 
-def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False):
+def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False, gap_free=False):
     z = pcbnew.ZONE(board)
-    if via_free:
+    if gap_free:
+        # Between a hand-soldered part's pads, on its own side: nothing a solder bridge could reach.
+        z.SetIsRuleArea(True)
+        side = pcbnew.LSET(); side.AddLayer(layer)
+        z.SetLayerSet(side)
+        z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowPads(False)
+        z.SetDoNotAllowZoneFills(True) if hasattr(z, "SetDoNotAllowZoneFills") else z.SetDoNotAllowCopperPour(True)
+        z.SetDoNotAllowFootprints(False)
+    elif via_free:
         # Under silkscreen artwork: a via's hole would punch through the print.
         z.SetIsRuleArea(True)
         z.SetLayerSet(pcbnew.LSET.AllCuMask())
@@ -570,6 +578,20 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     for cx, cy, r in extras.get("part_free", []):
         circle = [(cx + r * math.cos(a * math.pi / 8), cy + r * math.sin(a * math.pi / 8)) for a in range(16)]
         zone(board, None, None, circle, part_free=True)
+    # Back-side SMD parts are soldered by hand: keep tracks and vias out from between their pads.
+    for fp in board.Footprints():
+        smd = [pd.GetBoundingBox() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
+        if fp.GetLayer() != pcbnew.B_Cu or len(smd) != 2:
+            continue
+        a, b = sorted(smd, key=lambda r: (r.GetCenter().x, r.GetCenter().y))
+        m = pcbnew.FromMM(0.5)
+        if a.GetRight() < b.GetLeft():
+            box = (a.GetRight(), min(a.GetTop(), b.GetTop()) - m, b.GetLeft(), max(a.GetBottom(), b.GetBottom()) + m)
+        else:
+            a, b = sorted(smd, key=lambda r: r.GetCenter().y)
+            box = (min(a.GetLeft(), b.GetLeft()) - m, a.GetBottom(), max(a.GetRight(), b.GetRight()) + m, b.GetTop())
+        x0, y0, x1, y1 = (v / 1e6 for v in box)
+        zone(board, None, pcbnew.B_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], gap_free=True)
     for item in silk:
         if item[0] == "rect":
             x0, y0, x1, y1 = item[1:]

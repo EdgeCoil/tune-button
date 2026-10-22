@@ -63,11 +63,12 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
             for x in range(bb.GetLeft() + step // 2, bb.GetRight(), step)
             for y in range(bb.GetTop() + step // 2, bb.GetBottom(), step)
             if all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in fills) and clear(pcbnew.VECTOR2I(x, y))]
-    # Then one via in every island of either layer's pour that the grid missed.
+    # Then vias in every island of either layer's pour that has fewer than two (through-hole GND pads
+    # count), spread at least 2 mm apart, so no island hangs on a single via.
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     anchors = [v.GetPosition() for v in vias] + [p.GetPosition() for p in board.GetPads()
                                                   if p.GetNetname() == "GND" and p.HasHole()]
-    fine = pcbnew.FromMM(0.25)
+    fine, spread = pcbnew.FromMM(0.25), pcbnew.FromMM(2.0)
     for z in board.Zones():
         if z.GetNetname() != "GND":
             continue
@@ -76,15 +77,19 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
                 continue
             raw = z.GetFilledPolysList(layer)
             for i in range(raw.OutlineCount()):
-                if any(raw.Contains(a, i) for a in anchors):
-                    continue
                 ib = raw.Outline(i).BBox()
-                spot = next((pcbnew.VECTOR2I(x, y) for x in range(ib.GetLeft(), ib.GetRight(), fine)
-                             for y in range(ib.GetTop(), ib.GetBottom(), fine)
-                             if raw.Contains(pcbnew.VECTOR2I(x, y), i)
-                             and all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in fills)
-                             and clear(pcbnew.VECTOR2I(x, y))), None)
-                if spot is not None:
+                while True:
+                    have = [a for a in anchors if raw.Contains(a, i)]
+                    if len(have) >= 2:
+                        break
+                    spot = next((pcbnew.VECTOR2I(x, y) for x in range(ib.GetLeft(), ib.GetRight(), fine)
+                                 for y in range(ib.GetTop(), ib.GetBottom(), fine)
+                                 if raw.Contains(pcbnew.VECTOR2I(x, y), i)
+                                 and all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in fills)
+                                 and clear(pcbnew.VECTOR2I(x, y))
+                                 and all((pcbnew.VECTOR2I(x, y) - a).EuclideanNorm() >= spread for a in have)), None)
+                    if spot is None:
+                        break
                     vias.append(add(spot))
                     anchors.append(spot)
     return len(vias)
