@@ -254,7 +254,7 @@ def variant_c3():
     # The USB-C shell legs come through to the key side: their pads (4.18 mm in from the footprint
     # origin) stay 0.3 mm clear of the bottom switches' 14 mm housings.
     H = max(H, top + KEY_PITCH + 7.0 + 0.3 + 4.18 + usb_face - usb_overhang)
-    at = {"J1": (W / 2, H - usb_face + usb_overhang), "U2": (W / 2, H - 11.1), "R1": (W / 2 - 1.0, H - 15.7),
+    at = {"J1": (W / 2, H - usb_face + usb_overhang), "U2": (W / 2, H - 11.6), "R1": (W / 2 - 1.0, H - 15.7),
           "R2": (W / 2 + 1.0, H - 15.7)}
     for p in parts:
         if p.ref in at:
@@ -473,7 +473,9 @@ def usb_crossover(board, fp):
     """Join the USB-C's doubled D+/D- pads, which interleave (B7 A6 A7 B6), so one pair has to cross.
     Freerouting finds this in some runs and not others, with the shell keepout and U2 crowding it,
     so it is laid here and locked: D+ joins across the inner tips, D- drops through two vias at the
-    outer tips (inside the open band of the keepout) and joins on the back."""
+    outer tips (inside the open band of the keepout) and joins on the back. The two VBUS pad pairs
+    are joined the same way, through vias at their inner tips, so the router has no reason to run
+    VBUS along the GND pads and shell legs to reach them."""
     pads = {p.GetNumber(): p for p in fp.Pads()}
     if not {"A6", "A7", "B6", "B7"} <= pads.keys():
         return
@@ -481,27 +483,57 @@ def usb_crossover(board, fp):
         box = p.GetBoundingBox()
         y = box.GetTop() - pcbnew.FromMM(off) if side < 0 else box.GetBottom() + pcbnew.FromMM(off)
         return pcbnew.VECTOR2I(p.GetPosition().x, y)
-    def track(net, layer, a, b):
+    def track(net, layer, a, b, w=0.25):
         t = pcbnew.PCB_TRACK(board)
-        t.SetStart(a); t.SetEnd(b); t.SetLayer(layer); t.SetWidth(pcbnew.FromMM(0.25))
+        t.SetStart(a); t.SetEnd(b); t.SetLayer(layer); t.SetWidth(pcbnew.FromMM(w))
         t.SetNet(board.FindNet(net)); t.SetLocked(True)
         board.Add(t)
-    def via(net, p):
+    def via(net, p, d=0.6):
         v = pcbnew.PCB_VIA(board)
-        v.SetPosition(p); v.SetDrill(pcbnew.FromMM(0.3)); v.SetWidth(pcbnew.FromMM(0.6))
+        v.SetPosition(p); v.SetDrill(pcbnew.FromMM(d / 2)); v.SetWidth(pcbnew.FromMM(d))
         v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu); v.SetNet(board.FindNet(net)); v.SetLocked(True)
         board.Add(v)
-    # D+: up from both pads, 0.4 mm clear of A7's tip, and across.
-    a, b = at(pads["A6"], -1, 0.4), at(pads["B6"], -1, 0.4)
+    # D+: up from both pads, 0.5 mm clear of A7's tip, and across.
+    a, b = at(pads["A6"], -1, 0.5), at(pads["B6"], -1, 0.5)
     track("USB_DP", pcbnew.F_Cu, pads["A6"].GetPosition(), a)
     track("USB_DP", pcbnew.F_Cu, pads["B6"].GetPosition(), b)
     track("USB_DP", pcbnew.F_Cu, a, b)
     # D-: down from both pads to a via each, joined underneath.
-    a, b = at(pads["B7"], 1, 0.65), at(pads["A7"], 1, 0.65)
+    # (0.55 mm out, so the stubs end short of the keepout and only the via caps reach it.)
+    a, b = at(pads["B7"], 1, 0.55), at(pads["A7"], 1, 0.55)
     for p, v in ((pads["B7"], a), (pads["A7"], b)):
         track("USB_DN", pcbnew.F_Cu, p.GetPosition(), v)
         via("USB_DN", v)
     track("USB_DN", pcbnew.B_Cu, a, b)
+    # VBUS: up from both pairs to a power via each, joined underneath.
+    # (0.46 mm out: close enough that the join clears the ESD chip's ground via behind the row.)
+    a, b = at(pads["A4"], -1, 0.46), at(pads["A9"], -1, 0.46)
+    for p, v in ((pads["A4"], a), (pads["A9"], b)):
+        track("VBUS", pcbnew.F_Cu, p.GetPosition(), v, 0.4)
+        via("VBUS", v, 0.8)
+    track("VBUS", pcbnew.B_Cu, a, b, 0.4)
+
+
+def esd_ground(board, ref="U2"):
+    """The ESD array's GND pin sits between its two signal pins, where its pour island is too small
+    for the stitcher: give it its own via just off the pin's tip, on the connector side (the pin
+    rows are too close for one between them), so the clamp current goes straight down to the plane."""
+    fp = board.FindFootprintByReference(ref)
+    if not fp:
+        return
+    gnd = next(p for p in fp.Pads() if p.GetNetname() == "GND")
+    c, g = fp.GetPosition(), gnd.GetPosition()
+    tip = gnd.GetBoundingBox().GetBottom() if g.y > c.y else gnd.GetBoundingBox().GetTop()
+    off = pcbnew.FromMM(0.3 + 0.3)  # via radius plus a mask web from the pad
+    at = pcbnew.VECTOR2I(g.x, tip + off if g.y > c.y else tip - off)
+    t = pcbnew.PCB_TRACK(board)
+    t.SetStart(g); t.SetEnd(at); t.SetLayer(pcbnew.F_Cu); t.SetWidth(pcbnew.FromMM(0.4))
+    t.SetNet(gnd.GetNet()); t.SetLocked(True)
+    board.Add(t)
+    v = pcbnew.PCB_VIA(board)
+    v.SetPosition(at); v.SetDrill(pcbnew.FromMM(0.3)); v.SetWidth(pcbnew.FromMM(0.6))
+    v.SetLayerPair(pcbnew.F_Cu, pcbnew.B_Cu); v.SetNet(gnd.GetNet()); v.SetLocked(True)
+    board.Add(v)
 
 
 def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False, gap_free=False,
@@ -618,8 +650,8 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         circle = [(cx + r * math.cos(a * math.pi / 8), cy + r * math.sin(a * math.pi / 8)) for a in range(16)]
         zone(board, None, None, circle, part_free=True)
     # The USB-C's shell sits flat on the board, grounded: no tracks under its body (ground pour is
-    # fine), where nothing but mask would separate them. The first 1.2 mm past the pad tips stays
-    # open so the D-/D+ pads can still cross over through a via right at the row.
+    # fine), where nothing but mask would separate them. Its metal floor starts about 0.75 mm past
+    # the pad tips (HRO: 6.28 mm plate in a 7.35 mm body); up to there stays open for the crossover.
     for fp in board.Footprints():
         if not fp.GetFPIDAsString().startswith("Connector_USB:"):
             continue
@@ -628,9 +660,10 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
             if item.GetLayer() == pcbnew.F_Fab and isinstance(item, pcbnew.PCB_SHAPE):
                 body.Merge(item.GetBoundingBox())
         row = max(pd.GetBoundingBox().GetBottom() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD)
-        x0, y0, x1, y1 = (v / 1e6 for v in (body.GetLeft(), row + pcbnew.FromMM(1.2), body.GetRight(), body.GetBottom()))
+        x0, y0, x1, y1 = (v / 1e6 for v in (body.GetLeft(), row + pcbnew.FromMM(0.7), body.GetRight(), body.GetBottom()))
         zone(board, None, pcbnew.F_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], track_free=True)
         usb_crossover(board, fp)
+    esd_ground(board)
     # Back-side SMD parts are soldered by hand: keep tracks and vias out from between their pads.
     for fp in board.Footprints():
         smd = [pd.GetBoundingBox() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
@@ -645,6 +678,10 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
             box = (min(a.GetLeft(), b.GetLeft()) - m, a.GetBottom(), max(a.GetRight(), b.GetRight()) + m, b.GetTop())
         x0, y0, x1, y1 = (v / 1e6 for v in box)
         zone(board, None, pcbnew.B_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], gap_free=True)
+        # And no via within 0.6 mm of either pad, where a blob of solder could reach its cap.
+        whole = pcbnew.BOX2I(a.GetPosition(), a.GetSize()); whole.Merge(b); whole.Inflate(pcbnew.FromMM(0.6))
+        x0, y0, x1, y1 = (v / 1e6 for v in (whole.GetLeft(), whole.GetTop(), whole.GetRight(), whole.GetBottom()))
+        zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     for item in silk:
         if item[0] == "rect":
             x0, y0, x1, y1 = item[1:]
@@ -674,8 +711,8 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         t.SetLayer(pcbnew.B_SilkS if side == "B" else pcbnew.F_SilkS); t.SetMirrored(side == "B")
         t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
         board.Add(t)
-        # JLC prints over it, so vias may go under it (it sits in the routing channel between the
-        # keys); but a footprint hole there would break the print.
+        # JLC prints its order number over it: no footprint hole may sit under it (nor a via; see
+        # the end of this function).
         box = t.GetBoundingBox(); box.Inflate(pcbnew.FromMM(0.2))
         for pad in board.GetPads():
             if pad.HasHole() and box.Intersects(pad.GetBoundingBox()):
@@ -701,6 +738,15 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     for ref in extras.get("hide_refs", []):
         board.FindFootprintByReference(ref).Reference().SetVisible(False)
     place_labels(board, h, extras.get("notch"))
+    # No via under a part label or the JLC mark either: a via cap breaks up 1 mm text.
+    boxes = [fp.Reference().GetBoundingBox() for fp in board.Footprints()
+             if fp.Reference().IsVisible() and not fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")]
+    boxes += [d.GetBoundingBox() for d in board.Drawings()
+              if isinstance(d, pcbnew.PCB_TEXT) and d.GetText() == "JLCJLCJLCJLC" and d.GetLayer() == pcbnew.F_SilkS]
+    for b in boxes:
+        b.Inflate(pcbnew.FromMM(0.1))
+        x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
+        zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     board.Save(path)
     set_stackup(path)
 

@@ -22,15 +22,19 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
     """GND vias on a grid wherever both layers' filled pour already surrounds the whole via, so
     each via touches nothing but ground and the two pours become one net."""
     gnd = board.FindNet("GND")
-    fills = []
-    for z in board.Zones():
-        if z.GetNetname() != "GND":
-            continue
-        for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
-            if z.IsOnLayer(layer) and z.HasFilledPolysForLayer(layer):
-                poly = pcbnew.SHAPE_POLY_SET(z.GetFilledPolysList(layer))
-                poly.Deflate(pcbnew.FromMM(via / 2 + 0.25), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, pcbnew.FromMM(0.01))
-                fills.append(poly)
+    def pours(margin):
+        out = []
+        for z in board.Zones():
+            if z.GetNetname() != "GND":
+                continue
+            for layer in (pcbnew.F_Cu, pcbnew.B_Cu):
+                if z.IsOnLayer(layer) and z.HasFilledPolysForLayer(layer):
+                    poly = pcbnew.SHAPE_POLY_SET(z.GetFilledPolysList(layer))
+                    poly.Deflate(pcbnew.FromMM(via / 2 + margin), pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS,
+                                 pcbnew.FromMM(0.01))
+                    out.append(poly)
+        return out
+    fills = pours(0.25)
     if len(fills) < 2:
         return 0
 
@@ -64,8 +68,11 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
             for y in range(bb.GetTop() + step // 2, bb.GetBottom(), step)
             if all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in fills) and clear(pcbnew.VECTOR2I(x, y))]
     # Then vias in every island of either layer's pour that has fewer than two (through-hole GND pads
-    # count), spread at least 2 mm apart, so no island hangs on a single via.
+    # count), spread at least 2 mm apart, so no island hangs on a single via. An island that would
+    # otherwise get none may take one anywhere the via fits inside both pours (the pour edge is
+    # already a clearance away from other copper).
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    loose = pours(0.02)
     anchors = [v.GetPosition() for v in vias] + [p.GetPosition() for p in board.GetPads()
                                                   if p.GetNetname() == "GND" and p.HasHole()]
     fine, spread = pcbnew.FromMM(0.25), pcbnew.FromMM(2.0)
@@ -82,12 +89,17 @@ def stitch(board, pitch=3.0, via=0.6, drill=0.3):
                     have = [a for a in anchors if raw.Contains(a, i)]
                     if len(have) >= 2:
                         break
-                    spot = next((pcbnew.VECTOR2I(x, y) for x in range(ib.GetLeft(), ib.GetRight(), fine)
-                                 for y in range(ib.GetTop(), ib.GetBottom(), fine)
-                                 if raw.Contains(pcbnew.VECTOR2I(x, y), i)
-                                 and all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in fills)
-                                 and clear(pcbnew.VECTOR2I(x, y))
-                                 and all((pcbnew.VECTOR2I(x, y) - a).EuclideanNorm() >= spread for a in have)), None)
+                    spot = None
+                    for inside in ([fills, loose] if not have else [fills]):
+                        spot = next((pcbnew.VECTOR2I(x, y) for x in range(ib.GetLeft(), ib.GetRight(), fine)
+                                     for y in range(ib.GetTop(), ib.GetBottom(), fine)
+                                     if raw.Contains(pcbnew.VECTOR2I(x, y), i)
+                                     and all(f.Contains(pcbnew.VECTOR2I(x, y)) for f in inside)
+                                     and clear(pcbnew.VECTOR2I(x, y))
+                                     and all((pcbnew.VECTOR2I(x, y) - a).EuclideanNorm() >= spread for a in have)),
+                                    None)
+                        if spot is not None:
+                            break
                     if spot is None:
                         break
                     vias.append(add(spot))
@@ -193,7 +205,8 @@ def route_once(base, pristine):
 
 
 def dedupe(path):
-    """Drop track segments that exactly repeat another (Freerouting sometimes leaves stacked copies).
+    """Drop track segments that exactly repeat another (Freerouting sometimes leaves stacked copies),
+    and zero-length ones.
     Done on the saved file: removing tracks through pcbnew's Python bindings crashes it later."""
     src = open(path).read()
     seen = set()
@@ -201,6 +214,8 @@ def dedupe(path):
     def keep(m):
         key = re.sub(r'\(uuid "[^"]*"\)', "", m.group(0))
         s, e = re.search(r"\(start ([^)]*)\)", key).group(1), re.search(r"\(end ([^)]*)\)", key).group(1)
+        if s == e:  # zero length: joins nothing
+            return ""
         key = re.sub(r"\((start|end) [^)]*\)", "", key) + "|".join(sorted((s, e)))
         if key in seen:
             return ""
