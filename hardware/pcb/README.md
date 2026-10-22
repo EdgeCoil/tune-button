@@ -84,8 +84,13 @@ firmware should stop using radio-heavy features there.
 
 Everything is generated: [`gen.py`](gen.py) holds the parts, nets and placement for both boards.
 It writes the schematic, with a label on every pin, and an unrouted board from the same netlist.
-[`route.py`](route.py) autoroutes with Freerouting, adds ground stitching vias and fills the pours.
-It retries until KiCad's DRC is clean. [`build.sh`](build.sh) runs both steps, then ERC and DRC
+[`route.py`](route.py) lays the copper and fills the pours. The routing is frozen: each board's
+`routing.json` holds its reviewed tracks and vias, and `route.py` replays it onto the generated
+board, so a fix is a small edit to that file rather than a new layout. `route.py --reroute <board>`
+autoroutes afresh with Freerouting instead, adding ground stitching vias and retrying until KiCad's
+DRC is clean; `route.py --freeze <board>` then records the result. A reroute changes the whole
+layout, so it needs a fresh review. Moving a part in `gen.py` also needs one, or the frozen copper
+no longer meets its pads; DRC catches that. [`build.sh`](build.sh) runs both steps, then ERC and DRC
 with the schematic parity check, then exports gerbers, drill files, BOM, pick-and-place, a schematic
 PDF and renders into `<board>/fab/`.
 

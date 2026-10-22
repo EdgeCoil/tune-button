@@ -506,11 +506,12 @@ def usb_crossover(board, fp):
         via("USB_DN", v)
     track("USB_DN", pcbnew.B_Cu, a, b)
     # VBUS: up from both pairs to a power via each, joined underneath.
-    # (0.46 mm out: close enough that the join clears the ESD chip's ground via behind the row.)
-    a, b = at(pads["A4"], -1, 0.46), at(pads["A9"], -1, 0.46)
+    # (Standard 0.6 mm vias, 0.5 mm out: a mask web clear of the pad, and the join still clears
+    # the ESD chip's ground via behind the row.)
+    a, b = at(pads["A4"], -1, 0.5), at(pads["A9"], -1, 0.5)
     for p, v in ((pads["A4"], a), (pads["A9"], b)):
         track("VBUS", pcbnew.F_Cu, p.GetPosition(), v, 0.4)
-        via("VBUS", v, 0.8)
+        via("VBUS", v)
     track("VBUS", pcbnew.B_Cu, a, b, 0.4)
 
 
@@ -537,7 +538,7 @@ def esd_ground(board, ref="U2"):
 
 
 def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False, gap_free=False,
-         track_free=False):
+         track_free=False, hole=None):
     z = pcbnew.ZONE(board)
     if gap_free or track_free:
         # gap_free: between a hand-soldered part's pads, on its own side: nothing a solder bridge
@@ -581,6 +582,10 @@ def zone(board, net, layer, pts, keepout=False, part_free=False, via_free=False,
     ol = z.Outline(); ol.NewOutline()
     for p in pts:
         ol.Append(mm(*p))
+    if hole:
+        ol.NewHole()
+        for p in hole:
+            ol.Append(mm(*p))
     board.Add(z)
 
 
@@ -678,8 +683,9 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
             box = (min(a.GetLeft(), b.GetLeft()) - m, a.GetBottom(), max(a.GetRight(), b.GetRight()) + m, b.GetTop())
         x0, y0, x1, y1 = (v / 1e6 for v in box)
         zone(board, None, pcbnew.B_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], gap_free=True)
-        # And no via within 0.6 mm of either pad, where a blob of solder could reach its cap.
-        whole = pcbnew.BOX2I(a.GetPosition(), a.GetSize()); whole.Merge(b); whole.Inflate(pcbnew.FromMM(0.6))
+        # And no via hard up against either pad. (Vias are tented, so beyond this margin one is no
+        # worse than a track; at 0.6 mm the router ran out of room.)
+        whole = pcbnew.BOX2I(a.GetPosition(), a.GetSize()); whole.Merge(b); whole.Inflate(pcbnew.FromMM(0.25))
         x0, y0, x1, y1 = (v / 1e6 for v in (whole.GetLeft(), whole.GetTop(), whole.GetRight(), whole.GetBottom()))
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     for item in silk:
@@ -726,6 +732,12 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
                 art.append(d.GetBoundingBox())
     if logo_box.GetWidth():
         art.append(logo_box)
+        # And no back tracks under the logo: they fence off pockets of the ground plane there that
+        # can't take a via (the logo keeps vias out), and the fill removes them, which shows
+        # through the mask.
+        b = pcbnew.BOX2I(logo_box.GetPosition(), logo_box.GetSize()); b.Inflate(pcbnew.FromMM(0.4))
+        x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
+        zone(board, None, pcbnew.B_Cu, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], track_free=True)
     for b in art:
         b.Inflate(pcbnew.FromMM(0.4))
         # Footprint holes (the module's ground-pad vias, switch pins) can't be routed around.
@@ -738,11 +750,12 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     for ref in extras.get("hide_refs", []):
         board.FindFootprintByReference(ref).Reference().SetVisible(False)
     place_labels(board, h, extras.get("notch"))
-    # No via under a part label or the JLC mark either: a via cap breaks up 1 mm text.
+    # No via under a part label or front text (BOOT, the JLC mark...) either: a via cap breaks up
+    # 1 mm text.
     boxes = [fp.Reference().GetBoundingBox() for fp in board.Footprints()
              if fp.Reference().IsVisible() and not fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")]
     boxes += [d.GetBoundingBox() for d in board.Drawings()
-              if isinstance(d, pcbnew.PCB_TEXT) and d.GetText() == "JLCJLCJLCJLC" and d.GetLayer() == pcbnew.F_SilkS]
+              if isinstance(d, pcbnew.PCB_TEXT) and d.GetLayer() == pcbnew.F_SilkS]
     for b in boxes:
         b.Inflate(pcbnew.FromMM(0.1))
         x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
