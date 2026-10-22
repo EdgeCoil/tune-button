@@ -9,7 +9,7 @@ standard 19.05 mm pitch:
 | Size | 46 × 67 mm | 46 × 69.7 mm |
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
-| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps |
+| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
 | Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |

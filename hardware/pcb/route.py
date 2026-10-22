@@ -200,17 +200,12 @@ def route_once(base, pristine):
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_NEVER)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     stitch(board)
-    kept = back_pour(board)
-    for z in pours:
-        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
-    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     # Pour the fill drops (islands the stitcher couldn't reach) counts against the attempt, so an
-    # attempt that fences off a pocket of the back plane isn't taken as clean.
-    lost = (kept - back_pour(board)) / 1e12
-    crowded = crowded_pins(board)
+    # attempt that fences off a pocket of the back plane isn't taken as clean; so do crowded pins.
+    lost, crowded = lost_pour(board), crowded_pins(board)
     if os.environ.get("ROUTE_DEBUG"):
-        print(f"  lost pour {lost:.1f} mm2, crowded pins {crowded}", file=sys.stderr)
-    lost = lost > LOST_POUR or crowded
+        print(f"  lost pour {lost:.1f} mm2, crowded pins {crowded or 'none'}", file=sys.stderr)
+    lost = lost > LOST_POUR or bool(crowded)
     board.Save(base + ".kicad_pcb")
     # Freerouting can still leave a sliver that KiCad calls dangling; let KiCad's DRC name them.
     for _ in range(3):
@@ -229,27 +224,56 @@ def route_once(base, pristine):
 LOST_POUR = 5.0  # mm2 of back-plane ground the fill may drop before an attempt counts as a problem
 
 
-PIN_GAP = 0.4  # mm from a switch pin to another net's track, on the switch's own side
+PIN_GAP = 0.4  # mm from a hand-soldered pin to another net's copper
+THREAD_GAP = 0.29  # mm for a track crossing between two neighbouring 2.54 mm header pins (0.295 at best)
 
 
 def crowded_pins(board):
-    """Switch pins are hand-soldered, and on the switch's own side only mask covers the copper, so an
-    attempt that runs another net's track close by counts as a problem. (A keepout ring round the
-    pins would do this up front, but Freerouting then can't reach them at all.)"""
-    gap = pcbnew.FromMM(PIN_GAP)
+    """Hand-soldered through-hole pins (parts JLC doesn't fit: no LCSC number) with another net's
+    copper close by, where a solder bridge could reach it under mask only. Checked on both layers
+    for the switches, and on the solder side only for headers and sockets, whose body covers the
+    other. A track crossing a header's row between two pins can't get further than 0.295 mm from
+    them, so it is held to THREAD_GAP instead. (A keepout ring round the pins would do this up
+    front, but Freerouting then can't reach them at all.) Returns the offending (ref, pin, net)."""
+    out = []
     for fp in board.Footprints():
-        if not fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:"):
+        if fp.HasFieldByName("LCSC") and fp.GetFieldText("LCSC"):
             continue
-        layer = fp.GetLayer()
-        for pad in fp.Pads():
-            if not pad.GetNetname():
-                continue
-            shape = pad.GetEffectiveShape(layer)
-            for t in board.GetTracks():
-                if (t.GetClass() == "PCB_TRACK" and t.GetLayer() == layer and t.GetNetCode() != pad.GetNetCode()
-                        and shape.Collide(t.GetEffectiveShape(layer), gap)):
-                    return True
-    return False
+        pins = [p for p in fp.Pads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH]
+        if not pins:
+            continue
+        switch = fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")
+        layers = (pcbnew.F_Cu, pcbnew.B_Cu) if switch else (pcbnew.B_Cu if fp.GetLayer() == pcbnew.F_Cu else pcbnew.F_Cu,)
+        pitch = pcbnew.FromMM(2.6)
+        for pad in pins:
+            # Lines to the neighbouring pins: a track crossing one is threading the row.
+            gaps = [pcbnew.SEG(pad.GetPosition(), q.GetPosition()) for q in pins
+                    if q is not pad and not switch and (q.GetPosition() - pad.GetPosition()).EuclideanNorm() < pitch]
+            for layer in layers:
+                shape = pad.GetEffectiveShape(layer)
+                for t in board.GetTracks():
+                    if t.GetNetCode() == pad.GetNetCode() or not (t.GetClass() == "PCB_VIA" or t.GetLayer() == layer):
+                        continue
+                    if not shape.Collide(t.GetEffectiveShape(layer), pcbnew.FromMM(PIN_GAP)):
+                        continue
+                    if (t.GetClass() == "PCB_TRACK" and any(pcbnew.SEG(t.GetStart(), t.GetEnd()).Intersects(g) for g in gaps)
+                            and not shape.Collide(t.GetEffectiveShape(layer), pcbnew.FromMM(THREAD_GAP))):
+                        continue
+                    out.append((fp.GetReference(), pad.GetNumber(), t.GetNetname()))
+    return sorted(set(out))
+
+
+def lost_pour(board):
+    """mm2 of back-plane ground the fill drops as islands (pockets fenced off from every via)."""
+    pours = [z for z in board.Zones() if not z.GetIsRuleArea()]
+    for z in pours:
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_NEVER)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    kept = back_pour(board)
+    for z in pours:
+        z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    return (kept - back_pour(board)) / 1e12
 
 
 def back_pour(board):
@@ -259,7 +283,7 @@ def back_pour(board):
 
 def dedupe(path):
     """Drop track segments that exactly repeat another (Freerouting sometimes leaves stacked copies),
-    and ones under 0.01 mm long.
+    and ones under 0.02 mm long.
     Done on the saved file: removing tracks through pcbnew's Python bindings crashes it later."""
     src = open(path).read()
     seen = set()
@@ -268,7 +292,7 @@ def dedupe(path):
         key = re.sub(r'\(uuid "[^"]*"\)', "", m.group(0))
         s, e = re.search(r"\(start ([^)]*)\)", key).group(1), re.search(r"\(end ([^)]*)\)", key).group(1)
         (sx, sy), (ex, ey) = (map(float, v.split()) for v in (s, e))
-        if math.hypot(ex - sx, ey - sy) < 0.01:  # (near) zero length: joins nothing
+        if math.hypot(ex - sx, ey - sy) < 0.02:  # (near) zero length: joins nothing
             return ""
         key = re.sub(r"\((start|end) [^)]*\)", "", key) + "|".join(sorted((s, e)))
         if key in seen:
@@ -346,7 +370,10 @@ def replay(name):
             t.SetLayer(board.GetLayerID(i["layer"])); t.SetWidth(i["w"])
         t.SetNet(net)
         board.Add(t)
-    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    # The autoroute rejects attempts that break these; a hand edit has to meet them too.
+    lost, crowded = lost_pour(board), crowded_pins(board)
+    if lost > LOST_POUR or crowded:
+        raise SystemExit(f"{name}: routing.json loses {lost:.1f} mm2 of back pour; pins crowded: {crowded or 'none'}")
     board.Save(path)
     print(f"{name}: replayed {os.path.relpath(routing_file(name), HERE)}")
 
