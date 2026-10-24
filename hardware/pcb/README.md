@@ -14,7 +14,7 @@ board, on wires to a JST connector, so it can be much smaller:
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. Use screw heads under 4.8 mm across, or nylon washers: a VBUS track runs 2.4 mm from H2's centre. Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
-| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
+| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches (on the panel, JLC fits all but the switches) | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
 
 On `c3-jst`, J3's key lines have their own ESD array (U5, a second SRV05-4), since they run out on
 wires to buttons people touch. J3's 3V3 is the regulator's output, shared with the module's 350 mA
@@ -134,12 +134,36 @@ meets JLC's routed-edge rule but not its 0.4 mm V-cut one. On `c3-jst`, add a re
 on the left edge between 18 and 46 mm from the top, and on the right edge only between 42 and 45 mm
 (a track runs 0.4 mm inside the rest of that edge).
 
+### All three on one panel (Standard assembly)
+
+If the ESP32 module needs Standard assembly, which wants at least 70 × 70 mm, order the three boards
+as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (146 × 72 mm) from
+the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes `panel/fab/`. Run
+`./build.sh` first, then `python3 panel.py` with KiKit installed (`pip install kikit`).
+
+- The boards sit side by side (XIAO, C3, `c3-jst`) with 5 mm rails on the left and right. The rails
+  carry JLC's four 1.152 mm tooling holes and three fiducials.
+- Mouse-bite tabs (0.5 mm holes) go only where no track, via or pad comes within 1 mm of the edge.
+  The ground pour is held back around each tab. `c3-jst`'s one right-hand tab is 2.2 mm wide and has
+  no fillets, so its bites stay clear of the track along that edge.
+- Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
+  `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. JLC charges a small fee
+  for the different designs on the panel. Each designator is prefixed with its board (`XIAO_`, `C3_`,
+  `JST_`), and each part's placement is that board's own, moved by the board's place in the panel.
+- On the panel, JLC also fits the XIAO board's parts: its passives, diode, LED, battery socket, the
+  two 1 × 7 sockets and the 2-pin battery header. The sockets and header are through-hole, soldered
+  by JLC at a per-joint rate. Left for you: the MX switches on both keyboard boards, the C3's two
+  back-side LEDs and its UART header, the XIAO itself, and the batteries and buttons.
+- Each board's `JLCJLCJLCJLC` marker is still there. Under *Mark on PCB*, name one, for example the
+  C3's (front, centre).
+
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)
 are **Preferred** parts, which also carry no fee. Four types are **Extended**, at a fee per type per
 order: the ESP32-C3-WROOM-02 module, the USB-C socket, the JST battery socket and the RT9080
 regulator. `c3-jst` adds a fifth, the 7-pin JST button socket; its LEDs are Basic parts (C84256),
-since JLC fits them there. Catalogue status changes; the build doesn't check it.
+since JLC fits them there. On the panel, the XIAO board's 1 × 7 sockets (C2932672, 8.5 mm tall) and
+2-pin header (C492401) are two more Extended types. Catalogue status changes; the build doesn't check it.
 
 The EdgeCoil mark, name and URL on the back silkscreen are not covered by the board licence (see
 [`LICENSES/LicenseRef-EdgeCoil-Mark.txt`](../../LICENSES/LicenseRef-EdgeCoil-Mark.txt)). To build
