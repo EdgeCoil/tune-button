@@ -3,7 +3,7 @@
 """One JLC panel holding all three boards, for Standard PCBA (which wants at least 70 x 70 mm, and parts
 2.5 mm from the edge the line holds). Built with KiKit from the committed, routed boards:
 
-    xiao | c3 | c3-jst, side by side, in a 5 mm frame (rails left and right, bars top and bottom)
+    xiao | c3 | c3-jst, side by side, in a 6 mm frame (rails left and right, bars top and bottom)
 
 Mouse-bite tabs join neighbours and the rails, only where no track, via or pad comes within 1 mm of
 the edge and no part reaches it (so a bite never tears copper), and the ground pour is held back
@@ -32,7 +32,7 @@ from gen import set_stackup
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "panel")
-GAP, RAIL, RAIL_GAP, FRAME_GAP = 2.0, 5.0, 2.0, 1.5  # mm: between boards, rail and bar width, rail to
+GAP, RAIL, RAIL_GAP, FRAME_GAP = 2.0, 6.0, 2.0, 1.5  # mm: between boards, rail and bar width, rail to
                                                      # boards, bars to anything overhanging the boards
 TAB, MIN_TAB, FILLET, EDGE_CLEAR = 3.0, 2.0, 1.0, 1.0  # tab widths and fillet; clear of copper by EDGE_CLEAR
 # (name, designator prefix, y offset). c3-jst sits 7 mm down so its antenna, which overhangs its top
@@ -236,6 +236,17 @@ def main():
         panel.substrates[i].annotations.append(
             TabAnnotation(None, (int(tx * mm), int(ty * mm)), (dx, dy), int(tw * mm)))
     cuts = panel.buildTabsFromAnnotations(int(FILLET * mm))
+    # JLC wants a tab 2 mm from a connector's pads; where no other edge is free (c3's J2 and c3-jst's J3
+    # face theirs), the bites go 0.25 mm outside the board instead of inside, moving the break line
+    # 0.5 mm further from the pads, and the README says to cut those tabs rather than snap them.
+    pads = [p.GetBoundingBox() for fp in panel.board.Footprints() if fp.GetReference().startswith("J")
+            for p in fp.Pads()]
+    connector = unary_union([box(bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom()) for bb in pads])
+    near = [c for c in cuts if c.distance(connector) < 2.25 * mm]
+    cuts = [c for c in cuts if c.distance(connector) >= 2.25 * mm]
+    for c in near:
+        x, y = c.centroid.x / mm, c.centroid.y / mm
+        print(f"panel: tab at ({x:.1f}, {y:.1f}) is {c.distance(connector) / mm:.2f} mm from a connector pad: bites outside")
     for x0 in (left, right - rail):
         panel.appendSubstrate(box(x0, top - rail, x0 + rail, bottom + rail))
     for y0 in (top - rail, bottom):
@@ -243,22 +254,28 @@ def main():
     panel.addMillFillets(int(FILLET * mm))
     # Each board must still come away at its tabs alone: material along its edge, beyond the tabs
     # and their fillets, means the milling has bridged a gap.
+    # Each piece of material along a board's edge must lie at one of its tabs.
     whole = panel.boardSubstrate.substrates
     for i, (name, *_) in enumerate(placed):
         outline = panel.substrates[i].substrates
         ring = outline.buffer(0.3 * mm).difference(outline)
-        joined = ring.intersection(whole).area / (0.3 * mm) / mm
-        allowed = sum(tw + 2 * FILLET + 1 for j, _, _, _, tw in tabs if j == i)
-        if joined > allowed:
-            sys.exit(f"panel: {name} is joined to the panel along {joined:.1f} mm, its tabs only {allowed:.1f} mm")
+        allowed = unary_union([box((tx - (tw / 2 + FILLET + 0.5) * abs(dy) - 1.5 * abs(dx)) * mm,
+                                   (ty - (tw / 2 + FILLET + 0.5) * abs(dx) - 1.5 * abs(dy)) * mm,
+                                   (tx + (tw / 2 + FILLET + 0.5) * abs(dy) + 1.5 * abs(dx)) * mm,
+                                   (ty + (tw / 2 + FILLET + 0.5) * abs(dx) + 1.5 * abs(dy)) * mm)
+                               for j, tx, ty, (dx, dy), tw in tabs if j == i])
+        stray = ring.intersection(whole).difference(allowed).area / (0.3 * mm) / mm
+        if stray > 0.05:
+            sys.exit(f"panel: {name} is joined to the panel along {stray:.1f} mm away from its tabs")
     # JLC's 1.152 mm tooling holes (0.148 mm mask expansion) in the frame corners, and three
-    # fiducials 3.85 mm in from the rails' outer edges (JLC: the 2 mm opening 3.35 mm from the edge).
+    # fiducials 4.35 mm in from the rails' outer edges (JLC: the 2 mm opening 3.35 mm from the edge).
     panel.addCornerTooling(4, int(RAIL / 2 * mm), int(RAIL / 2 * mm), int(1.152 * mm),
                            solderMaskMargin=int(0.148 * mm))
-    panel.addCornerFiducials(3, int(3.85 * mm), int(RAIL * mm + 4 * mm), int(1 * mm), int(2 * mm))
+    panel.addCornerFiducials(3, int(4.35 * mm), int(RAIL * mm + 4 * mm), int(1 * mm), int(2 * mm))
     # Bites along each tab's cut, fillets included, 0.25 mm into the board so the snapped edge is at
     # or inside the outline.
-    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), int(0.25 * mm), 0)
+    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.75 * mm), int(0.25 * mm), 0)
+    panel.makeMouseBites(near, int(0.5 * mm), int(0.75 * mm), int(-0.25 * mm), 0)
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
     # KiKit's own refill runs before it copies the rules across.

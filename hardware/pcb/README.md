@@ -138,23 +138,27 @@ on the left edge between 18 and 46 mm from the top, and on the right edge only b
 ### All three on one panel (Standard assembly)
 
 If the ESP32 module needs Standard assembly, which wants at least 70 × 70 mm, order the three boards
-as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (146 × 85 mm) from
+as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (148 × 87 mm) from
 the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes `panel/fab/`. Run
 `./build.sh` first, then `python3 panel.py` with KiKit installed (`pip install kikit`).
 
-- The boards sit side by side (XIAO, C3, `c3-jst`) in a 5 mm frame: rails on the left and right,
+- The boards sit side by side (XIAO, C3, `c3-jst`) in a 6 mm frame: rails on the left and right,
   and bars across the top and bottom. The bars stay at least 2.5 mm from every board edge and
   1.5 mm from anything overhanging one (`c3-jst`'s antenna, the USB-C faces). The frame carries
-  JLC's four 1.152 mm tooling holes in its corners, and three fiducials 3.85 mm in from the rails'
+  JLC's four 1.152 mm tooling holes in its corners, and three fiducials 4.35 mm in from the rails'
   outer edges.
 - Mouse-bite tabs join the boards to each other and to the frame. They go only where no track,
-  via or pad comes within 1 mm of the edge, never beside a mounting hole or under an overhanging
-  part. Each tab has 1 mm fillets with bites round them, 0.5 mm holes set 0.25 mm inside the board.
+  via or pad comes within 1 mm of the edge, at least 2 mm from a mounting hole, and never under an
+  overhanging part. Each tab has 1 mm fillets with bites round them: 0.5 mm holes at 0.75 mm pitch,
+  set 0.25 mm inside the board.
   The ground pour is held back around each tab. `panel.py` checks that each board is joined to the
   panel only at its tabs.
 - `c3-jst` has three tabs: two to the C3 and one to the bottom bar, in front of J3's mouth. Its
-  right edge carries a track and its top edge the antenna. File the tab remnants flush, especially
-  there and beside the other connectors.
+  right edge carries a track and its top edge the antenna. Two tabs end about 1.2 mm from a
+  connector's anchor pads, inside JLC's 2 mm keep-out: the C3's lower right-hand tab (beside its
+  battery socket J2) and `c3-jst`'s bottom tab (in front of J3). Their bites sit outside the board
+  edge instead, and **cut those two tabs with flush cutters rather than snapping them**, so the
+  bending doesn't crack the connectors' joints. File the tab remnants flush.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
   `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. Add a remark that the
   modules' antennas and the USB-C sockets overhang their boards' edges by design. JLC charges a
