@@ -128,9 +128,9 @@ The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order 
 for a panel. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
 rule, so if JLC asks for rails, have them on the **left and right edges only**: the USB-C overhangs
 the bottom edge and the antenna overhangs the notch at the top. `c3-jst` (36 × 50 mm) is the same:
-Economic, and rails on the left and right only, its antenna overhanging the top edge. Ask for
-mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which meets JLC's
-routed-edge rule but not its 0.4 mm V-cut one.
+Economic, and rails on the left and right only, its antenna overhanging the top edge. For either C3
+board, ask for mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which
+meets JLC's routed-edge rule but not its 0.4 mm V-cut one.
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)
