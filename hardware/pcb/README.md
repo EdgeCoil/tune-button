@@ -130,7 +130,9 @@ rule, so if JLC asks for rails, have them on the **left and right edges only**: 
 the bottom edge and the antenna overhangs the notch at the top. `c3-jst` (36 × 50 mm) is the same:
 Economic, and rails on the left and right only, its antenna overhanging the top edge. For either C3
 board, ask for mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which
-meets JLC's routed-edge rule but not its 0.4 mm V-cut one.
+meets JLC's routed-edge rule but not its 0.4 mm V-cut one. On `c3-jst`, add a remark placing the tabs:
+on the left edge between 18 and 46 mm from the top, and on the right edge only between 42 and 45 mm
+(a track runs 0.4 mm inside the rest of that edge).
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)

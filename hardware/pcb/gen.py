@@ -351,7 +351,9 @@ def variant_c3_jst():
                             (30.6, h - 12.8, "6 LED 7 3V3", 1.0),
                             (30.6, h - 10.4, "tune-button", 1.0), (30.6, h - 8.6, "c3-jst rev A", 1.0),
                             (30.6, h - 6.8, "edgecoil.dev", 1.0)],
-              "hide_refs": ["TP1", "TP2", "U3", "SW6"],  # TX/RX, RESET/BOOT name those; U3's only spot reads as R3's
+              # TX/RX and RESET/BOOT name the pads and switches; U3's and R9's only spots read as their
+              # neighbours'.
+              "hide_refs": ["TP1", "TP2", "U3", "SW6", "R9"],
               "jlc_mark": (26.0, h - 3.7, "B")}
     return parts, h, [], silk, extras
 
