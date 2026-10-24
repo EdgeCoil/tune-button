@@ -14,7 +14,7 @@ board, on wires to a JST connector, so it can be much smaller:
 | Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. Use screw heads under 4.8 mm across, or nylon washers: a VBUS track runs 2.4 mm from H2's centre. Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
-| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches (on the panel, JLC fits all but the switches) | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
+| Assembly | Hand: 4 SMD passives, an LED, a diode, the battery socket and header, the XIAO sockets, switches (on the panel, JLC fits all but the switches) | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
 
 On `c3-jst`, J3's key lines have their own ESD array (U5, a second SRV05-4), since they run out on
 wires to buttons people touch. J3's 3V3 is the regulator's output, shared with the module's 350 mA
@@ -149,16 +149,17 @@ the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes 
   outer edges.
 - Mouse-bite tabs join the boards to each other and to the frame. They go only where no track,
   via or pad comes within 1 mm of the edge, at least 2 mm from a mounting hole, and never under an
-  overhanging part. Each tab has 1 mm fillets with bites round them: 0.5 mm holes at 0.75 mm pitch,
-  set 0.25 mm inside the board.
+  overhanging part. Each tab has 1 mm fillets with bites round them: 0.5 mm holes at about 0.8 mm
+  pitch, set 0.25 mm inside the board.
   The ground pour is held back around each tab. `panel.py` checks that each board is joined to the
   panel only at its tabs.
 - `c3-jst` has three tabs: two to the C3 and one to the bottom bar, in front of J3's mouth. Its
   right edge carries a track and its top edge the antenna. Two tabs end about 1.2 mm from a
   connector's anchor pads, inside JLC's 2 mm keep-out: the C3's lower right-hand tab (beside its
   battery socket J2) and `c3-jst`'s bottom tab (in front of J3). Their bites sit outside the board
-  edge instead, and **cut those two tabs with flush cutters rather than snapping them**, so the
-  bending doesn't crack the connectors' joints. File the tab remnants flush.
+  edge instead (so they stop where the fillets start), and **cut those two tabs with flush cutters
+  rather than snapping them**, so the bending doesn't crack the connectors' joints. File the tab
+  remnants flush.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
   `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. Add a remark that the
   modules' antennas and the USB-C sockets overhang their boards' edges by design. JLC charges a
@@ -167,7 +168,7 @@ the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes 
   place in the panel.
 - On the panel, JLC also fits the XIAO board's parts: its passives, diode, LED, battery socket, the
   two 1 × 7 sockets and the 2-pin battery header. The sockets and header are through-hole, soldered
-  by JLC at a per-joint rate. Left for you: the MX switches on both keyboard boards, the C3's two
+  by JLC for a hand-soldering fee (about $3.50) plus a per-joint rate. Left for you: the MX switches on both keyboard boards, the C3's two
   back-side LEDs and its UART header, the XIAO itself, and the batteries and buttons.
 - Only the C3's `JLCJLCJLCJLC` marker is kept on the panel. Under *Mark on PCB*, choose
   *Specify a location*.

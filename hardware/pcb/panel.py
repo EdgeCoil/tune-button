@@ -274,8 +274,10 @@ def main():
     panel.addCornerFiducials(3, int(4.35 * mm), int(RAIL * mm + 4 * mm), int(1 * mm), int(2 * mm))
     # Bites along each tab's cut, fillets included, 0.25 mm into the board so the snapped edge is at
     # or inside the outline.
-    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.75 * mm), int(0.25 * mm), 0)
-    panel.makeMouseBites(near, int(0.5 * mm), int(0.75 * mm), int(-0.25 * mm), 0)
+    # KiKit spreads int(length / spacing) + 1 holes evenly over each cut: 0.8 mm asked gives 0.80-0.83
+    # mm here. Closer (JLC suggests 0.7-0.8) would leave webs under the 0.25 mm hole-to-hole rule.
+    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), int(0.25 * mm), 0)
+    panel.makeMouseBites(near, int(0.5 * mm), int(0.8 * mm), int(-0.25 * mm), 0)
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
     # KiKit's own refill runs before it copies the rules across.
