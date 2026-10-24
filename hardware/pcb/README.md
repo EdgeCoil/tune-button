@@ -74,7 +74,7 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
    front, where their leads and posts come through between the parts; trim the leads short.
 6. **C3 board, front side faces the case floor** (`c3-jst` has nothing on its back, so it can sit either way up). The tallest parts there are the JST socket
-   (4.8 mm) and the module and USB-C (about 3.3 mm), so the case needs that much room under the
+   (5.5 mm) and the module and USB-C (about 3.3 mm), so the case needs that much room under the
    board, plus the battery. RESET and BOOT are on that side too, reachable with the case open.
 7. **`c3-jst` debug UART.** TP1 (TX) and TP2 (RX) are bare pads; take ground from J3 pin 1 or the
    USB-C shell.
@@ -122,7 +122,7 @@ its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and batte
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
 footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST), checked against JLC's own
 footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
-shorts VBUS.
+(U2, and U5 on `c3-jst`) shorts the 3V3 rail.
 
 The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order Economic, or ask
 for a panel. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
