@@ -18,6 +18,7 @@ import csv
 import os
 import shutil
 import subprocess
+import math
 import sys
 
 import pcbnew
@@ -36,6 +37,7 @@ OUT = os.path.join(HERE, "panel")
 GAP, RAIL, RAIL_GAP, FRAME_GAP = 2.0, 6.0, 2.0, 1.5  # mm: between boards, rail and bar width, rail to
                                                      # boards, bars to anything overhanging the boards
 TAB, MIN_TAB, FILLET, EDGE_CLEAR = 3.0, 2.0, 1.0, 1.0  # tab widths and fillet; clear of copper by EDGE_CLEAR
+BITE_CLEAR = 1.5  # pads to a bite centre (JLC's mouse-bite guide)
 # (name, designator prefix, y offset). c3-jst sits 7 mm down so its antenna, which overhangs its top
 # edge by 6.35 mm, stays level with the other boards' tops.
 BOARDS = [("xiao", "XIAO_", 1.5), ("c3", "C3_", 1.0), ("c3-jst", "JST_", 7.0)]
@@ -96,6 +98,13 @@ def free_spans(path, side, connectors=False):
         if near_box(p.GetBoundingBox()) < EDGE_CLEAR:
             _, _, a, z = box_uv(p.GetBoundingBox())
             blocked.append((a - 0.5, z + 0.5))
+        # JLC wants a tab's bites 1.5 mm clear of any pad: snapping flexes the board under the joint (a
+        # tab beside the module's corner pad, panel audit round 10). The bites sit 0.25 mm inside.
+        d = near_box(p.GetBoundingBox()) - 0.25
+        if p.GetAttribute() != pcbnew.PAD_ATTRIB_NPTH and d < BITE_CLEAR:
+            _, _, a, z = box_uv(p.GetBoundingBox())
+            r = math.sqrt(BITE_CLEAR ** 2 - max(d, 0) ** 2)
+            blocked.append((a - r, z + r))
         # Mounting holes near the edge leave a thin web: a tab snapped beside one could crack into it.
         if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH and near_box(p.GetBoundingBox()) < 3.0:
             _, _, a, z = box_uv(p.GetBoundingBox())
@@ -239,7 +248,7 @@ def main():
         tabs += [(i, x, by + h, (0, -1), tw) for x, tw in tab_positions(spans(name, "bottom", bx), bx, bx + w, n, spans(name, "bottom", bx, True))]
     for name, *_ in placed:
         ends = sum(1 for i, *_ in tabs if placed[i][0] == name)
-        if ends < 3:  # (c3-jst gets three: its right and top edges carry copper or the antenna)
+        if ends < 3:  # (c3-jst gets five; its top edge carries the antenna)
             sys.exit(f"panel: only {ends} tabs on {name}")
 
     # Partition lines (a tab runs from its board to the line): between the boards and towards the
@@ -271,6 +280,16 @@ def main():
             for p in fp.Pads()]
     connector = unary_union([box(bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom()) for bb in pads])
     near = [c for c in cuts if c.distance(connector) < 2.25 * mm]
+    # Each cut's bites run 0.25 mm inside it: hold every pad BITE_CLEAR from them (the connector tabs
+    # below excepted, whose bites go outside), so a placement change can't bring a tab back to a pad.
+    solder = [box(bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom()) for bb in
+              (p.GetBoundingBox() for fp in panel.board.Footprints() for p in fp.Pads()
+               if p.GetAttribute() != pcbnew.PAD_ATTRIB_NPTH)]
+    for c in cuts:
+        if c.distance(connector) >= 2.25 * mm:
+            gap = min(c.distance(q) for q in solder) / mm - 0.25
+            if gap < BITE_CLEAR - 0.01:
+                sys.exit(f"panel: a tab at ({c.centroid.x / mm:.1f}, {c.centroid.y / mm:.1f}) is {gap:.2f} mm from a pad")
     cuts = [c for c in cuts if c.distance(connector) >= 2.25 * mm]
     for c in near:
         x, y = c.centroid.x / mm, c.centroid.y / mm
@@ -309,8 +328,8 @@ def main():
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
     # KiKit's own refill runs before it copies the rules across. Pour that a tab keepout cuts off from
-    # the rest is dropped as an island (c3-jst: 2.7 mm2 by its top tab, 0.7 mm2 beside J3; no pad on
-    # either), so the copper can change a little past the keepouts too.
+    # the rest is dropped as an island (c3-jst: 2.0 mm2 of front pour by its top tab;
+    # no pad on it), so the copper can change a little past the keepouts too.
     board = pcbnew.LoadBoard(path)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     # JLC replaces only the order-number marker named in the order: keep the c3's, drop the others.

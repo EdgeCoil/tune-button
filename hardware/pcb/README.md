@@ -159,12 +159,13 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   pitch, set 0.25 mm inside the board.
   The ground pour is held back around each tab. `panel.py` checks that each board is joined to the
   panel only at its tabs.
-- `c3-jst` has six tabs: one on its left to the C3, three to the right rail, one to the top bar and
-  one to the bottom bar. Most of its left edge is closed to tabs: a mounting hole, a VBUS track 0.7 mm in,
-  and C1 (no tab comes within 3 mm of an 0805 or larger ceramic capacitor, which cracks when the board
-  flexes). Its top edge carries the antenna. A tab goes at least 2 mm from a connector's pads (JLC's
-  keep-out) wherever its edge allows; two can't: c3-jst's lower right-edge tabs end 1.65 and 1.3 mm
-  from the two anchor pads of the battery socket J2 (the lower one is also 1.75 mm from J3's). Their bites sit outside the board edge instead
+- `c3-jst` has five tabs: one on its left shared with the C3, two to the right rail, one to the top
+  bar and one to the bottom bar. No tab comes within 3 mm of an 0805 or larger ceramic capacitor,
+  which cracks when the board flexes (C1 low on the left edge, C8 high on the right), nor within
+  1.5 mm of any pad (JLC's mouse-bite rule; `panel.py` stops if one does). Its top edge carries the
+  antenna. A tab goes at least 2 mm from a connector's pads (JLC's keep-out) wherever its edge allows;
+  the two on the right edge can't, and end about 1.8 mm from the anchor pads of the battery socket J2
+  (the lower one also from J3's). Their bites sit outside the board edge instead
   (so they stop where the fillets start), and **cut those two tabs with flush cutters rather than
   snapping them**, so the bending doesn't crack the connectors' joints. File the tab remnants flush.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
