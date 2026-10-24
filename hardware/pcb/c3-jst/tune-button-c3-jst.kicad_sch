@@ -6024,7 +6024,7 @@
 			(at 269.24 210.82 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Value" "1k"
+		(property "Value" "330"
 			(at 269.24 215.9 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -6036,7 +6036,7 @@
 			(at 269.24 213.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C21190"
+		(property "LCSC" "C23138"
 			(at 269.24 223.52 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

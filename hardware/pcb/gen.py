@@ -51,7 +51,7 @@ LED0805 = "LED_SMD:LED_0805_2012Metric"
 
 
 # JLCPCB "Basic" parts for the passives and LED: Basic parts carry no per-type assembly fee.
-LCSC_R0603 = {"1": "C22936", "1k": "C21190", "3.3k": "C22978", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
+LCSC_R0603 = {"1": "C22936", "330": "C23138", "1k": "C21190", "3.3k": "C22978", "4.7k": "C23162", "5.1k": "C23186", "10k": "C25804", "100k": "C25803",
               "220k": "C22961"}
 LCSC_R1206 = {"1": "C17928"}
 LCSC_C = {("100n", C0603): "C14663", ("1u", C0603): "C15849", ("4.7u", C0603): "C19666",
@@ -329,7 +329,8 @@ def variant_c3_jst():
         Part("U5", "Power_Protection:SRV05-4", "Package_TO_SOT_SMD:SOT-23-6", "SRV05-4",
              {"1": "K1", "2": "GND", "3": "K2", "4": "K3", "5": "3V3", "6": "K4"},
              (20.5, 36.0), 0, mpn="SRV05-4-P-T7", lcsc="C85364"),
-        R("R15", "1k", "LED", "LED_OUT", (23.0, 30.5), 0),
+        # 330 ohm: about 4 mA into a red LED at 3.3 V, enough for a lit button; 10 mA into a short.
+        R("R15", "330", "LED", "LED_OUT", (23.0, 30.5), 0),
         Part("TP1", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "TXD", {"1": "TXD"}, (9.5, 26.5),
              note="debug UART"),
         Part("TP2", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "RXD", {"1": "RXD"}, (12.0, 26.5),
@@ -337,15 +338,19 @@ def variant_c3_jst():
     ]
     parts += holes([(3.0, 29.0), (17.0, 31.0)])
     silk = [("text", 5.7, 22.8, "RESET"), ("text", 14.6, 22.8, "BOOT"), ("text", 9.5, 28.4, "TX"),
-            ("text", 12.0, 28.4, "RX"), ("text", 18.4, h - 8.4, "1"),
+            ("text", 12.0, 28.4, "RX"), ("text", 20.0, h - 10.9, "1"),
             ("text", 24.9, 35.1, "+")]
     extras = {"width": w,
               # The mark and text go behind J3, which has only SMD pads: the back is the main routing
               # layer between the module and the connectors, and no back track may cross the mark.
               "logo": (21.0, h - 8.5, 7.0),
-              "back_text": [(26.0, h - 13.5, "J3: 1 GND  2-5 K1-K4", 1.0), (26.0, h - 11.9, "6 LED  7 3V3", 1.0),
+              # The J3 legend in a narrow column at the right, so its via keepout leaves room for a
+              # ground via beside U5.
+              "back_text": [(30.6, h - 16.2, "J3: 1 GND", 1.0), (30.6, h - 14.5, "2-5 K1-K4", 1.0),
+                            (30.6, h - 12.8, "6 LED 7 3V3", 1.0),
                             (30.6, h - 10.4, "tune-button", 1.0), (30.6, h - 8.6, "c3-jst rev A", 1.0),
                             (30.6, h - 6.8, "edgecoil.dev", 1.0)],
+              "hide_refs": ["TP1", "TP2", "U3"],  # TX/RX name the pads; U3's only spot reads as R3's
               "jlc_mark": (26.0, h - 3.7, "B")}
     return parts, h, [], silk, extras
 

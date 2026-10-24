@@ -8,10 +8,10 @@ board, on wires to a JST connector, so it can be much smaller:
 |---|---|---|---|
 | Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its PCB antenna sits over a notch cut out of the top-left corner, with no board under it | The same module; its antenna overhangs the top edge, with no board under it |
 | Size | 46 × 67 mm | 46 × 69.7 mm | 36 × 50 mm |
-| Keys | 4 MX on the board | 4 MX on the back | J3, a 7-pin JST-PH (2 mm): 1 GND, 2–5 K1–K4, 6 LED (through 1 kΩ), 7 3V3. Each button goes between its K pin and GND |
+| Keys | 4 MX on the board | 4 MX on the back | J3, a 7-pin JST-PH (2 mm): 1 GND, 2–5 K1–K4, 6 LED (through 330 Ω: about 4 mA into a red LED), 7 3V3. Each button goes between its K pin and GND |
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name, URL and the J3 pin list on the back, behind J3 |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna | Bottom edge, left; J3 beside it on the right, the battery on the right edge |
-| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2 |
+| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. Use screw heads under 4.8 mm across, or nylon washers: a VBUS track runs 2.4 mm from H2's centre. Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
 | Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
@@ -20,7 +20,7 @@ On `c3-jst`, J3's key lines have their own ESD array (U5, a second SRV05-4), sin
 wires to buttons people touch. J3's 3V3 is the regulator's output, shared with the module's 350 mA
 Wi-Fi bursts: keep what hangs on it under about 100 mA.
 
-**Rev A is unbuilt and untested.** Both boards pass KiCad's electrical rules check and its design
+**Rev A is unbuilt and untested.** All three boards pass KiCad's electrical rules check and its design
 rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
 or powered, and the firmware does not support four keys yet (see *Firmware*).
 
@@ -72,9 +72,11 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
 5. **MX switches** use the 5-pin PCB-mount footprint, which also takes 3-pin plate-mount switches.
    The boards are not hot-swap. On the C3 board they mount on the back and are soldered from the
    front, where their leads and posts come through between the parts; trim the leads short.
-6. **C3 board, front side faces the case floor.** The tallest parts there are the JST socket
+6. **C3 board, front side faces the case floor** (`c3-jst` has nothing on its back, so it can sit either way up). The tallest parts there are the JST socket
    (4.8 mm) and the module and USB-C (about 3.3 mm), so the case needs that much room under the
    board, plus the battery. RESET and BOOT are on that side too, reachable with the case open.
+7. **`c3-jst` debug UART.** TP1 (TX) and TP2 (RX) are bare pads; take ground from J3 pin 1 or the
+   USB-C shell.
 
 ## Firmware
 
@@ -83,7 +85,7 @@ map above, two more button codes in [`protocol/spec.md`](../../protocol/spec.md)
 actions for them. For the XIAO board, a wake stub should read D4. None of that is written yet.
 The existing build's pins don't match either board: `TB_LED_PIN=5` would drive the XIAO board's
 K3 line (its LED is on D5, GPIO7), and the C3 board has no build environment (battery on GPIO1,
-LED on GPIO10). Below about 3.4 V a Wi-Fi-sized burst sags the C3's 3.3 V rail under 3.0 V, so the
+LED on GPIO10). Below about 3.6 V a Wi-Fi-sized burst sags the C3's 3.3 V rail under 3.0 V (simulated with the routed copper), so the
 firmware should stop using radio-heavy features there.
 
 ## Rebuilding
@@ -110,20 +112,24 @@ instead, stop after `gen.py` and open the project in KiCad.
 
 For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, **black** mask, white legend, **lead-free HASL**: Economic assembly offers that
 for 2–50 boards, while ENIG would force green). Under *Mark on PCB*, choose *Specify a location*:
-the `JLCJLCJLCJLC` marker puts their order number on the electronics side (C3) or the back (XIAO),
+the `JLCJLCJLCJLC` marker puts their order number on the electronics side (C3) or the back (XIAO, `c3-jst`),
 away from the logo. Add a remark that the C3's module antenna and USB-C overhang the edge by
 design. For their
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
-its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you.
+its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you
+(on `c3-jst`, JLC fits every part and only the battery and buttons are left).
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
-footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C), checked against JLC's own
+footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST), checked against JLC's own
 footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
 shorts VBUS.
 
 The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order Economic, or ask
 for a panel. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
 rule, so if JLC asks for rails, have them on the **left and right edges only**: the USB-C overhangs
-the bottom edge and the antenna overhangs the notch at the top.
+the bottom edge and the antenna overhangs the notch at the top. `c3-jst` (36 × 50 mm) is the same:
+Economic, and rails on the left and right only, its antenna overhanging the top edge. Ask for
+mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which meets JLC's
+routed-edge rule but not its 0.4 mm V-cut one.
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)

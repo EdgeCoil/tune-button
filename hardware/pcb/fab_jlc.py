@@ -12,7 +12,8 @@ import sys
 # Where JLC's own footprint for a part differs from KiCad's, checked against the EasyEDA footprint
 # for each LCSC number: degrees to add to KiCad's rotation, and the offset (mm, part's own frame,
 # y up) from KiCad's origin to JLC's.
-ROTATE = {"C841192": 270, "C15127": 180, "C85364": 180, "C32574": 270}  # RT9080, AO3401A, SRV05-4, TP4054
+ROTATE = {"C841192": 270, "C15127": 180, "C85364": 180, "C32574": 270,  # RT9080, AO3401A, SRV05-4, TP4054
+          "C265453": 180}  # JST S7B-PH-SM4-TB: JLC draws it pins-down
 OFFSET = {"C165948": (0.0, 1.571)}  # HRO TYPE-C-31-M-12: JLC's origin is towards the pads
 
 bom_in, pos_in, bom_out, cpl_out = sys.argv[1:5]
