@@ -240,7 +240,10 @@ def crowded_pins(board):
     out = []
     for fp in board.Footprints():
         pins = [p for p in fp.Pads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH]
-        if not pins or any(p.IsOnLayer(pcbnew.F_Paste) for p in pins):
+        # Skip reflowed parts: pin-in-paste legs (the USB-C shell) and SMD parts whose plated holes are
+        # thermal vias (the module's ground pad).
+        if (not pins or any(p.IsOnLayer(pcbnew.F_Paste) for p in pins)
+                or any(p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD for p in fp.Pads())):
             continue
         switch = fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")
         layers = (pcbnew.F_Cu, pcbnew.B_Cu) if switch else (pcbnew.B_Cu if fp.GetLayer() == pcbnew.F_Cu else pcbnew.F_Cu,)

@@ -24,7 +24,8 @@ from kikit.annotations import TabAnnotation
 from kikit.panelize import Origin, Panel
 from kikit.panelize_ui_impl import polygonToSubstrate
 from kikit.units import mm
-from shapely.geometry import box
+from shapely.geometry import LineString, box
+from shapely.ops import unary_union
 
 from fab_jlc import jlc_place
 from gen import set_stackup
@@ -44,57 +45,72 @@ def source(name):
 
 
 def free_spans(path, side):
-    """Where along a board's left or right edge (y, mm, board coordinates) a tab may go: the straight
-    part of the edge, minus wherever a track, via or pad comes within EDGE_CLEAR of it, a part body
-    reaches it, or a mounting hole leaves less than 3 mm of board to it."""
+    """Where along one straight edge of a board (left, right, top or bottom; mm along the edge, board
+    coordinates) a tab may go: the edge minus wherever a track, via or pad comes within EDGE_CLEAR of
+    it, a part body reaches it, or a mounting hole leaves less than 3 mm of board to it."""
     b = pcbnew.LoadBoard(path)
-    # The straight part of the vertical edge: the outermost vertical Edge.Cuts segments.
-    vertical = [(pcbnew.ToMM(d.GetStart().x), sorted((pcbnew.ToMM(d.GetStart().y), pcbnew.ToMM(d.GetEnd().y))))
-                for d in b.GetDrawings() if d.GetLayer() == pcbnew.Edge_Cuts
-                and d.GetShape() == pcbnew.SHAPE_T_SEGMENT and d.GetStart().x == d.GetEnd().x]
-    x0, x1 = min(v[0] for v in vertical), max(v[0] for v in vertical)
-    x = x0 if side == "left" else x1
-    spans = [ys for vx, ys in vertical if abs(vx - x) < 0.001]
-    def near(xr):  # how far inside the edge a point is
-        return xr - x0 if side == "left" else x1 - xr
+    across = side in ("top", "bottom")  # then u runs across the edge in y, v along it in x
+
+    def uv(p):
+        x, y = pcbnew.ToMM(p.x), pcbnew.ToMM(p.y)
+        return (y, x) if across else (x, y)
+
+    def box_uv(bb):  # (u min, u max, v min, v max)
+        lo, hi = uv(bb.GetOrigin()), uv(bb.GetEnd())
+        return min(lo[0], hi[0]), max(lo[0], hi[0]), min(lo[1], hi[1]), max(lo[1], hi[1])
+
+    edges = []
+    for d in b.GetDrawings():
+        if d.GetLayer() == pcbnew.Edge_Cuts and d.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+            (ua, va), (ub, vb) = uv(d.GetStart()), uv(d.GetEnd())
+            if abs(ua - ub) < 1e-6:
+                edges.append((ua, sorted((va, vb))))
+    u0, u1 = min(e[0] for e in edges), max(e[0] for e in edges)
+    low = side in ("left", "top")
+    spans = [vs for eu, vs in edges if abs(eu - (u0 if low else u1)) < 0.001]
+
+    def near(u):  # how far inside the edge
+        return u - u0 if low else u1 - u
+
+    def near_box(bb):
+        a, z, _, _ = box_uv(bb)
+        return near(a if low else z)
 
     blocked = []
     for t in b.GetTracks():
         if t.GetClass() == "PCB_VIA":
-            p, r = t.GetPosition(), pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2
-            if near(pcbnew.ToMM(p.x)) - r < EDGE_CLEAR:
-                blocked.append((pcbnew.ToMM(p.y) - r - 0.5, pcbnew.ToMM(p.y) + r + 0.5))
+            (pu, pv), r = uv(t.GetPosition()), pcbnew.ToMM(t.GetWidth(pcbnew.F_Cu)) / 2
+            if near(pu) - r < EDGE_CLEAR:
+                blocked.append((pv - r - 0.5, pv + r + 0.5))
             continue
         # A track, sampled along its length: a diagonal leaving the edge only blocks where it is close.
-        (xa, ya), (xb, yb) = [(pcbnew.ToMM(v.x), pcbnew.ToMM(v.y)) for v in (t.GetStart(), t.GetEnd())]
+        (ua, va), (ub, vb) = uv(t.GetStart()), uv(t.GetEnd())
         half = pcbnew.ToMM(t.GetWidth()) / 2
         for k in range(101):
-            px, py = xa + (xb - xa) * k / 100, ya + (yb - ya) * k / 100
-            if near(px) - half < EDGE_CLEAR:
-                blocked.append((py - half - 0.3, py + half + 0.3))
+            pu, pv = ua + (ub - ua) * k / 100, va + (vb - va) * k / 100
+            if near(pu) - half < EDGE_CLEAR:
+                blocked.append((pv - half - 0.3, pv + half + 0.3))
     for p in b.GetPads():
-        bb = p.GetBoundingBox()
-        if near(pcbnew.ToMM(bb.GetLeft() if side == "left" else bb.GetRight())) < EDGE_CLEAR:
-            blocked.append((pcbnew.ToMM(bb.GetTop()) - 0.5, pcbnew.ToMM(bb.GetBottom()) + 0.5))
-    # Part bodies (their fab outline) only where they reach the edge itself.
+        if near_box(p.GetBoundingBox()) < EDGE_CLEAR:
+            _, _, a, z = box_uv(p.GetBoundingBox())
+            blocked.append((a - 0.5, z + 0.5))
+        # Mounting holes near the edge leave a thin web: a tab snapped beside one could crack into it.
+        if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH and near_box(p.GetBoundingBox()) < 3.0:
+            _, _, a, z = box_uv(p.GetBoundingBox())
+            blocked.append((a - 2.0, z + 2.0))
+    # Part bodies (their fab outline) where they reach or overhang the edge: the USB-C, the antenna.
     for fp in b.Footprints():
         body = pcbnew.BOX2I()
         for item in fp.GraphicalItems():
             if item.GetLayer() in (pcbnew.F_Fab, pcbnew.B_Fab):
                 body.Merge(item.GetBoundingBox())
-        if body.GetWidth() and near(pcbnew.ToMM(body.GetLeft() if side == "left" else body.GetRight())) < 0.2:
-            blocked.append((pcbnew.ToMM(body.GetTop()) - 0.5, pcbnew.ToMM(body.GetBottom()) + 0.5))
-    # Mounting holes near the edge leave a thin web: a tab snapped beside one could crack into it.
-    for p in b.GetPads():
-        if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH:
-            bb = p.GetBoundingBox()
-            if near(pcbnew.ToMM(bb.GetLeft() if side == "left" else bb.GetRight())) < 3.0:
-                blocked.append((pcbnew.ToMM(bb.GetTop()) - 2.0, pcbnew.ToMM(bb.GetBottom()) + 2.0))
+        if body.GetWidth() and near_box(body) < 0.2:
+            _, _, a, z = box_uv(body)
+            blocked.append((a - 1.0, z + 1.0))
     free = []
     for a, z in spans:
-        cuts = sorted(blocked)
         pos = a
-        for ba, bz in cuts:
+        for ba, bz in sorted(blocked):
             if bz <= pos or ba >= z:
                 continue
             if ba > pos:
@@ -102,28 +118,38 @@ def free_spans(path, side):
             pos = max(pos, bz)
         if pos < z:
             free.append((pos, z))
-    return [(a, z) for a, z in free if z - a >= MIN_TAB + 0.5], x0, x1
+    return [(a, z) for a, z in free if z - a >= MIN_TAB + 2 * FILLET + 0.5]
 
 
-def tab_positions(spans, lo, hi):
-    """(centre, width) tabs, two on an edge up to 40 mm long and three on a longer one, as near evenly
-    spaced over lo..hi as the free spans allow. A full tab is TAB wide with FILLET corners, which
-    lengthen its cut, so it needs a span that long; in a shorter span the tab is narrower (down to
-    MIN_TAB) and gets no fillets."""
-    count = 3 if hi - lo > 40 else 2
+def tab_positions(spans, lo, hi, count):
+    """Up to `count` (centre, width) tabs, as near evenly spaced over lo..hi as the free spans allow.
+    Every tab's corners are milled to FILLET (addMillFillets would round them anyway), and the bites
+    run round those fillets, so a tab needs a span of its width plus both fillets; a short span takes
+    a narrower tab, down to MIN_TAB."""
     picks = []
     for target in [lo + (hi - lo) * (i + 0.5) / count for i in range(count)]:
         best = None
         for a, z in spans:
-            full = z - a >= TAB + 2 * FILLET + 0.5
-            width = TAB if full else min(TAB - 0.1, z - a - 0.5)
-            reach = width / 2 + (FILLET if full else 0) + 0.25
+            width = min(TAB, z - a - 2 * FILLET - 0.5)
+            reach = width / 2 + FILLET + 0.25
             c = min(max(target, a + reach), z - reach)
             if best is None or abs(c - target) < abs(best[0] - target):
                 best = (c, width)
-        if best is not None and all(abs(best[0] - p) > TAB + 2 for p, _ in picks):
+        if best is not None and all(abs(best[0] - p) > TAB + 2 * FILLET + 1 for p, _ in picks):
             picks.append(best)
     return picks
+
+
+def part_bodies(board):
+    bodies = []
+    for fp in board.Footprints():
+        body = pcbnew.BOX2I()
+        for item in fp.GraphicalItems():
+            if item.GetLayer() in (pcbnew.F_Fab, pcbnew.B_Fab):
+                body.Merge(item.GetBoundingBox())
+        if body.GetWidth():
+            bodies.append(body)
+    return bodies
 
 
 def main():
@@ -147,78 +173,91 @@ def main():
         placed.append((name, x, dy, w, h))
         x += w + GAP
 
-    # Tabs: on each vertical edge that faces a neighbour or a rail, at the same height on both sides
-    # of a gap, where both edges are free.
-    def spans(name, side, oy):
-        return [(a + oy, z + oy) for a, z in free_spans(source(name), side)[0]]
+    # The frame: rails left and right, and bars across the top and bottom joining them. The bars keep
+    # FRAME_GAP from anything overhanging the boards (c3-jst's antenna, the USB-C faces), and more than
+    # two fillets from every board edge, or the milling fillets would bridge the gap.
+    minx, miny, maxx, maxy = panel.boardsBBox()
+    rail, railspace = int(RAIL * mm), int(RAIL_GAP * mm)
+    bodies = part_bodies(panel.board)
+    clear = int((2 * FILLET + 0.5) * mm)
+    top = min(miny - clear, min(bb.GetTop() for bb in bodies) - int(FRAME_GAP * mm))
+    bottom = max(maxy + clear, max(bb.GetBottom() for bb in bodies) + int(FRAME_GAP * mm))
+    left, right = minx - railspace - rail, maxx + railspace + rail
+
+    # Tabs: on each side edge that faces a neighbour or a rail (at the same height on both sides of a
+    # gap, where both edges are free), and on each top and bottom edge to the bars.
+    def spans(name, side, offset):
+        return [(a + offset, z + offset) for a, z in free_spans(source(name), side)]
 
     def overlap(s1, s2):
-        return [(max(a, c), min(z, d)) for a, z in s1 for c, d in s2 if min(z, d) - max(a, c) >= MIN_TAB + 0.5]
+        return [(max(a, c), min(z, d)) for a, z in s1 for c, d in s2
+                if min(z, d) - max(a, c) >= MIN_TAB + 2 * FILLET + 0.5]
 
-    tabs = []  # (substrate index, x, y, direction, width), mm
+    def count(length):
+        return 3 if length > 40 else 2 if length > 20 else 1
+
+    tabs = []  # (substrate index, x, y, direction into the board, width), mm
     for i, (name, bx, by, w, h) in enumerate(placed):
         if i == 0:
-            tabs += [(i, bx, y, (1, 0), tw) for y, tw in tab_positions(spans(name, "left", by), by, by + h)]
+            tabs += [(i, bx, y, (1, 0), tw) for y, tw in tab_positions(spans(name, "left", by), by, by + h, count(h))]
         if i + 1 < len(placed):
             nname, nx, ny, nw, nh = placed[i + 1]
-            shared = overlap(spans(name, "right", by), spans(nname, "left", ny))
-            for y, tw in tab_positions(shared, max(by, ny), min(by + h, ny + nh)):
+            lo, hi = max(by, ny), min(by + h, ny + nh)
+            for y, tw in tab_positions(overlap(spans(name, "right", by), spans(nname, "left", ny)), lo, hi, count(hi - lo)):
                 tabs += [(i, bx + w, y, (-1, 0), tw), (i + 1, nx, y, (1, 0), tw)]
         else:
-            tabs += [(i, bx + w, y, (-1, 0), tw) for y, tw in tab_positions(spans(name, "right", by), by, by + h)]
+            tabs += [(i, bx + w, y, (-1, 0), tw) for y, tw in tab_positions(spans(name, "right", by), by, by + h, count(h))]
+        n = 1 if w < 40 else 2
+        tabs += [(i, x, by, (0, 1), tw) for x, tw in tab_positions(spans(name, "top", bx), bx, bx + w, n)]
+        tabs += [(i, x, by + h, (0, -1), tw) for x, tw in tab_positions(spans(name, "bottom", bx), bx, bx + w, n)]
     for name, *_ in placed:
-        count = sum(1 for i, *_ in tabs if placed[i][0] == name)
-        if count < 3:
-            sys.exit(f"panel: only {count} tab ends on {name}")
+        ends = sum(1 for i, *_ in tabs if placed[i][0] == name)
+        if ends < 3:  # (c3-jst gets three: its right and top edges carry copper or the antenna)
+            sys.exit(f"panel: only {ends} tabs on {name}")
 
-    minx, miny, maxx, maxy = panel.boardsBBox()
-    railspace = int(RAIL_GAP * mm)
-    ghosts = [polygonToSubstrate(box(minx - 2 * railspace - mm, miny, minx - 2 * railspace, maxy)),
-              polygonToSubstrate(box(maxx + 2 * railspace, miny, maxx + 2 * railspace + mm, maxy))]
+    # Partition lines (a tab runs from its board to the line): between the boards and towards the
+    # rails, from stand-ins for the rails; above and below, the bars' centre lines.
+    ghosts = [polygonToSubstrate(box(minx - 2 * railspace - mm, top, minx - 2 * railspace, bottom)),
+              polygonToSubstrate(box(maxx + 2 * railspace, top, maxx + 2 * railspace + mm, bottom))]
     panel.buildPartitionLineFromBB(ghosts)
-    for i, tx, ty, direction, tw in tabs:
-        # Hold the pour back where the bites go, so no hole tears through copper.
-        keepout = panel.addKeepout(box(min(tx, tx + 1.2 * direction[0]) * mm, (ty - tw / 2 - 2) * mm,
-                                       max(tx, tx + 1.2 * direction[0]) * mm, (ty + tw / 2 + 2) * mm),
-                                   noTracks=False, noVias=False, noCopper=True)
+    bars = [LineString([(left, y), (right, y)]) for y in (top - rail // 2, bottom + rail // 2)]
+    for s in panel.substrates:
+        s.partitionLine = unary_union([s.partitionLine] + bars)
+    for i, tx, ty, (dx, dy), tw in tabs:
+        # Hold the pour back where the bites go, 1 mm past the end bites, so no hole meets copper.
+        along = tw / 2 + FILLET + 1
+        if dx:
+            area = box(min(tx, tx + 1.2 * dx) * mm, (ty - along) * mm, max(tx, tx + 1.2 * dx) * mm, (ty + along) * mm)
+        else:
+            area = box((tx - along) * mm, min(ty, ty + 1.2 * dy) * mm, (tx + along) * mm, max(ty, ty + 1.2 * dy) * mm)
+        keepout = panel.addKeepout(area, noTracks=False, noVias=False, noCopper=True)
         keepout.SetDoNotAllowPads(False)
         keepout.SetDoNotAllowFootprints(False)  # the bites themselves are NPTH footprints
-    # Full-width tabs get 1 mm fillets. A narrow tab gets none: a fillet lengthens the cut, and the
-    # bites along it would reach the copper that made the tab narrow.
-    cuts = []
-    for narrow in (False, True):
-        panel.clearTabsAnnotations()
-        for i, tx, ty, direction, tw in tabs:
-            if (tw < TAB) == narrow:
-                panel.substrates[i].annotations.append(
-                    TabAnnotation(None, (int(tx * mm), int(ty * mm)), direction, int(tw * mm)))
-        cuts += panel.buildTabsFromAnnotations(0 if narrow else int(FILLET * mm))
-    # A frame: the rails, and bars across the top and bottom joining them, clear of what overhangs
-    # the boards (c3-jst's antenna, the USB-C faces), so the rails don't depend on the boards.
-    rail = int(RAIL * mm)
-    bodies = []
-    for fp in panel.board.Footprints():
-        body = pcbnew.BOX2I()
-        for item in fp.GraphicalItems():
-            if item.GetLayer() in (pcbnew.F_Fab, pcbnew.B_Fab):
-                body.Merge(item.GetBoundingBox())
-        if body.GetWidth():
-            bodies.append(body)
-    top = min(miny, min(bb.GetTop() for bb in bodies)) - int(FRAME_GAP * mm)
-    bottom = max(maxy, max(bb.GetBottom() for bb in bodies)) + int(FRAME_GAP * mm)
-    left, right = minx - railspace - rail, maxx + railspace + rail
+        panel.substrates[i].annotations.append(
+            TabAnnotation(None, (int(tx * mm), int(ty * mm)), (dx, dy), int(tw * mm)))
+    cuts = panel.buildTabsFromAnnotations(int(FILLET * mm))
     for x0 in (left, right - rail):
         panel.appendSubstrate(box(x0, top - rail, x0 + rail, bottom + rail))
     for y0 in (top - rail, bottom):
         panel.appendSubstrate(box(left, y0, right, y0 + rail))
-    panel.addMillFillets(int(1 * mm))
-    # JLC's 1.152 mm tooling holes (1.448 mm mask opening) in the frame corners, and three fiducials
-    # 3.85 mm in from the rails' outer edges (JLC: the 2 mm opening 3.35 mm clear of the edge).
+    panel.addMillFillets(int(FILLET * mm))
+    # Each board must still come away at its tabs alone: material along its edge, beyond the tabs
+    # and their fillets, means the milling has bridged a gap.
+    whole = panel.boardSubstrate.substrates
+    for i, (name, *_) in enumerate(placed):
+        outline = panel.substrates[i].substrates
+        ring = outline.buffer(0.3 * mm).difference(outline)
+        joined = ring.intersection(whole).area / (0.3 * mm) / mm
+        allowed = sum(tw + 2 * FILLET + 1 for j, _, _, _, tw in tabs if j == i)
+        if joined > allowed:
+            sys.exit(f"panel: {name} is joined to the panel along {joined:.1f} mm, its tabs only {allowed:.1f} mm")
+    # JLC's 1.152 mm tooling holes (0.148 mm mask expansion) in the frame corners, and three
+    # fiducials 3.85 mm in from the rails' outer edges (JLC: the 2 mm opening 3.35 mm from the edge).
     panel.addCornerTooling(4, int(RAIL / 2 * mm), int(RAIL / 2 * mm), int(1.152 * mm),
-                           solderMaskMargin=int(1.448 * mm))
+                           solderMaskMargin=int(0.148 * mm))
     panel.addCornerFiducials(3, int(3.85 * mm), int(RAIL * mm + 4 * mm), int(1 * mm), int(2 * mm))
-    # Bites only across the tab itself (no prolongation: c3-jst's K4 runs close to the edge beside
-    # its narrow tab), set 0.25 mm into the board so the snapped edge is at or inside the outline.
+    # Bites along each tab's cut, fillets included, 0.25 mm into the board so the snapped edge is at
+    # or inside the outline.
     panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), int(0.25 * mm), 0)
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
@@ -235,6 +274,8 @@ def main():
     outline = board.GetBoardEdgesBoundingBox()
     print("panel:", ", ".join(f"{n} at ({bx:.1f}, {by:.1f})" for n, bx, by, *_ in placed),
           f"; {len(tabs)} tab ends; {pcbnew.ToMM(outline.GetWidth()):.1f} x {pcbnew.ToMM(outline.GetHeight()):.1f} mm")
+    for i, (name, *_) in enumerate(placed):
+        print(f"  {name}:", ", ".join(f"({tx:.1f}, {ty:.1f}) {tw:.1f} mm" for j, tx, ty, _, tw in tabs if j == i))
     export(path, placed)
 
 
