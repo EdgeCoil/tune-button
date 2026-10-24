@@ -4,7 +4,7 @@
 #
 # Generate, route, check and export both boards (or the ones named):
 #
-#   ./build.sh [xiao] [c3]
+#   ./build.sh [xiao] [c3] [c3-jst]
 #
 # Needs KiCad 9 (kicad-cli and its Python module), its symbol libraries (KICAD_SYMBOL_DIR if they
 # are not in /usr/share/kicad/symbols), Java 21 and Freerouting 2.1.0 (FREEROUTING=path/to/jar).
@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 variants=("$@")
-[ ${#variants[@]} -eq 0 ] && variants=(xiao c3)
+[ ${#variants[@]} -eq 0 ] && variants=(xiao c3 c3-jst)
 
 python3 gen.py "${variants[@]}" 2> >(grep -v -e 'assert' -e '^swig' >&2)
 for v in "${variants[@]}"; do

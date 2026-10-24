@@ -1,0 +1,4 @@
+(version 1)
+(rule "hand-soldered pins to pour"
+  (constraint clearance (min 0.4mm))
+  (condition "A.Pad_Type == 'Through-hole' && B.Type == 'Zone'"))

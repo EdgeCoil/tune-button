@@ -27,7 +27,7 @@ NS = uuid.UUID("6d1c5f0e-6f0a-4c43-9a59-2b1b8f3a7e10")
 KEY_PITCH = 19.05
 KEYCAP = 18.0  # a 1u cap's footprint; screw heads and labels stay outside it so they can be reached
 SCREW_HEAD = 4.0  # M2 pan head, with a little room for the driver
-W = 46.0  # board width; both versions
+W = 46.0  # board width of the two keyboard versions; c3-jst gives its own in extras["width"]
 
 
 def uid(*parts):
@@ -283,7 +283,74 @@ def variant_c3():
     return parts, H, [], silk, extras
 
 
-VARIANTS = {"xiao": variant_xiao, "c3": variant_c3}
+def variant_c3_jst():
+    """The c3's circuit with no switches on the board: the buttons wire to a 7-pin JST PH, which also
+    gives the LED (for an illuminated button) and 3V3. Every part is on the front, so JLC fits them all;
+    the board is the module's width plus a column, with the antenna past the top edge.
+
+    J3, cable end down: 1 GND, 2-5 K1-K4, 6 LED (through R15), 7 3V3. A button goes between its K pin
+    and GND. 3V3 is the RT9080's, shared with Wi-Fi's 350 mA bursts: budget 100 mA for what hangs on it."""
+    # 36 x 50: at 34 x 47 the autorouter never came out clean (32 attempts, 3 to 27 faults each). The
+    # extra goes into the channels it kept failing in: beside the module, under it, and the right column.
+    w, h = 36.0, 50.0
+    mx, my = 14.0, 6.8  # module origin; the antenna (the module's top 6.35 mm) overhangs the top edge
+    parts = [p for p in variant_c3()[0] if not p.ref.startswith(("SW1", "SW2", "SW3", "SW4", "H", "TP"))]
+    at = {
+        # Straps and reset in the strip left of the module, as on the c3.
+        "C5": (2.2, 2.0, 90), "R6": (2.2, 5.0, 90), "C6": (2.2, 8.0, 90), "R7": (2.2, 11.0, 90),
+        # Right of the module: the divider by VBAT_SENSE, the input resistors and the regulator.
+        # (The top row sits 1 mm down, so a track can pass above it with its edge clearance.)
+        "R10": (26.1, 2.0, 0), "R9": (26.1, 4.3, 0), "R11": (26.1, 6.5, 0), "C7": (26.0, 8.5, 0),
+        "R13": (32.4, 2.0, 0), "R14": (32.4, 4.5, 0), "C1": (32.4, 6.9, 0),
+        "U4": (29.7, 10.2, 180), "C4": (29.7, 13.0, 0), "C3": (33.6, 10.6, 90),
+        # Below the module: reset and boot, then the charger and load sharing.
+        "SW5": (5.7, 18.8, 0), "SW6": (14.6, 18.8, 0),
+        "U3": (22.5, 17.5, 0), "R3": (26.5, 17.5, 90), "C2": (28.5, 17.5, 90), "R4": (30.5, 17.5, 90),
+        "D1": (33.3, 17.5, 90), "Q1": (22.5, 22.0, 0), "D2": (26.7, 21.2, 0), "D4": (26.7, 23.7, 0),
+        "R5": (30.0, 22.0, 90), "D3": (33.3, 22.0, 90), "R12": (18.5, 24.0, 0),
+        # USB-C at the bottom left, as on the c3 relative to its edge; the battery on the right edge.
+        "J1": (7.5, h - 3.19, 0), "U2": (7.5, h - 11.6, 90), "R1": (6.5, h - 15.7, 90), "R2": (8.5, h - 15.7, 90),
+        "J2": (30.5, 34.1, 90),
+    }
+    for p in parts:
+        if p.ref in at:
+            p.at, p.rot, p.side = at[p.ref][:2], at[p.ref][2], "F"
+            if p.ref in ("D1", "D3"):
+                p.lcsc = "C84256"  # on the front now, so JLC fits them: a Basic red 0805
+        elif p.ref != "U1":
+            raise SystemExit(f"c3-jst: no place for {p.ref}")
+        else:
+            p.at = (mx, my)
+    parts += [
+        Part("J3", "Connector_Generic:Conn_01x07", "Connector_JST:JST_PH_S7B-PH-SM4-TB_1x07-1MP_P2.00mm_Horizontal",
+             "Buttons", {"1": "GND", "2": "K1", "3": "K2", "4": "K3", "5": "K4", "6": "LED_OUT", "7": "3V3"},
+             (26.0, h - 5.5), 0, mpn="JST S7B-PH-SM4-TB", lcsc="C265453"),
+        # The button wires leave the box's metal-free inside but are handled: clamp them to the rails.
+        Part("U5", "Power_Protection:SRV05-4", "Package_TO_SOT_SMD:SOT-23-6", "SRV05-4",
+             {"1": "K1", "2": "GND", "3": "K2", "4": "K3", "5": "3V3", "6": "K4"},
+             (20.5, 36.0), 0, mpn="SRV05-4-P-T7", lcsc="C85364"),
+        R("R15", "1k", "LED", "LED_OUT", (23.0, 30.5), 0),
+        Part("TP1", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "TXD", {"1": "TXD"}, (9.5, 26.5),
+             note="debug UART"),
+        Part("TP2", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "RXD", {"1": "RXD"}, (12.0, 26.5),
+             note="debug UART"),
+    ]
+    parts += holes([(3.0, 29.0), (17.0, 31.0)])
+    silk = [("text", 5.7, 22.8, "RESET"), ("text", 14.6, 22.8, "BOOT"), ("text", 9.5, 28.4, "TX"),
+            ("text", 12.0, 28.4, "RX"), ("text", 18.4, h - 8.4, "1"),
+            ("text", 24.9, 35.1, "+")]
+    extras = {"width": w,
+              # The mark and text go behind J3, which has only SMD pads: the back is the main routing
+              # layer between the module and the connectors, and no back track may cross the mark.
+              "logo": (21.0, h - 8.5, 7.0),
+              "back_text": [(26.0, h - 13.5, "J3: 1 GND  2-5 K1-K4", 1.0), (26.0, h - 11.9, "6 LED  7 3V3", 1.0),
+                            (30.6, h - 10.4, "tune-button", 1.0), (30.6, h - 8.6, "c3-jst rev A", 1.0),
+                            (30.6, h - 6.8, "edgecoil.dev", 1.0)],
+              "jlc_mark": (26.0, h - 3.7, "B")}
+    return parts, h, [], silk, extras
+
+
+VARIANTS = {"xiao": variant_xiao, "c3": variant_c3, "c3-jst": variant_c3_jst}
 
 
 # ---------------------------------------------------------------- symbol library handling
@@ -368,7 +435,8 @@ def write_schematic(name, parts, path):
     def instance(lib_id, ref, value, fp, x, y, pins, extra=()):
         su = uid(name, "sym", ref)
         s = [f'\t(symbol\n\t\t(lib_id "{lib_id}")\n\t\t(at {fmt(x)} {fmt(y)} 0)\n\t\t(unit 1)'
-             f'\n\t\t(exclude_from_sim no)\n\t\t(in_bom {"no" if ref.startswith("#") else "yes"})'
+             # Test pads are bare copper, not parts: out of the BOM, as their footprint already is.
+             f'\n\t\t(exclude_from_sim no)\n\t\t(in_bom {"no" if ref.startswith("#") or lib_id == "Connector:TestPoint" else "yes"})'
              f'\n\t\t(on_board {"no" if ref.startswith("#") else "yes"})\n\t\t(dnp no)\n\t\t(uuid "{su}")']
         hide = " (hide yes)" if ref.startswith("#") else ""
         for k, v, dy, h in [("Reference", ref, -2.54, hide), ("Value", value, 2.54, ""),
@@ -645,8 +713,9 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         for item in fp.GraphicalItems():
             if item.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS) and isinstance(item, pcbnew.PCB_SHAPE):
                 item.SetWidth(max(item.GetWidth(), pcbnew.FromMM(0.15)))
-    outline(board, W, h, extras.get("notch"))
-    inset = [(0.3, 0.3), (W - 0.3, 0.3), (W - 0.3, h - 0.3), (0.3, h - 0.3)]
+    w = extras.get("width", W)
+    outline(board, w, h, extras.get("notch"))
+    inset = [(0.3, 0.3), (w - 0.3, 0.3), (w - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
     zone(board, nets["GND"], pcbnew.B_Cu, inset)
     for k in keepouts:
@@ -701,7 +770,7 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
             if len(item) > 4:
                 t.SetTextAngleDegrees(item[4])
             board.Add(t)
-    back_text = extras.get("back_text", [(W / 2, h - 6.0, f"tune-button {name}\nedgecoil.dev  rev A", 1.0)])
+    back_text = extras.get("back_text", [(w / 2, h - 6.0, f"tune-button {name}\nedgecoil.dev  rev A", 1.0)])
     for x, y, text, size in back_text:
         t = pcbnew.PCB_TEXT(board)
         t.SetText(text); t.SetPosition(mm(x, y)); t.SetLayer(pcbnew.B_SilkS); t.SetMirrored(True)
@@ -749,7 +818,7 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     for ref in extras.get("hide_refs", []):
         board.FindFootprintByReference(ref).Reference().SetVisible(False)
-    place_labels(board, h, extras.get("notch"))
+    place_labels(board, w, h, extras.get("notch"))
     # No via under a part label or front text (BOOT, the JLC mark...) either: a via cap breaks up
     # 1 mm text.
     boxes = [fp.Reference().GetBoundingBox() for fp in board.Footprints()
@@ -838,7 +907,7 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stro
             board.Add(seg)
 
 
-def place_labels(board, h, notch=None):
+def place_labels(board, w, h, notch=None):
     """Put each part's reference in the first spot beside it that covers no pad, no part body and no
     other label, so the silkscreen stays readable once the parts are on. MX switch labels stay where
     the footprint puts them: their caps cover that whole area anyway."""
@@ -880,7 +949,7 @@ def place_labels(board, h, notch=None):
     texts = {layer: [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
                      if d.GetLayer() == layer and (isinstance(d, pcbnew.PCB_TEXT) or d.GetShape() == pcbnew.SHAPE_T_SEGMENT)]
              for layer in bodies}
-    area = pcbnew.BOX2I(mm(0.6, 0.6), mm(W - 1.2, h - 1.2))
+    area = pcbnew.BOX2I(mm(0.6, 0.6), mm(w - 1.2, h - 1.2))
 
     def owner(b, layer):
         """The part whose body is clearly nearest the label (by 0.25 mm), so it reads as its own part's."""
@@ -990,7 +1059,7 @@ def main(names):
         root = write_schematic(name, parts, base + ".kicad_sch")
         write_board(name, parts, h, keepouts, silk, extras, base + ".kicad_pcb", root)
         write_project(name, base + ".kicad_pro")  # Save() may have rewritten it
-        print(f"{name}: {W:.1f} x {h:.1f} mm, {len(parts)} footprints")
+        print(f"{name}: {extras.get('width', W):.1f} x {h:.1f} mm, {len(parts)} footprints")
 
 
 if __name__ == "__main__":

@@ -1,18 +1,24 @@
 # Four-key PCBs
 
-Two boards for a four-key tune-button, each with four Cherry MX switches in a 2 × 2 grid at the
-standard 19.05 mm pitch:
+Three boards for a four-key tune-button. Two carry four Cherry MX switches in a 2 × 2 grid at the
+standard 19.05 mm pitch; the third, `c3-jst/`, is the C3 board's circuit with the switches off the
+board, on wires to a JST connector, so it can be much smaller:
 
-| | `xiao/` | `c3/` |
-|---|---|---|
-| Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its PCB antenna sits over a notch cut out of the top-left corner, with no board under it |
-| Size | 46 × 67 mm | 46 × 69.7 mm |
-| Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case |
-| USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna |
-| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask |
-| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) |
-| Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket |
-| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) |
+| | `xiao/` | `c3/` | `c3-jst/` |
+|---|---|---|---|
+| Brain | Seeed XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its PCB antenna sits over a notch cut out of the top-left corner, with no board under it | The same module; its antenna overhangs the top edge, with no board under it |
+| Size | 46 × 67 mm | 46 × 69.7 mm | 36 × 50 mm |
+| Keys | 4 MX on the board | 4 MX on the back | J3, a 7-pin JST-PH (2 mm): 1 GND, 2–5 K1–K4, 6 LED (through 1 kΩ), 7 3V3. Each button goes between its K pin and GND |
+| Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name, URL and the J3 pin list on the back, behind J3 |
+| USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna | Bottom edge, left; J3 beside it on the right, the battery on the right edge |
+| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2 |
+| USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
+| Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
+| Assembly | Hand: 4 SMD passives, an LED, a diode, sockets, switches | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
+
+On `c3-jst`, J3's key lines have their own ESD array (U5, a second SRV05-4), since they run out on
+wires to buttons people touch. J3's 3V3 is the regulator's output, shared with the module's 350 mA
+Wi-Fi bursts: keep what hangs on it under about 100 mA.
 
 **Rev A is unbuilt and untested.** Both boards pass KiCad's electrical rules check and its design
 rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
@@ -20,7 +26,7 @@ or powered, and the firmware does not support four keys yet (see *Firmware*).
 
 ## Pin map
 
-| Signal | XIAO board | C3 board | Notes |
+| Signal | XIAO board | C3 boards | Notes |
 |---|---|---|---|
 | K1 (top left) | D1 / GPIO3 | GPIO3 | Same as the like button today |
 | K2 (top right) | D2 / GPIO4 | GPIO4 | Same as the playlist button today |
@@ -123,7 +129,8 @@ Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MO
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)
 are **Preferred** parts, which also carry no fee. Four types are **Extended**, at a fee per type per
 order: the ESP32-C3-WROOM-02 module, the USB-C socket, the JST battery socket and the RT9080
-regulator. Catalogue status changes; the build doesn't check it.
+regulator. `c3-jst` adds a fifth, the 7-pin JST button socket; its LEDs are Basic parts (C84256),
+since JLC fits them there. Catalogue status changes; the build doesn't check it.
 
 The EdgeCoil mark, name and URL on the back silkscreen are not covered by the board licence (see
 [`LICENSES/LicenseRef-EdgeCoil-Mark.txt`](../../LICENSES/LicenseRef-EdgeCoil-Mark.txt)). To build
