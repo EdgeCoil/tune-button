@@ -45,10 +45,11 @@ def source(name):
     return os.path.join(HERE, name, f"tune-button-{name}.kicad_pcb")
 
 
-def free_spans(path, side):
+def free_spans(path, side, connectors=False):
     """Where along one straight edge of a board (left, right, top or bottom; mm along the edge, board
     coordinates) a tab may go: the edge minus wherever a track, via or pad comes within EDGE_CLEAR of
-    it, a part body reaches it, or a mounting hole leaves less than 3 mm of board to it."""
+    it, a part body reaches it, or a mounting hole leaves less than 3 mm of board to it. With
+    `connectors`, also off the edge within 2.25 mm of a connector's (J*) pads: JLC's 2 mm keep-out."""
     b = pcbnew.LoadBoard(path)
     across = side in ("top", "bottom")  # then u runs across the edge in y, v along it in x
 
@@ -109,6 +110,13 @@ def free_spans(path, side):
             if near_box(box) < 3.0:
                 _, _, a, z = box_uv(box)
                 blocked.append((a - 3.0, z + 3.0))
+    if connectors:
+        for fp in b.Footprints():
+            if fp.GetReference().startswith("J"):
+                for pd in fp.Pads():
+                    if near_box(pd.GetBoundingBox()) < 2.25:
+                        _, _, a, z = box_uv(pd.GetBoundingBox())
+                        blocked.append((a - 2.25, z + 2.25))
     # Part bodies (their fab outline) where they reach or overhang the edge: the USB-C, the antenna.
     for fp in b.Footprints():
         body = pcbnew.BOX2I()
@@ -132,20 +140,27 @@ def free_spans(path, side):
     return [(a, z) for a, z in free if z - a >= MIN_TAB + 2 * FILLET + 0.5]
 
 
-def tab_positions(spans, lo, hi, count):
+def tab_positions(spans, lo, hi, count, pref=()):
     """Up to `count` (centre, width) tabs, as near evenly spaced over lo..hi as the free spans allow.
     Every tab's corners are milled to FILLET (addMillFillets would round them anyway), and the bites
     run round those fillets, so a tab needs a span of its width plus both fillets; a short span takes
-    a narrower tab, down to MIN_TAB."""
+    a narrower tab, down to MIN_TAB. Where a span holds part of `pref` (the edge clear of connectors
+    too), a tab in that span goes there."""
+    def place(target, a, z):
+        width = min(TAB, z - a - 2 * FILLET - 0.5)
+        reach = width / 2 + FILLET + 0.25
+        return min(max(target, a + reach), z - reach), width
+
     picks = []
     for target in [lo + (hi - lo) * (i + 0.5) / count for i in range(count)]:
-        best = None
+        best, home = None, None
         for a, z in spans:
-            width = min(TAB, z - a - 2 * FILLET - 0.5)
-            reach = width / 2 + FILLET + 0.25
-            c = min(max(target, a + reach), z - reach)
-            if best is None or abs(c - target) < abs(best[0] - target):
-                best = (c, width)
+            c = place(target, a, z)
+            if best is None or abs(c[0] - target) < abs(best[0] - target):
+                best, home = c, (a, z)
+        inner = [place(target, a, z) for a, z in pref if home and home[0] <= a and z <= home[1]]
+        if inner:
+            best = min(inner, key=lambda c: abs(c[0] - target))
         if best is not None and all(abs(best[0] - p) > TAB + 2 * FILLET + 1 for p, _ in picks):
             picks.append(best)
     return picks
@@ -197,8 +212,8 @@ def main():
 
     # Tabs: on each side edge that faces a neighbour or a rail (at the same height on both sides of a
     # gap, where both edges are free), and on each top and bottom edge to the bars.
-    def spans(name, side, offset):
-        return [(a + offset, z + offset) for a, z in free_spans(source(name), side)]
+    def spans(name, side, offset, connectors=False):
+        return [(a + offset, z + offset) for a, z in free_spans(source(name), side, connectors)]
 
     def overlap(s1, s2):
         return [(max(a, c), min(z, d)) for a, z in s1 for c, d in s2
@@ -210,17 +225,18 @@ def main():
     tabs = []  # (substrate index, x, y, direction into the board, width), mm
     for i, (name, bx, by, w, h) in enumerate(placed):
         if i == 0:
-            tabs += [(i, bx, y, (1, 0), tw) for y, tw in tab_positions(spans(name, "left", by), by, by + h, count(h))]
+            tabs += [(i, bx, y, (1, 0), tw) for y, tw in tab_positions(spans(name, "left", by), by, by + h, count(h), spans(name, "left", by, True))]
         if i + 1 < len(placed):
             nname, nx, ny, nw, nh = placed[i + 1]
             lo, hi = max(by, ny), min(by + h, ny + nh)
-            for y, tw in tab_positions(overlap(spans(name, "right", by), spans(nname, "left", ny)), lo, hi, count(hi - lo)):
+            for y, tw in tab_positions(overlap(spans(name, "right", by), spans(nname, "left", ny)), lo, hi, count(hi - lo),
+                                  overlap(spans(name, "right", by, True), spans(nname, "left", ny, True))):
                 tabs += [(i, bx + w, y, (-1, 0), tw), (i + 1, nx, y, (1, 0), tw)]
         else:
-            tabs += [(i, bx + w, y, (-1, 0), tw) for y, tw in tab_positions(spans(name, "right", by), by, by + h, count(h))]
+            tabs += [(i, bx + w, y, (-1, 0), tw) for y, tw in tab_positions(spans(name, "right", by), by, by + h, count(h), spans(name, "right", by, True))]
         n = 1 if w < 40 else 2
-        tabs += [(i, x, by, (0, 1), tw) for x, tw in tab_positions(spans(name, "top", bx), bx, bx + w, n)]
-        tabs += [(i, x, by + h, (0, -1), tw) for x, tw in tab_positions(spans(name, "bottom", bx), bx, bx + w, n)]
+        tabs += [(i, x, by, (0, 1), tw) for x, tw in tab_positions(spans(name, "top", bx), bx, bx + w, n, spans(name, "top", bx, True))]
+        tabs += [(i, x, by + h, (0, -1), tw) for x, tw in tab_positions(spans(name, "bottom", bx), bx, bx + w, n, spans(name, "bottom", bx, True))]
     for name, *_ in placed:
         ends = sum(1 for i, *_ in tabs if placed[i][0] == name)
         if ends < 3:  # (c3-jst gets three: its right and top edges carry copper or the antenna)
@@ -247,8 +263,8 @@ def main():
         panel.substrates[i].annotations.append(
             TabAnnotation(None, (int(tx * mm), int(ty * mm)), (dx, dy), int(tw * mm)))
     cuts = panel.buildTabsFromAnnotations(int(FILLET * mm))
-    # JLC wants a tab 2 mm from a connector's pads; where no other edge is free (c3's J2 and c3-jst's J3
-    # face theirs), the bites go 0.25 mm outside the board instead of inside, moving the break line
+    # JLC wants a tab 2 mm from a connector's pads; tab_positions keeps one there where its span allows.
+    # Where it doesn't (c3-jst's right edge, beside J2 and J3), the bites go 0.25 mm outside the board instead of inside, moving the break line
     # 0.5 mm further from the pads, and the README says to cut those tabs rather than snap them.
     pads = [p.GetBoundingBox() for fp in panel.board.Footprints() if fp.GetReference().startswith("J")
             for p in fp.Pads()]
@@ -291,7 +307,9 @@ def main():
     panel.makeMouseBites(near, int(0.5 * mm), int(0.8 * mm), int(-0.25 * mm), 0)
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
-    # KiKit's own refill runs before it copies the rules across.
+    # KiKit's own refill runs before it copies the rules across. Pour that a tab keepout cuts off from
+    # the rest is dropped as an island (c3-jst: 2.7 mm2 by its top tab, 0.7 mm2 beside J3; no pad on
+    # either), so the copper can change a little past the keepouts too.
     board = pcbnew.LoadBoard(path)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     # JLC replaces only the order-number marker named in the order: keep the c3's, drop the others.
