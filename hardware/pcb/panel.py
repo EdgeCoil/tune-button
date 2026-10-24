@@ -322,7 +322,8 @@ def main():
     # Bites along each tab's cut, fillets included, 0.25 mm into the board so the snapped edge is at
     # or inside the outline.
     # KiKit spreads int(length / spacing) + 1 holes evenly over each cut: 0.8 mm asked gives 0.80-0.83
-    # mm here. Closer (JLC suggests 0.7-0.8) would leave webs under the 0.25 mm hole-to-hole rule.
+    # mm here, except on c3-jst's two narrower cut tabs (4 holes at 0.86-0.96 mm; a fifth would leave
+    # a 0.22 mm web, and JLC's guide drops a hole or two beside a connector anyway). Closer (JLC suggests 0.7-0.8) would leave webs under the 0.25 mm hole-to-hole rule.
     panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), int(0.25 * mm), 0)
     panel.makeMouseBites(near, int(0.5 * mm), int(0.8 * mm), int(-0.25 * mm), 0)
     panel.save(reconstructArcs=True)

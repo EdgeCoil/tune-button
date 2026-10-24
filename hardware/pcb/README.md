@@ -136,7 +136,8 @@ board, ask for mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm f
 meets JLC's routed-edge rule but not its 0.4 mm V-cut one. On `c3-jst`, add a remark placing the tabs:
 on the left edge only between 14 and 25 mm from the top (below that, a mounting hole, a VBUS track
 0.7 mm in and C1, a capacitor that cracks if the board flexes next to it), and on the right edge only
-between 25 and 29 or 39 and 45 mm (higher up is C8, another such capacitor). Both right-edge windows
+between 25 and 28.5 or 39.5 and 44.5 mm (higher up is C8, another such capacitor; the ends keep
+the bites 1.5 mm from J2's and J3's pads). Both right-edge windows
 are within 2 mm of J2's and J3's anchor pads: cut tabs there with flush cutters rather than snapping them.
 
 ### All three on one panel (Standard assembly)
@@ -156,12 +157,14 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
 - Mouse-bite tabs join the boards to each other and to the frame. They go only where no track,
   via or pad comes within 1 mm of the edge, at least 2 mm from a mounting hole, and never under an
   overhanging part. Each tab has 1 mm fillets with bites round them: 0.5 mm holes at about 0.8 mm
-  pitch, set 0.25 mm inside the board.
+  pitch (0.86-0.96 mm on c3-jst's two cut tabs), set 0.25 mm inside the board. The tabs are 3 mm wide
+  (2.3-2.9 mm on c3-jst) and widen to about 5 mm through their fillets; JLC's capabilities table asks
+  for 5 mm, so if its review queries them, that is the answer.
   The ground pour is held back around each tab. `panel.py` checks that each board is joined to the
   panel only at its tabs.
 - `c3-jst` has five tabs: one on its left shared with the C3, two to the right rail, one to the top
   bar and one to the bottom bar. No tab comes within 3 mm of an 0805 or larger ceramic capacitor,
-  which cracks when the board flexes (C1 low on the left edge, C8 high on the right), nor within
+  which cracks when the board flexes (C1 low on the left edge; C8, 3.5 mm below the top tab), nor within
   1.5 mm of any pad (JLC's mouse-bite rule; `panel.py` stops if one does). Its top edge carries the
   antenna. A tab goes at least 2 mm from a connector's pads (JLC's keep-out) wherever its edge allows;
   the two on the right edge can't, and end about 1.8 mm from the anchor pads of the battery socket J2
