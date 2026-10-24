@@ -11,7 +11,8 @@ around each tab.
 The frame carries four tooling holes and three fiducials. The panel BOM and placement file are written
 here too, with fab_jlc.py's per-part corrections, every reference prefixed with its board.
 
-    python3 panel.py      (after ./build.sh; needs KiKit 1.8, pip install kikit)
+    python3 panel.py      (after ./build.sh; needs KiKit 1.8.1 where KiCad's pcbnew module is visible,
+                           e.g. python3 -m venv --system-site-packages v && v/bin/pip install kikit==1.8.1)
 """
 import csv
 import os

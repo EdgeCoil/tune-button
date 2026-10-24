@@ -140,7 +140,9 @@ on the left edge between 18 and 46 mm from the top, and on the right edge only b
 If the ESP32 module needs Standard assembly, which wants at least 70 × 70 mm, order the three boards
 as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (148 × 87 mm) from
 the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes `panel/fab/`. Run
-`./build.sh` first, then `python3 panel.py` with KiKit installed (`pip install kikit`).
+`./build.sh` first, then `python3 panel.py` with KiKit 1.8.1 installed where Python can also see KiCad's
+`pcbnew` module (for example a venv made with `--system-site-packages`, then `pip install kikit==1.8.1`):
+the panel depends on KiKit's internals, such as how it spaces the bites.
 
 - The boards sit side by side (XIAO, C3, `c3-jst`) in a 6 mm frame: rails on the left and right,
   and bars across the top and bottom. The bars stay at least 2.5 mm from every board edge and
