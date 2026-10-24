@@ -361,7 +361,10 @@ def variant_c3_jst():
               # Parts sit close here: a label 0.25 mm from its part and 0.6 mm from the next read as the
               # next one's (R9, C4, U3 in audits), so a label must be clearly nearer its own part.
               "label_margin": 0.5,
-              "jlc_mark": (26.0, h - 3.7, "B")}
+              "jlc_mark": (26.0, h - 3.7, "B"),
+              # A back 3V3 track runs 1.09 mm from the top edge at the antenna base; the pour between it
+              # and the edge would be a 0.29 mm strip held at one end (audit round 8), so none goes there.
+              "back_pour_notch": (7.0, 21.0, 0.9)}
     return parts, h, [], silk, extras
 
 
@@ -732,7 +735,11 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     outline(board, w, h, extras.get("notch"))
     inset = [(0.3, 0.3), (w - 0.3, 0.3), (w - 0.3, h - 0.3), (0.3, h - 0.3)]
     zone(board, nets["GND"], pcbnew.F_Cu, inset)
-    zone(board, nets["GND"], pcbnew.B_Cu, inset)
+    back = inset
+    if "back_pour_notch" in extras:  # (x0, x1, y): no back pour above y between x0 and x1
+        x0, x1, y = extras["back_pour_notch"]
+        back = [(0.3, 0.3), (x0, 0.3), (x0, y), (x1, y), (x1, 0.3)] + inset[1:]
+    zone(board, nets["GND"], pcbnew.B_Cu, back)
     for k in keepouts:
         zone(board, None, None, k, keepout=True)
     for cx, cy, r in extras.get("part_free", []):

@@ -11,7 +11,7 @@ board, on wires to a JST connector, so it can be much smaller:
 | Keys | 4 MX on the board | 4 MX on the back | J3, a 7-pin JST-PH (2 mm): 1 GND, 2–5 K1–K4, 6 LED (through 330 Ω: about 4 mA into a red LED), 7 3V3. Each button goes between its K pin and GND |
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name, URL and the J3 pin list on the back, behind J3 |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna | Bottom edge, left; J3 beside it on the right, the battery on the right edge |
-| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. Use screw heads under 4.8 mm across, or nylon washers: a VBUS track runs 2.4 mm from H2's centre. Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
+| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. At H2 use a nylon screw, or nylon washers on both faces: K2 (front) and VBUS (back) run 1.6 mm from its centre, under any metal head or nut. H1's nearest copper is 2.5 mm out. Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
 | Assembly | Hand: 4 SMD passives, an LED, a diode, the battery socket and header, the XIAO sockets, switches (on the panel, JLC fits all but the switches) | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
@@ -132,8 +132,9 @@ the bottom edge and the antenna overhangs the notch at the top. `c3-jst` (36 × 
 Economic, and rails on the left and right only, its antenna overhanging the top edge. For either C3
 board, ask for mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which
 meets JLC's routed-edge rule but not its 0.4 mm V-cut one. On `c3-jst`, add a remark placing the tabs:
-on the left edge between 18 and 46 mm from the top, and on the right edge only between 42 and 45 mm
-(a track runs 0.4 mm inside the rest of that edge).
+on the left edge only between 14 and 25 mm from the top (below that, a mounting hole, a VBUS track
+0.7 mm in and C1, a capacitor that cracks if the board flexes next to it), and on the right edge between
+3 and 8, 25 and 29, or 39 and 45 mm.
 
 ### All three on one panel (Standard assembly)
 
@@ -155,13 +156,14 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   pitch, set 0.25 mm inside the board.
   The ground pour is held back around each tab. `panel.py` checks that each board is joined to the
   panel only at its tabs.
-- `c3-jst` has three tabs: two to the C3 and one to the bottom bar, in front of J3's mouth. Its
-  right edge carries a track and its top edge the antenna. Two tabs end about 1.2 mm from a
-  connector's anchor pads, inside JLC's 2 mm keep-out: the C3's lower right-hand tab (beside its
-  battery socket J2) and `c3-jst`'s bottom tab (in front of J3). Their bites sit outside the board
-  edge instead (so they stop where the fillets start), and **cut those two tabs with flush cutters
-  rather than snapping them**, so the bending doesn't crack the connectors' joints. File the tab
-  remnants flush.
+- `c3-jst` has six tabs: one on its left to the C3, three to the right rail, one to the top bar and
+  one to the bottom bar. Most of its left edge is closed to tabs: a mounting hole, a VBUS track 0.7 mm in,
+  and C1 (no tab comes within 3 mm of an 0805 or larger ceramic capacitor, which cracks when the board
+  flexes). Its top edge carries the antenna. Three of its tabs end 1.2-1.3 mm from a connector's anchor
+  pads, inside JLC's 2 mm keep-out: the two lower right-edge tabs (beside the battery socket J2, and
+  beside J3) and the bottom tab (in front of J3). Their bites sit outside the board edge instead (so
+  they stop where the fillets start), and **cut those three tabs with flush cutters rather than
+  snapping them**, so the bending doesn't crack the connectors' joints. File the tab remnants flush.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
   `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. Add a remark that the
   modules' antennas and the USB-C sockets overhang their boards' edges by design. JLC charges a

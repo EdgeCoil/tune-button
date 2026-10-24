@@ -99,6 +99,16 @@ def free_spans(path, side):
         if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH and near_box(p.GetBoundingBox()) < 3.0:
             _, _, a, z = box_uv(p.GetBoundingBox())
             blocked.append((a - 2.0, z + 2.0))
+    # Ceramic capacitors of 0805 and up crack when the board flexes, and snapping a tab flexes it: none
+    # within 3 mm of a tab (c3-jst's C1 on VBUS, audit round 8).
+    for fp in b.Footprints():
+        if fp.GetReference().startswith("C") and any(k in fp.GetFPIDAsString() for k in ("0805", "1206", "1210")):
+            box = pcbnew.BOX2I()
+            for pd in fp.Pads():
+                box.Merge(pd.GetBoundingBox())
+            if near_box(box) < 3.0:
+                _, _, a, z = box_uv(box)
+                blocked.append((a - 3.0, z + 3.0))
     # Part bodies (their fab outline) where they reach or overhang the edge: the USB-C, the antenna.
     for fp in b.Footprints():
         body = pcbnew.BOX2I()
