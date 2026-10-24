@@ -304,7 +304,10 @@ def variant_c3_jst():
         # Right of the module: the divider by VBAT_SENSE, the input resistors and the regulator.
         # (The top row sits 1 mm down, so a track can pass above it with its edge clearance.)
         "R10": (26.1, 2.0, 0), "R9": (26.1, 4.3, 0), "R11": (26.1, 6.5, 0), "C7": (26.0, 8.5, 0),
-        "R13": (32.4, 2.0, 0), "R14": (32.4, 4.5, 0), "C1": (32.4, 6.9, 0),
+        # C1 and its 2 x 1 ohm damper sit by the USB-C (J1), not by the regulator: up at the top right they
+        # were ~45 mm of track (about 36 nH) from J1, and a hot-plug with no cell rang VBUS to 9.7-11.7 V
+        # in the routed-copper simulation (sim11) against 5.5-5.9 V on the c3.
+        "R13": (2.0, 35.0, 90), "R14": (4.35, 35.0, 90), "C1": (3.2, 39.4, 0),
         "U4": (29.7, 10.2, 180), "C4": (29.7, 13.0, 0), "C3": (33.6, 10.6, 90),
         # Below the module: reset and boot, then the charger and load sharing.
         "SW5": (5.7, 18.8, 0), "SW6": (14.6, 18.8, 0),
