@@ -12,6 +12,7 @@ DRC parity check compares the netlist KiCad reads back from the schematic agains
 
     python3 gen.py [xiao|c3|c3-jst ...]     then ./build.sh to route, check and export
 """
+import json
 import math
 import os
 import re
@@ -351,9 +352,11 @@ def variant_c3_jst():
                             (30.6, h - 12.8, "6 LED 7 3V3", 1.0),
                             (30.6, h - 10.4, "tune-button", 1.0), (30.6, h - 8.6, "c3-jst rev A", 1.0),
                             (30.6, h - 6.8, "edgecoil.dev", 1.0)],
-              # TX/RX and RESET/BOOT name the pads and switches; U3's and R9's only spots read as their
-              # neighbours'.
-              "hide_refs": ["TP1", "TP2", "U3", "SW6", "R9"],
+              # TX/RX and RESET/BOOT name the pads and switches.
+              "hide_refs": ["TP1", "TP2", "SW6"],
+              # Parts sit close here: a label 0.25 mm from its part and 0.6 mm from the next read as the
+              # next one's (R9, C4, U3 in audits), so a label must be clearly nearer its own part.
+              "label_margin": 0.5,
               "jlc_mark": (26.0, h - 3.7, "B")}
     return parts, h, [], silk, extras
 
@@ -826,7 +829,14 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     for ref in extras.get("hide_refs", []):
         board.FindFootprintByReference(ref).Reference().SetVisible(False)
-    place_labels(board, w, h, extras.get("notch"))
+    # Labels keep off the vias too (the frozen ones from routing.json and gen.py's own), since each label
+    # gets a via-free zone below.
+    frozen = os.path.join(HERE, name, "routing.json")
+    vias = [(i["via"][0], i["via"][1], i["d"]) for i in (json.load(open(frozen)) if os.path.exists(frozen) else [])
+            if "via" in i]
+    vias += [(t.GetPosition().x, t.GetPosition().y, t.GetWidth(pcbnew.F_Cu)) for t in board.GetTracks()
+             if t.GetClass() == "PCB_VIA"]
+    place_labels(board, w, h, extras.get("notch"), extras.get("label_margin", 0.25), vias)
     # No via under a part label or front text (BOOT, the JLC mark...) either: a via cap breaks up
     # 1 mm text.
     boxes = [fp.Reference().GetBoundingBox() for fp in board.Footprints()
@@ -915,7 +925,7 @@ def logo(board, cx, cy, width, svg=os.path.join(HERE, "edgecoil-mark.svg"), stro
             board.Add(seg)
 
 
-def place_labels(board, w, h, notch=None):
+def place_labels(board, w, h, notch=None, margin=0.25, vias=()):
     """Put each part's reference in the first spot beside it that covers no pad, no part body and no
     other label, so the silkscreen stays readable once the parts are on. MX switch labels stay where
     the footprint puts them: their caps cover that whole area anyway."""
@@ -954,19 +964,20 @@ def place_labels(board, w, h, notch=None):
         for layer in bodies:
             bodies[layer]["notch"] = pcbnew.BOX2I(mm(0, 0), mm(notch[0] + 0.5, notch[1] + 0.5))
     pads = [grow(p.GetBoundingBox(), 0.15) for p in board.GetPads()]
+    pads += [grow(pcbnew.BOX2I(pcbnew.VECTOR2I(x - d // 2, y - d // 2), pcbnew.VECTOR2I(d, d)), 0.1) for x, y, d in vias]
     texts = {layer: [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
                      if d.GetLayer() == layer and (isinstance(d, pcbnew.PCB_TEXT) or d.GetShape() == pcbnew.SHAPE_T_SEGMENT)]
              for layer in bodies}
     area = pcbnew.BOX2I(mm(0.6, 0.6), mm(w - 1.2, h - 1.2))
 
     def owner(b, layer):
-        """The part whose body is clearly nearest the label (by 0.25 mm), so it reads as its own part's."""
+        """The part whose body is clearly nearest the label (by `margin` mm), so it reads as its own part's."""
         def dist(box):  # edge to edge
             dx = max(box.GetLeft() - b.GetRight(), 0, b.GetLeft() - box.GetRight())
             dy = max(box.GetTop() - b.GetBottom(), 0, b.GetTop() - box.GetBottom())
             return math.hypot(dx, dy)
         parts = sorted((dist(v), r) for r, v in bodies[layer].items() if r in side_of)
-        if len(parts) > 1 and parts[1][0] - parts[0][0] < pcbnew.FromMM(0.25):
+        if len(parts) > 1 and parts[1][0] - parts[0][0] < pcbnew.FromMM(margin):
             return None
         return parts[0][1]
     # Small parts first: they have the fewest places to go.
@@ -1016,7 +1027,6 @@ def place_labels(board, w, h, notch=None):
 
 def write_project(name, path):
     """Design rules sized for a 2-layer JLCPCB/PCBWay order, and a wider class for supply nets."""
-    import json
     pro = {
         "board": {"design_settings": {
             "defaults": {"board_outline_line_width": 0.1, "copper_line_width": 0.2, "copper_text_size_h": 1.5,
