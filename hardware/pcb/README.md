@@ -63,7 +63,8 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    supply of at least 500 mA, because Wi-Fi transmit peaks run to about 350 mA. Its dropout is
    0.31 V at 600 mA (about 0.2 V at 350 mA), so the rail holds 3.3 V through those peaks down to a
    cell of about 3.5 V. Its input is rated to 5.5 V (6.5 V absolute), which is why C1 has a 1 Ω
-   damping resistor against plug-in ringing. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
+   damping resistor against plug-in ringing. On the c3-jst, where C1 sits by the USB-C at the far end
+   of the VSYS track, R16 and C8 (1 Ω in series with 10 µF) damp it again beside the regulator. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
    footprint, not a drop-in.
 4. **Use cells with a protection board.** D4 (a Schottky across the battery FET) keeps the supply
    up for the few ms after USB is unplugged, but its reverse leakage trickles into the cell while
@@ -86,7 +87,8 @@ map above, two more button codes in [`protocol/spec.md`](../../protocol/spec.md)
 actions for them. For the XIAO board, a wake stub should read D4. None of that is written yet.
 The existing build's pins don't match either board: `TB_LED_PIN=5` would drive the XIAO board's
 K3 line (its LED is on D5, GPIO7), and the C3 board has no build environment (battery on GPIO1,
-LED on GPIO10). Below about 3.6 V a Wi-Fi-sized burst sags the C3's 3.3 V rail under 3.0 V (simulated with the routed copper), so the
+LED on GPIO10). Below about 3.6 V a Wi-Fi-sized burst sags the C3's 3.3 V rail under 3.0 V (simulated with the routed copper; on the c3-jst
+3.55 V with nothing on J3, 3.6 V with 50 mA and 3.7 V with 100 mA), so the
 firmware should stop using radio-heavy features there.
 
 ## Rebuilding
@@ -161,7 +163,7 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   one to the bottom bar. Most of its left edge is closed to tabs: a mounting hole, a VBUS track 0.7 mm in,
   and C1 (no tab comes within 3 mm of an 0805 or larger ceramic capacitor, which cracks when the board
   flexes). Its top edge carries the antenna. A tab goes at least 2 mm from a connector's pads (JLC's
-  keep-out) wherever its edge allows; two can't: c3-jst's lower right-edge tabs end 1.15 and 1.3 mm
+  keep-out) wherever its edge allows; two can't: c3-jst's lower right-edge tabs end 1.65 and 1.3 mm
   from the two anchor pads of the battery socket J2 (the lower one is also 1.75 mm from J3's). Their bites sit outside the board edge instead
   (so they stop where the fillets start), and **cut those two tabs with flush cutters rather than
   snapping them**, so the bending doesn't crack the connectors' joints. File the tab remnants flush.

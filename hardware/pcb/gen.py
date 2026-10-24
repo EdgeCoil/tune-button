@@ -337,6 +337,12 @@ def variant_c3_jst():
              (20.5, 36.0), 0, mpn="SRV05-4-P-T7", lcsc="C85364"),
         # 330 ohm: about 4 mA into a red LED at 3.3 V, enough for a lit button; 10 mA into a short.
         R("R15", "330", "LED", "LED_OUT", (23.0, 30.5), 0),
+        # A damper at the regulator: with C1 down by J1, the ~44 nH of VSYS track up to here rang
+        # against C3 to 6.6-6.7 V on a hot-plug with no cell (sim12), past the RT9080's 6.5 V. 1 ohm
+        # in series with 10 uF absorbs it: 5.86 V worst over every cable and part corner (sim13).
+        # Retuning C3 alone left 0.15 V at best and failed with C1 at Samsung's DC-bias low end.
+        R("R16", "1", "VSYS", "VSYS_D", (32.4, 6.9), 0, fp=R1206),
+        C("C8", "10u", "VSYS_D", "GND", (32.4, 4.5), 180, fp=C0805),
         Part("TP1", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "TXD", {"1": "TXD"}, (9.5, 26.5),
              note="debug UART"),
         Part("TP2", "Connector:TestPoint", "TestPoint:TestPoint_Pad_1.0x1.0mm", "RXD", {"1": "RXD"}, (12.0, 26.5),
