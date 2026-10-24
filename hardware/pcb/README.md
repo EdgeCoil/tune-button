@@ -11,7 +11,7 @@ board, on wires to a JST connector, so it can be much smaller:
 | Keys | 4 MX on the board | 4 MX on the back | J3, a 7-pin JST-PH (2 mm): 1 GND, 2–5 K1–K4, 6 LED (through 330 Ω: about 4 mA into a red LED), 7 3V3. Each button goes between its K pin and GND |
 | Sides | Everything on top | Keys, LEDs, logo, name and URL on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name, URL and the J3 pin list on the back, behind J3 |
 | USB-C | On the XIAO, top edge | Centre of the bottom edge, about 70 mm from the antenna | Bottom edge, left; J3 beside it on the right, the battery on the right edge |
-| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. At H2 use a nylon screw, or nylon washers on both faces: K2 (front) and VBUS (back) run 1.6 mm from its centre, under any metal head or nut. H1 has only the ground pour under its head (nearest track or via 2.5 mm out). Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
+| Mounting | 4 × M2, all clear of the keycaps | 4 × M2, all clear of the keycaps. Use nylon washers or standoffs: tracks run within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask | 2 × M2. At H2 use a nylon screw, or nylon washers on both faces: K1 (front) and K3 (back) run within 1.7 mm of its centre and VBUS (back) at 2.4 mm, under any metal head or nut. H1 has only the ground pour under its head (nearest track or via 2.5 mm out). Support the board behind J2 and J3 in the case, since the holes are 10–15 mm from where the plugs push |
 | USB-C, charger, regulator | On the XIAO | On the board: USB-C, TP4054 charger (≈ 200 mA), load sharing, RT9080 3.3 V (600 mA, about 2 µA quiescent) | As `c3/` |
 | Battery | JST-PH socket, wired on to the XIAO's BAT pads | JST-PH socket | JST-PH socket |
 | Assembly | Hand: 4 SMD passives, an LED, a diode, the battery socket and header, the XIAO sockets, switches (on the panel, JLC fits all but the switches) | Front: single-sided SMD (JLC PCBA or hand). Back, by hand: the 4 MX switches and the 2 LEDs (0805) | Single-sided SMD, all fitted by JLC; nothing to solder by hand. The UART is two test pads (TX, RX) |
@@ -63,8 +63,8 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
    supply of at least 500 mA, because Wi-Fi transmit peaks run to about 350 mA. Its dropout is
    0.31 V at 600 mA (about 0.2 V at 350 mA), so the rail holds 3.3 V through those peaks down to a
    cell of about 3.5 V. Its input is rated to 5.5 V (6.5 V absolute), which is why C1 has a 1 Ω
-   damping resistor against plug-in ringing. On the c3-jst, where C1 sits by the USB-C at the far end
-   of the VSYS track, R16 and C8 (1 Ω in series with 10 µF) damp it again beside the regulator. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
+   damping resistor against plug-in ringing. On the c3-jst, where C1 sits by the USB-C, at the far end
+   of the supply path from the regulator (VBUS, then D2, then VSYS), R16 and C8 (1 Ω in series with 10 µF) damp it again beside the regulator. The MCP1700 (250 mA, 1.6 µA) is a lower-current alternative in a SOT-23
    footprint, not a drop-in.
 4. **Use cells with a protection board.** D4 (a Schottky across the battery FET) keeps the supply
    up for the few ms after USB is unplugged, but its reverse leakage trickles into the cell while
@@ -135,9 +135,9 @@ Economic, and rails on the left and right only, its antenna overhanging the top 
 board, ask for mouse-bite rails rather than V-cut: the ground pour runs 0.3 mm from the edges, which
 meets JLC's routed-edge rule but not its 0.4 mm V-cut one. On `c3-jst`, add a remark placing the tabs:
 on the left edge only between 14 and 25 mm from the top (below that, a mounting hole, a VBUS track
-0.7 mm in and C1, a capacitor that cracks if the board flexes next to it), and on the right edge between
-3 and 8, 25 and 29, or 39 and 45 mm. The 25-29 and 39-45 mm windows are within 2 mm of J2's and J3's
-anchor pads: cut tabs there with flush cutters rather than snapping them.
+0.7 mm in and C1, a capacitor that cracks if the board flexes next to it), and on the right edge only
+between 25 and 29 or 39 and 45 mm (higher up is C8, another such capacitor). Both right-edge windows
+are within 2 mm of J2's and J3's anchor pads: cut tabs there with flush cutters rather than snapping them.
 
 ### All three on one panel (Standard assembly)
 
