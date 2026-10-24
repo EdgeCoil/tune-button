@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 edgecoil
 # SPDX-License-Identifier: CERN-OHL-S-2.0
 #
-# Generate, route, check and export both boards (or the ones named):
+# Generate, route, check and export all three boards (or the ones named):
 #
 #   ./build.sh [xiao] [c3] [c3-jst]
 #

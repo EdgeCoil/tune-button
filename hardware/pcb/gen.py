@@ -1,15 +1,16 @@
 # SPDX-FileCopyrightText: 2026 edgecoil
 # SPDX-License-Identifier: CERN-OHL-S-2.0
-"""Generate the two tune-button PCBs: a KiCad schematic and an unrouted board for each.
+"""Generate the three tune-button PCBs: a KiCad schematic and an unrouted board for each.
 
-    xiao  - sockets for a Seeed XIAO ESP32-C3 on 2.54 mm headers
-    c3    - an ESP32-C3-WROOM-02 module on the board, with USB-C, charger and regulator
+    xiao    - sockets for a Seeed XIAO ESP32-C3 on 2.54 mm headers
+    c3      - an ESP32-C3-WROOM-02 module on the board, with USB-C, charger and regulator
+    c3-jst  - the c3's circuit on a smaller board, its buttons wired to a JST connector
 
-Both have four Cherry MX switches in a 2 x 2 grid. The netlist below is the single source of
-truth: the schematic (labels on every pin) and the board are both written from it, and check.py
-compares the netlist KiCad reads back from the schematic against the board's pads.
+xiao and c3 have four Cherry MX switches in a 2 x 2 grid. The netlist below is the single source of
+truth: the schematic (labels on every pin) and the board are both written from it, and build.sh's
+DRC parity check compares the netlist KiCad reads back from the schematic against the board's pads.
 
-    python3 gen.py [xiao|c3 ...]     then ./build.sh to route, check and export
+    python3 gen.py [xiao|c3|c3-jst ...]     then ./build.sh to route, check and export
 """
 import math
 import os

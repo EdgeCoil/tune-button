@@ -18,7 +18,8 @@ board, on wires to a JST connector, so it can be much smaller:
 
 On `c3-jst`, J3's key lines have their own ESD array (U5, a second SRV05-4), since they run out on
 wires to buttons people touch. J3's 3V3 is the regulator's output, shared with the module's 350 mA
-Wi-Fi bursts: keep what hangs on it under about 100 mA.
+Wi-Fi bursts: keep what hangs on it under about 100 mA. J3's LED pin (6) is the one wire with no
+clamp: only R15 and the chip's own protection diodes guard it.
 
 **Rev A is unbuilt and untested.** All three boards pass KiCad's electrical rules check and its design
 rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
@@ -54,8 +55,8 @@ Check these against the parts in hand. Each is a one-line change in `gen.py`.
 1. **XIAO header rows: 15.24 mm apart, centre to centre.** That is the 0.6″ spacing the common
    XIAO footprints use. I took it from those footprints and a Seeed forum answer, not from Seeed's
    drawing. Measure across the two rows of pins on the XIAO.
-2. **Battery lead order.** Pin 1 of the JST-PH is marked **+** on the silkscreen. JST-PH LiPo
-   leads are not wired consistently between sellers, and neither board protects against a reversed
+2. **Battery lead order.** Pin 1 of the battery JST-PH (J2 on `c3-jst`) is marked **+** on the silkscreen. JST-PH LiPo
+   leads are not wired consistently between sellers, and no board protects against a reversed
    cell, so check the plug before you plug it in.
 3. **C3 regulator.** The RT9080 is rated at 600 mA (its current limit is at least 610 mA) and draws
    about 2 µA when idle, which matters most for a board that sleeps for months. Espressif asks for a
@@ -90,7 +91,7 @@ firmware should stop using radio-heavy features there.
 
 ## Rebuilding
 
-Everything is generated: [`gen.py`](gen.py) holds the parts, nets and placement for both boards.
+Everything is generated: [`gen.py`](gen.py) holds the parts, nets and placement for all three boards.
 It writes the schematic, with a label on every pin, and an unrouted board from the same netlist.
 [`route.py`](route.py) lays the copper and fills the pours. The routing is frozen: each board's
 `routing.json` holds its reviewed tracks and vias, and `route.py` replays it onto the generated
