@@ -3,12 +3,12 @@
 """One JLC panel holding all three boards, for Standard PCBA (which wants at least 70 x 70 mm, and parts
 2.5 mm from the edge the line holds). Built with KiKit from the committed, routed boards:
 
-    xiao | c3 | c3-jst, side by side, with 5 mm rails on the left and right
+    xiao | c3 | c3-jst, side by side, in a 5 mm frame (rails left and right, bars top and bottom)
 
 Mouse-bite tabs join neighbours and the rails, only where no track, via or pad comes within 1 mm of
 the edge and no part reaches it (so a bite never tears copper), and the ground pour is held back
 around each tab.
-The rails carry four tooling holes and three fiducials. The panel BOM and placement file are written
+The frame carries four tooling holes and three fiducials. The panel BOM and placement file are written
 here too, with fab_jlc.py's per-part corrections, every reference prefixed with its board.
 
     python3 panel.py      (after ./build.sh; needs KiKit 1.8, pip install kikit)
@@ -31,10 +31,11 @@ from gen import set_stackup
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "panel")
-GAP, RAIL, RAIL_GAP = 2.0, 5.0, 2.0  # mm between boards, rail width, rail to boards
-TAB, MIN_TAB, EDGE_CLEAR = 3.0, 2.0, 1.0  # tab widths; nothing within EDGE_CLEAR of a tab's edge
+GAP, RAIL, RAIL_GAP, FRAME_GAP = 2.0, 5.0, 2.0, 1.5  # mm: between boards, rail and bar width, rail to
+                                                     # boards, bars to anything overhanging the boards
+TAB, MIN_TAB, FILLET, EDGE_CLEAR = 3.0, 2.0, 1.0, 1.0  # tab widths and fillet; clear of copper by EDGE_CLEAR
 # (name, designator prefix, y offset). c3-jst sits 7 mm down so its antenna, which overhangs its top
-# edge by 6.35 mm, stays inside the panel; c3 sits low enough that the panel is over 70 mm tall.
+# edge by 6.35 mm, stays level with the other boards' tops.
 BOARDS = [("xiao", "XIAO_", 1.5), ("c3", "C3_", 1.0), ("c3-jst", "JST_", 7.0)]
 
 
@@ -44,8 +45,8 @@ def source(name):
 
 def free_spans(path, side):
     """Where along a board's left or right edge (y, mm, board coordinates) a tab may go: the straight
-    part of the edge, minus wherever a track, via or pad comes within EDGE_CLEAR of it, or a part
-    body reaches it."""
+    part of the edge, minus wherever a track, via or pad comes within EDGE_CLEAR of it, a part body
+    reaches it, or a mounting hole leaves less than 3 mm of board to it."""
     b = pcbnew.LoadBoard(path)
     # The straight part of the vertical edge: the outermost vertical Edge.Cuts segments.
     vertical = [(pcbnew.ToMM(d.GetStart().x), sorted((pcbnew.ToMM(d.GetStart().y), pcbnew.ToMM(d.GetEnd().y))))
@@ -75,12 +76,20 @@ def free_spans(path, side):
         bb = p.GetBoundingBox()
         if near(pcbnew.ToMM(bb.GetLeft() if side == "left" else bb.GetRight())) < EDGE_CLEAR:
             blocked.append((pcbnew.ToMM(bb.GetTop()) - 0.5, pcbnew.ToMM(bb.GetBottom()) + 0.5))
-    # Part bodies only where they reach the edge itself (a USB-C face, an overhanging module).
+    # Part bodies (their fab outline) only where they reach the edge itself.
     for fp in b.Footprints():
-        for layer in (pcbnew.F_CrtYd, pcbnew.B_CrtYd):
-            bb = fp.GetCourtyard(layer).BBox()
-            if bb.GetWidth() and near(pcbnew.ToMM(bb.GetLeft() if side == "left" else bb.GetRight())) < 0.2:
-                blocked.append((pcbnew.ToMM(bb.GetTop()) - 0.5, pcbnew.ToMM(bb.GetBottom()) + 0.5))
+        body = pcbnew.BOX2I()
+        for item in fp.GraphicalItems():
+            if item.GetLayer() in (pcbnew.F_Fab, pcbnew.B_Fab):
+                body.Merge(item.GetBoundingBox())
+        if body.GetWidth() and near(pcbnew.ToMM(body.GetLeft() if side == "left" else body.GetRight())) < 0.2:
+            blocked.append((pcbnew.ToMM(body.GetTop()) - 0.5, pcbnew.ToMM(body.GetBottom()) + 0.5))
+    # Mounting holes near the edge leave a thin web: a tab snapped beside one could crack into it.
+    for p in b.GetPads():
+        if p.GetAttribute() == pcbnew.PAD_ATTRIB_NPTH:
+            bb = p.GetBoundingBox()
+            if near(pcbnew.ToMM(bb.GetLeft() if side == "left" else bb.GetRight())) < 3.0:
+                blocked.append((pcbnew.ToMM(bb.GetTop()) - 2.0, pcbnew.ToMM(bb.GetBottom()) + 2.0))
     free = []
     for a, z in spans:
         cuts = sorted(blocked)
@@ -98,15 +107,18 @@ def free_spans(path, side):
 
 def tab_positions(spans, lo, hi):
     """(centre, width) tabs, two on an edge up to 40 mm long and three on a longer one, as near evenly
-    spaced over lo..hi as the free spans allow. A tab is TAB wide, or narrower (down to MIN_TAB) where
-    the only free span is short."""
+    spaced over lo..hi as the free spans allow. A full tab is TAB wide with FILLET corners, which
+    lengthen its cut, so it needs a span that long; in a shorter span the tab is narrower (down to
+    MIN_TAB) and gets no fillets."""
     count = 3 if hi - lo > 40 else 2
     picks = []
     for target in [lo + (hi - lo) * (i + 0.5) / count for i in range(count)]:
         best = None
         for a, z in spans:
-            width = min(TAB, z - a - 0.5)
-            c = min(max(target, a + width / 2 + 0.25), z - width / 2 - 0.25)
+            full = z - a >= TAB + 2 * FILLET + 0.5
+            width = TAB if full else min(TAB - 0.1, z - a - 0.5)
+            reach = width / 2 + (FILLET if full else 0) + 0.25
+            c = min(max(target, a + reach), z - reach)
             if best is None or abs(c - target) < abs(best[0] - target):
                 best = (c, width)
         if best is not None and all(abs(best[0] - p) > TAB + 2 for p, _ in picks):
@@ -129,7 +141,9 @@ def main():
         w, h = round(pcbnew.ToMM(edge.GetWidth()) - 0.1, 3), round(pcbnew.ToMM(edge.GetHeight()) - 0.1, 3)
         # Tolerance takes in what overhangs the outline: c3-jst's antenna, the USB-C faces.
         panel.appendBoard(source(name), pcbnew.VECTOR2I(int(x * mm), int(dy * mm)), origin=Origin.TopLeft,
-                          tolerance=int(8 * mm), inheritDrc=not placed)  # every board has gen.py's .kicad_dru
+                          tolerance=int(8 * mm), inheritDrc=not placed)
+        # (KiKit refuses to merge several boards' rule files, so only the first is inherited; the
+        # panel's .kicad_dru still lists gen.py's one rule once per board, prefixed, all the same.)
         placed.append((name, x, dy, w, h))
         x += w + GAP
 
@@ -164,8 +178,8 @@ def main():
     panel.buildPartitionLineFromBB(ghosts)
     for i, tx, ty, direction, tw in tabs:
         # Hold the pour back where the bites go, so no hole tears through copper.
-        keepout = panel.addKeepout(box(min(tx, tx + 1.2 * direction[0]) * mm, (ty - tw / 2 - 1) * mm,
-                                       max(tx, tx + 1.2 * direction[0]) * mm, (ty + tw / 2 + 1) * mm),
+        keepout = panel.addKeepout(box(min(tx, tx + 1.2 * direction[0]) * mm, (ty - tw / 2 - 2) * mm,
+                                       max(tx, tx + 1.2 * direction[0]) * mm, (ty + tw / 2 + 2) * mm),
                                    noTracks=False, noVias=False, noCopper=True)
         keepout.SetDoNotAllowPads(False)
         keepout.SetDoNotAllowFootprints(False)  # the bites themselves are NPTH footprints
@@ -178,26 +192,49 @@ def main():
             if (tw < TAB) == narrow:
                 panel.substrates[i].annotations.append(
                     TabAnnotation(None, (int(tx * mm), int(ty * mm)), direction, int(tw * mm)))
-        cuts += panel.buildTabsFromAnnotations(0 if narrow else int(1 * mm))
-    # Rails 1 mm past the boards at top and bottom, so the panel is over JLC's 70 mm.
-    over = max(int(1 * mm), (int(71 * mm) - (maxy - miny)) // 2)
-    for x0 in (minx - railspace - int(RAIL * mm), maxx + railspace):
-        panel.appendSubstrate(box(x0, miny - over, x0 + int(RAIL * mm), maxy + over))
+        cuts += panel.buildTabsFromAnnotations(0 if narrow else int(FILLET * mm))
+    # A frame: the rails, and bars across the top and bottom joining them, clear of what overhangs
+    # the boards (c3-jst's antenna, the USB-C faces), so the rails don't depend on the boards.
+    rail = int(RAIL * mm)
+    bodies = []
+    for fp in panel.board.Footprints():
+        body = pcbnew.BOX2I()
+        for item in fp.GraphicalItems():
+            if item.GetLayer() in (pcbnew.F_Fab, pcbnew.B_Fab):
+                body.Merge(item.GetBoundingBox())
+        if body.GetWidth():
+            bodies.append(body)
+    top = min(miny, min(bb.GetTop() for bb in bodies)) - int(FRAME_GAP * mm)
+    bottom = max(maxy, max(bb.GetBottom() for bb in bodies)) + int(FRAME_GAP * mm)
+    left, right = minx - railspace - rail, maxx + railspace + rail
+    for x0 in (left, right - rail):
+        panel.appendSubstrate(box(x0, top - rail, x0 + rail, bottom + rail))
+    for y0 in (top - rail, bottom):
+        panel.appendSubstrate(box(left, y0, right, y0 + rail))
     panel.addMillFillets(int(1 * mm))
-    # JLC's 1.152 mm tooling holes in the rail corners, and three fiducials beside them.
-    panel.addCornerTooling(4, int(RAIL / 2 * mm), int(3 * mm), int(1.152 * mm))
-    panel.addCornerFiducials(3, int(RAIL / 2 * mm), int(8 * mm), int(1 * mm), int(2 * mm))
-    # Bites only across the tab itself (no prolongation): c3-jst's K4 runs close to the edge beside it.
-    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), 0, 0)
+    # JLC's 1.152 mm tooling holes (1.448 mm mask opening) in the frame corners, and three fiducials
+    # 3.85 mm in from the rails' outer edges (JLC: the 2 mm opening 3.35 mm clear of the edge).
+    panel.addCornerTooling(4, int(RAIL / 2 * mm), int(RAIL / 2 * mm), int(1.152 * mm),
+                           solderMaskMargin=int(1.448 * mm))
+    panel.addCornerFiducials(3, int(3.85 * mm), int(RAIL * mm + 4 * mm), int(1 * mm), int(2 * mm))
+    # Bites only across the tab itself (no prolongation: c3-jst's K4 runs close to the edge beside
+    # its narrow tab), set 0.25 mm into the board so the snapped edge is at or inside the outline.
+    panel.makeMouseBites(cuts, int(0.5 * mm), int(0.8 * mm), int(0.25 * mm), 0)
     panel.save(reconstructArcs=True)
     # Fill now, with the project's rules in place (gen.py's pour clearance to through-hole pins);
     # KiKit's own refill runs before it copies the rules across.
     board = pcbnew.LoadBoard(path)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    # JLC replaces only the order-number marker named in the order: keep the c3's, drop the others.
+    c3 = next((bx, w) for name, bx, _, w, _ in placed if name == "c3")
+    for d in [d for d in board.GetDrawings() if isinstance(d, pcbnew.PCB_TEXT) and d.GetText() == "JLCJLCJLCJLC"
+              and not c3[0] <= pcbnew.ToMM(d.GetPosition().x) <= c3[0] + c3[1]]:
+        board.Remove(d)
     board.Save(path)
     set_stackup(path)
+    outline = board.GetBoardEdgesBoundingBox()
     print("panel:", ", ".join(f"{n} at ({bx:.1f}, {by:.1f})" for n, bx, by, *_ in placed),
-          f"; {len(tabs)} tab ends; outline {pcbnew.ToMM(maxx - minx) + 2 * (RAIL + RAIL_GAP):.1f} mm wide")
+          f"; {len(tabs)} tab ends; {pcbnew.ToMM(outline.GetWidth()):.1f} x {pcbnew.ToMM(outline.GetHeight()):.1f} mm")
     export(path, placed)
 
 
@@ -205,7 +242,8 @@ def export(path, placed):
     """Gerbers, drills and JLC's BOM and placement files for the panel, into panel/fab."""
     fab = os.path.join(OUT, "fab")
     gerber = os.path.join(fab, "gerber")
-    os.makedirs(gerber, exist_ok=True)
+    shutil.rmtree(fab, ignore_errors=True)  # nothing stale gets zipped
+    os.makedirs(gerber)
     cli = ["kicad-cli", "pcb"]
     subprocess.run(cli + ["export", "gerbers", "--layers", "F.Cu,B.Cu,F.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts",
                           "--subtract-soldermask", "-o", gerber + "/", path], check=True, capture_output=True)

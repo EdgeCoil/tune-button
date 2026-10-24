@@ -120,7 +120,8 @@ assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the part
 its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you
 (on `c3-jst`, JLC fits every part and only the battery and buttons are left).
 Order **top-side assembly only**. `fab_jlc.py` corrects the rotations and the USB-C origin where JLC's
-footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST), checked against JLC's own
+footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST, the XIAO board's
+sockets and header), checked against JLC's own
 footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
 (U2, and U5 on `c3-jst`) shorts the 3V3 rail.
 
@@ -137,15 +138,19 @@ on the left edge between 18 and 46 mm from the top, and on the right edge only b
 ### All three on one panel (Standard assembly)
 
 If the ESP32 module needs Standard assembly, which wants at least 70 × 70 mm, order the three boards
-as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (146 × 72 mm) from
+as one panel: [`panel.py`](panel.py) builds `panel/tune-button-panel.kicad_pcb` (146 × 84 mm) from
 the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes `panel/fab/`. Run
 `./build.sh` first, then `python3 panel.py` with KiKit installed (`pip install kikit`).
 
-- The boards sit side by side (XIAO, C3, `c3-jst`) with 5 mm rails on the left and right. The rails
-  carry JLC's four 1.152 mm tooling holes and three fiducials.
-- Mouse-bite tabs (0.5 mm holes) go only where no track, via or pad comes within 1 mm of the edge.
-  The ground pour is held back around each tab. `c3-jst`'s one right-hand tab is 2.2 mm wide and has
-  no fillets, so its bites stay clear of the track along that edge.
+- The boards sit side by side (XIAO, C3, `c3-jst`) in a 5 mm frame: rails on the left and right,
+  and bars across the top and bottom, clear of `c3-jst`'s antenna and the USB-C faces. The frame
+  carries JLC's four 1.152 mm tooling holes (1.448 mm mask opening) in its corners, and three
+  fiducials 3.85 mm in from the rails' outer edges.
+- Mouse-bite tabs (0.5 mm holes, 0.25 mm inside each board's edge) go only where no track, via or
+  pad comes within 1 mm of the edge, and never beside a mounting hole. The ground pour is held back
+  around each tab. A full tab is 3 mm with 1 mm fillets. Where the clear stretch is too short for
+  that, as on `c3-jst`'s right edge, the tab is narrower and has no fillets, so its bites stay
+  clear of the track along that edge. File the tab remnants flush, especially beside the connectors.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
   `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. JLC charges a small fee
   for the different designs on the panel. Each designator is prefixed with its board (`XIAO_`, `C3_`,
@@ -154,8 +159,8 @@ the routed boards with [KiKit](https://github.com/yaqwsx/KiKit) 1.8, and writes 
   two 1 × 7 sockets and the 2-pin battery header. The sockets and header are through-hole, soldered
   by JLC at a per-joint rate. Left for you: the MX switches on both keyboard boards, the C3's two
   back-side LEDs and its UART header, the XIAO itself, and the batteries and buttons.
-- Each board's `JLCJLCJLCJLC` marker is still there. Under *Mark on PCB*, name one, for example the
-  C3's (front, centre).
+- Only the C3's `JLCJLCJLCJLC` marker is kept on the panel. Under *Mark on PCB*, choose
+  *Specify a location*.
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)

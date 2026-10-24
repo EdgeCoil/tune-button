@@ -229,8 +229,9 @@ THREAD_GAP = 0.29  # mm for a track crossing between two neighbouring 2.54 mm he
 
 
 def crowded_pins(board):
-    """Hand-soldered through-hole pins (parts JLC doesn't fit: no LCSC number) with another net's
-    copper close by, where a solder bridge could reach it under mask only. Checked on both layers
+    """Through-hole pins soldered by iron or wave (by hand, or by JLC on the panel), not reflowed in
+    paste like the USB-C's shell legs, with another net's copper close by, where a solder bridge
+    could reach it under mask only. Checked on both layers
     for the switches, and on the solder side only for headers and sockets, whose body covers the
     other. A track crossing a header's row between two pins can't get further than 0.295 mm from
     them, so it is held to THREAD_GAP instead. The pour is held off them by the .kicad_dru rule
@@ -238,10 +239,8 @@ def crowded_pins(board):
     front, but Freerouting then can't reach them at all.) Returns the offending (ref, pin, net)."""
     out = []
     for fp in board.Footprints():
-        if fp.HasFieldByName("LCSC") and fp.GetFieldText("LCSC"):
-            continue
         pins = [p for p in fp.Pads() if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH]
-        if not pins:
+        if not pins or any(p.IsOnLayer(pcbnew.F_Paste) for p in pins):
             continue
         switch = fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")
         layers = (pcbnew.F_Cu, pcbnew.B_Cu) if switch else (pcbnew.B_Cu if fp.GetLayer() == pcbnew.F_Cu else pcbnew.F_Cu,)
