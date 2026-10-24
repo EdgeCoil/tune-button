@@ -161,8 +161,8 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   one to the bottom bar. Most of its left edge is closed to tabs: a mounting hole, a VBUS track 0.7 mm in,
   and C1 (no tab comes within 3 mm of an 0805 or larger ceramic capacitor, which cracks when the board
   flexes). Its top edge carries the antenna. A tab goes at least 2 mm from a connector's pads (JLC's
-  keep-out) wherever its edge allows; two can't: c3-jst's lower right-edge tabs end 1.2-1.3 mm from
-  the anchor pads of the battery socket J2 and of J3. Their bites sit outside the board edge instead
+  keep-out) wherever its edge allows; two can't: c3-jst's lower right-edge tabs end 1.15 and 1.3 mm
+  from the two anchor pads of the battery socket J2 (the lower one is also 1.75 mm from J3's). Their bites sit outside the board edge instead
   (so they stop where the fillets start), and **cut those two tabs with flush cutters rather than
   snapping them**, so the bending doesn't crack the connectors' joints. File the tab remnants flush.
 - Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and

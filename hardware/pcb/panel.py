@@ -264,8 +264,9 @@ def main():
             TabAnnotation(None, (int(tx * mm), int(ty * mm)), (dx, dy), int(tw * mm)))
     cuts = panel.buildTabsFromAnnotations(int(FILLET * mm))
     # JLC wants a tab 2 mm from a connector's pads; tab_positions keeps one there where its span allows.
-    # Where it doesn't (c3-jst's right edge, beside J2 and J3), the bites go 0.25 mm outside the board instead of inside, moving the break line
-    # 0.5 mm further from the pads, and the README says to cut those tabs rather than snap them.
+    # Where it doesn't (c3-jst's right edge, beside J2's anchor pads), the bites go 0.25 mm outside the
+    # board instead of inside, moving the break line 0.5 mm further from the pads, and the README says
+    # to cut those tabs rather than snap them.
     pads = [p.GetBoundingBox() for fp in panel.board.Footprints() if fp.GetReference().startswith("J")
             for p in fp.Pads()]
     connector = unary_union([box(bb.GetLeft(), bb.GetTop(), bb.GetRight(), bb.GetBottom()) for bb in pads])
