@@ -153,8 +153,7 @@ def variant_xiao():
             ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
             ("text", 12.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
             ("text", 1.5, 21.77, "BAT", 90)]
-    # JLC prints its order number where this marker is, rather than wherever it likes.
-    return parts, H, [], silk, {"jlc_mark": (W / 2, 12.0, "B")}
+    return parts, H, [], silk, {}
 
 
 def variant_c3():
@@ -281,9 +280,7 @@ def variant_c3():
               "back_text": [(14.5, 8.3, "tune-button", 1.5), (14.5, 10.4, "c3 · rev A", 1.0),
                             (14.5, 17.0, "edgecoil.dev", 1.2), (40.0, 22.0, "D1 CHG", 1.0),
                             (34.0, 22.0, "D3 LED", 1.0)],
-              "hide_refs": ["D1", "D3"],  # named in the back text above
-              # JLC's order number goes on the electronics side, not next to the mark.
-              "jlc_mark": (19.5, 44.0, "F")}
+              "hide_refs": ["D1", "D3"]}  # named in the back text above
     return parts, H, [], silk, extras
 
 
@@ -368,7 +365,6 @@ def variant_c3_jst():
               # Parts sit close here: a label 0.25 mm from its part and 0.6 mm from the next read as the
               # next one's (R9, C4, U3 in audits), so a label must be clearly nearer its own part.
               "label_margin": 0.5,
-              "jlc_mark": (26.0, h - 3.7, "B"),
               # A back 3V3 track runs 1.09 mm from the top edge at the antenna base; the pour between it
               # and the edge would be a 0.29 mm strip held at one end (audit round 8), so none goes there.
               "back_pour_notch": (7.0, 21.0, 0.9)}
@@ -813,20 +809,7 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
     if "logo" in extras:
         logo(board, *extras["logo"])
     art, logo_box = [], pcbnew.BOX2I()
-    if "jlc_mark" in extras:
-        x, y, side = extras["jlc_mark"]
-        t = pcbnew.PCB_TEXT(board)
-        t.SetText("JLCJLCJLCJLC"); t.SetPosition(mm(x, y))
-        t.SetLayer(pcbnew.B_SilkS if side == "B" else pcbnew.F_SilkS); t.SetMirrored(side == "B")
-        t.SetTextSize(mm(1.0, 1.0)); t.SetTextThickness(pcbnew.FromMM(0.15))
-        board.Add(t)
-        # JLC prints its order number over it: no footprint hole may sit under it (nor a via; see
-        # the end of this function).
-        box = t.GetBoundingBox(); box.Inflate(pcbnew.FromMM(0.2))
-        for pad in board.GetPads():
-            if pad.HasHole() and box.Intersects(pad.GetBoundingBox()):
-                raise SystemExit(f"{name}: hole in {pad.GetParentFootprint().GetReference()} under the JLC mark")
-    # Keep vias out from under the back-side text and the mark.
+    # Keep vias out from under the back-side text.
     for d in board.Drawings():
         if d.GetLayer() == pcbnew.B_SilkS:
             if isinstance(d, pcbnew.PCB_SHAPE) and d.GetShape() == pcbnew.SHAPE_T_SEGMENT:

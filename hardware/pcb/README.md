@@ -115,9 +115,8 @@ instead, stop after `gen.py` and open the project in KiCad.
 
 For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, **black** mask, white legend, **lead-free HASL**: Economic assembly offers that
 for 2–50 boards, while ENIG would force green), and min via hole **0.3mm/(0.4/0.45mm)**, the standard
-option: no hole is under 0.3 mm, so a smaller option only adds cost. Under *Mark on PCB*, choose *Specify a location*:
-the `JLCJLCJLCJLC` marker puts their order number on the electronics side (C3) or the back (XIAO, `c3-jst`),
-away from the logo. Add a remark that the C3's module antenna and USB-C overhang the edge by
+option: no hole is under 0.3 mm, so a smaller option only adds cost. Under *Mark on PCB*, choose *Remove Mark*: the boards carry no
+`JLCJLCJLCJLC` marker, so there is nowhere for an order number to go. Add a remark that the C3's module antenna and USB-C overhang the edge by
 design. For their
 assembly service, add `-jlc-bom.csv` and `-jlc-cpl.csv`. They list only the parts JLC fits, each with
 its LCSC number; the MX switches, back-side LEDs, keycaps, UART header and battery are left for you
@@ -184,8 +183,7 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   two 1 × 7 sockets and the 2-pin battery header. The sockets and header are through-hole, soldered
   by JLC for a hand-soldering fee (about $3.50) plus a per-joint rate. Left for you: the MX switches on both keyboard boards, the C3's two
   back-side LEDs and its UART header, the XIAO itself, and the batteries and buttons.
-- Only the C3's `JLCJLCJLCJLC` marker is kept on the panel. Under *Mark on PCB*, choose
-  *Specify a location*.
+- Under *Mark on PCB*, choose *Remove Mark*: no board has an order-number marker.
 
 Parts are chosen to keep JLC's per-type fee down: every passive, the LED, the MOSFET, the diodes
 and the tact switches are JLC **Basic** parts, and the charger (TP4054) and USB ESD part (SRV05-4)

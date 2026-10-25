@@ -333,11 +333,6 @@ def main():
     # no pad on it), so the copper can change a little past the keepouts too.
     board = pcbnew.LoadBoard(path)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
-    # JLC replaces only the order-number marker named in the order: keep the c3's, drop the others.
-    c3 = next((bx, w) for name, bx, _, w, _ in placed if name == "c3")
-    for d in [d for d in board.GetDrawings() if isinstance(d, pcbnew.PCB_TEXT) and d.GetText() == "JLCJLCJLCJLC"
-              and not c3[0] <= pcbnew.ToMM(d.GetPosition().x) <= c3[0] + c3[1]]:
-        board.Remove(d)
     board.Save(path)
     set_stackup(path)
     outline = board.GetBoardEdgesBoundingBox()
