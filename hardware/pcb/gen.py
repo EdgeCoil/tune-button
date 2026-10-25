@@ -48,6 +48,7 @@ R0603 = "Resistor_SMD:R_0603_1608Metric"
 R1206 = "Resistor_SMD:R_1206_3216Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 C0805 = "Capacitor_SMD:C_0805_2012Metric"
+MIN_DRILL = 0.3  # JLC standard; smaller holes cost extra
 LED0603 = "LED_SMD:LED_0603_1608Metric"
 LED0805 = "LED_SMD:LED_0805_2012Metric"
 
@@ -697,6 +698,11 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         fp.SetFPIDAsString(p.fp)
         fp.SetReference(p.ref)
         fp.SetValue(p.value)
+        # JLC's standard holes start at 0.3 mm; anything smaller is a costlier option (2-layer: $20 ->
+        # $70 for this panel). The module's footprint has 0.2 mm thermal vias in its ground pad.
+        for pad in fp.Pads():
+            if 0 < pad.GetDrillSize().x < mm(MIN_DRILL, 0).x:
+                pad.SetDrillSize(mm(MIN_DRILL, MIN_DRILL))
         if not p.sym:
             fp.SetBoardOnly(True)  # mounting holes have no symbol
             fp.Reference().SetVisible(False)
@@ -1049,7 +1055,7 @@ def write_project(name, path):
             "defaults": {"board_outline_line_width": 0.1, "copper_line_width": 0.2, "copper_text_size_h": 1.5,
                          "silk_line_width": 0.15, "silk_text_size_h": 1.0, "silk_text_size_v": 1.0},
             "rules": {"min_clearance": 0.2, "min_track_width": 0.2, "min_via_diameter": 0.6,
-                      "min_through_hole_diameter": 0.2, "min_copper_edge_clearance": 0.3,
+                      "min_through_hole_diameter": MIN_DRILL, "min_copper_edge_clearance": 0.3,
                       "min_hole_to_hole": 0.25, "min_hole_clearance": 0.25, "min_silk_clearance": 0.0},
             "rule_severities": {"silk_overlap": "ignore", "silk_over_copper": "ignore",
                                 "silk_edge_clearance": "ignore", "lib_footprint_mismatch": "ignore",
