@@ -233,8 +233,10 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 - **Rev B.** With C1 at the low end of Samsung's DC-bias data (3.74 µF at 5–5.5 V), the C3 board's
   regulator input reaches 6.28 V when plugged in, against its 6.5 V limit. That's the worst case: a
   stiff 5.5 V source, a thick 2 m cable and a full cell, simulated with the routed copper.
-  `c3-jst` reaches 5.98 V. Rev B of the C3 should copy `c3-jst`'s fix: C1 by the USB-C, and an RC
-  damper at the regulator.
+  `c3-jst` reaches 5.98 V. Across 150 Monte Carlo runs the C3's worst is 6.27 V, none over the
+  limit, so rev A is fine. For rev B, either use a C1 that keeps at least 6 µF at 5.5 V (about
+  5.9 V worst; for example a 10 µF 1206 or 22 µF 0805, 25 V), or copy `c3-jst`'s fix: C1 by the
+  USB-C and an RC damper at the regulator.
 
 ### Mounting
 
