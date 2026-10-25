@@ -127,8 +127,8 @@ sockets and header), checked against JLC's own
 footprints; still check the placement in JLC's preview before paying, since a wrong SRV05-4 rotation
 (U2, and U5 on `c3-jst`) shorts the 3V3 rail.
 
-The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order Economic, or ask
-for a panel. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
+The C3 board is under JLC's 70 × 70 mm minimum for Standard assembly, so order Economic, or order
+the three-board panel below. Its USB-C, battery socket and module sit closer to the edges than JLC's 2.5 mm assembly
 rule, so if JLC asks for rails, have them on the **left and right edges only**: the USB-C overhangs
 the bottom edge and the antenna overhangs the notch at the top. `c3-jst` (36 × 50 mm) is the same:
 Economic, and rails on the left and right only, its antenna overhanging the top edge. For either C3
@@ -171,7 +171,8 @@ the panel depends on KiKit's internals, such as how it spaces the bites.
   (the lower one also from J3's). Their bites sit outside the board edge instead
   (so they stop where the fillets start), and **cut those two tabs with flush cutters rather than
   snapping them**, so the bending doesn't crack the connectors' joints. File the tab remnants flush.
-- Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer**, and
+- Upload `panel/fab/tune-button-panel-gerbers.zip` as one design with **Panel by customer** (Different designs: 3) and the same
+  board options as above (2 layers, 1.6 mm, black, white legend, lead-free HASL), and
   `-jlc-bom.csv` and `-jlc-cpl.csv` for **Standard** PCBA, **top side only**. Add a remark that the
   modules' antennas and the USB-C sockets overhang their boards' edges by design. JLC charges a
   small fee for the different designs on the panel. Each designator is prefixed with its board
