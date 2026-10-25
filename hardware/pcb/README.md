@@ -21,9 +21,22 @@ wires to buttons people touch. J3's 3V3 is the regulator's output, shared with t
 Wi-Fi bursts: keep what hangs on it under about 100 mA. J3's LED pin (6) is the one wire with no
 clamp: only R15 and the chip's own protection diodes guard it.
 
-**Rev A is unbuilt and untested.** All three boards pass KiCad's electrical rules check and its design
-rules check, with nothing unconnected and the board matching the schematic. No board has been ordered
-or powered, and the firmware does not support four keys yet (see *Firmware*).
+**Rev A was ordered on 2026-10-25 from tag `rev-a` (the three-board panel, JLC Standard PCBA) and is
+not yet built or tested.** All three boards pass KiCad's electrical rules check and its design rules
+check, with nothing unconnected and the board matching the schematic. The firmware does not support
+four keys yet (see *Firmware*).
+
+What to check when the boards arrive:
+- On `c3-jst`, R16 and C8 (the damper beside the regulator, top right) are fitted. Without them a
+  hot-plug on a long cable rings the RT9080's input to about 6.6 V, past its 6.5 V limit.
+- Cut `c3-jst`'s two right-edge tabs with flush cutters; don't snap them.
+- With USB in and no cell, 3V3 reads 3.3 V before anything else is connected.
+
+Known margin for the next revision: with C1 at the low end of Samsung's DC-bias data (3.74 µF at
+5-5.5 V), the C3 board's regulator input reaches 6.28 V on a hot-plug from a stiff 5.5 V source
+over a thick 2 m cable with a full cell (simulated with routed copper), 0.22 V under its limit;
+`c3-jst` reaches 5.98 V. Rev B of the C3 should take `c3-jst`'s fix: C1 by the USB-C and an RC damper
+at the regulator.
 
 ## Pin map
 
