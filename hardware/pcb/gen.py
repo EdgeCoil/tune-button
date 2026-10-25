@@ -694,6 +694,12 @@ def write_board(name, parts, h, keepouts, silk, extras, path, root):
         fp.SetFPIDAsString(p.fp)
         fp.SetReference(p.ref)
         fp.SetValue(p.value)
+        # The test pads' silk square sits 0.12 mm from the pad, which JLC's DFM check flags; the TX/RX
+        # legend names them, so the square moves to the fab layer.
+        if p.fp.startswith("TestPoint:"):
+            for item in fp.GraphicalItems():
+                if item.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS):
+                    item.SetLayer(pcbnew.F_Fab if item.GetLayer() == pcbnew.F_SilkS else pcbnew.B_Fab)
         # JLC's standard holes start at 0.3 mm; anything smaller is a costlier option (2-layer: $20 ->
         # $70 for this panel). The module's footprint has 0.2 mm thermal vias in its ground pad.
         for pad in fp.Pads():
