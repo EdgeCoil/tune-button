@@ -7,6 +7,9 @@ It is **not a Bluetooth keyboard**, so nothing on the phone gets remapped. Each 
 signed Bluetooth broadcast. A companion app hears it in the background, even with the phone locked,
 and asks Spotify to like the song or add it.
 
+![The three Tune Button boards](docs/renders/boards.jpg)
+<sub>The three four-key boards (renders; rev A is being made): `c3-jst` with buttons on a cable, the XIAO board, and the C3 board's key side.</sub>
+
 ```
  button ──wake──► ESP32-C3 ──signed BLE broadcast──► Android app ──HTTPS──► Spotify
                  (deep sleep)                      (listens in the         like / add
@@ -125,7 +128,7 @@ and anything not from your button. [`docs/design.md`](docs/design.md) has the de
 | The case and PCBs: `hardware/case/`, `hardware/pcb/` (OpenSCAD and KiCad sources, STLs) | [CERN-OHL-S-2.0](LICENSES/CERN-OHL-S-2.0.txt) |
 | Firmware, app, protocol tools | [MIT](LICENSES/MIT.txt) |
 | The Gradle wrapper (`android/gradlew*`, `android/gradle/wrapper/`), as shipped by Gradle | [Apache-2.0](LICENSES/Apache-2.0.txt) |
-| Documentation (`README.md`, `docs/`, `hardware/wiring.md`, `protocol/spec.md`) | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
+| Documentation (`README.md`, `docs/` including the renders, `hardware/wiring.md`, `protocol/spec.md`) | [CC BY 4.0](LICENSES/CC-BY-4.0.txt) |
 | The EdgeCoil mark (`hardware/pcb/edgecoil-mark.svg` and the silkscreen drawn from it), name and URL | [All rights reserved](LICENSES/LicenseRef-EdgeCoil-Mark.txt) |
 
 Each source file carries an SPDX header, and [`REUSE.toml`](REUSE.toml) covers the rest by path.

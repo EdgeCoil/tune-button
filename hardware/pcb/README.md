@@ -10,6 +10,13 @@ Three circuit boards for a four-key Tune Button:
 
 The MX boards put their switches in a 2 × 2 grid at the standard 19.05 mm keyboard pitch.
 
+| `xiao/` | `c3/` (key side) | `c3/` (parts side) | `c3-jst/` |
+|---|---|---|---|
+| ![XIAO board](../../docs/renders/xiao.jpg) | ![C3 board, key side](../../docs/renders/c3-back.jpg) | ![C3 board, parts side](../../docs/renders/c3-parts.jpg) | ![c3-jst board](../../docs/renders/c3-jst.jpg) |
+
+<sub>Rendered from the design files with KiCad. The connectors, switches and keycaps are simplified
+stand-ins.</sub>
+
 > **Status: rev A was ordered on 2026-10-25 (tag `rev-a`, all three boards on one JLC panel) and is
 > not yet built or tested.** Every board passes KiCad's electrical and design rules checks, with
 > nothing unconnected and the board matching its schematic. The firmware doesn't support four keys
