@@ -113,8 +113,9 @@ It needs KiCad 9, Java 21 and Freerouting 2.1.0 (later Freerouting releases need
 `gen.py` and rebuild rather than editing the KiCad files: a rebuild overwrites them. To hand-route
 instead, stop after `gen.py` and open the project in KiCad.
 
-For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, **black** mask, white legend, **lead-free HASL**, min via hole **0.3mm/(0.4/0.45mm)**, the standard option, as no hole is under 0.3 mm and a smaller option only adds cost: Economic assembly offers that
-for 2–50 boards, while ENIG would force green). Under *Mark on PCB*, choose *Specify a location*:
+For JLCPCB, upload `fab/tune-button-<board>-gerbers.zip` (2 layers, 1.6 mm, **black** mask, white legend, **lead-free HASL**: Economic assembly offers that
+for 2–50 boards, while ENIG would force green), and min via hole **0.3mm/(0.4/0.45mm)**, the standard
+option: no hole is under 0.3 mm, so a smaller option only adds cost. Under *Mark on PCB*, choose *Specify a location*:
 the `JLCJLCJLCJLC` marker puts their order number on the electronics side (C3) or the back (XIAO, `c3-jst`),
 away from the logo. Add a remark that the C3's module antenna and USB-C overhang the edge by
 design. For their
