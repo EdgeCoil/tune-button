@@ -4,12 +4,16 @@
 #
 # Merge the PlatformIO build into one image, flashed at offset 0:
 #   esptool.py --chip esp32c3 write_flash 0 tune-button-c3.bin
-# Pass the env for another build: sh scripts/merge.sh xiao_esp32c3_1btn → tune-button-c3-1btn.bin
+# Pass the env for another build: sh scripts/merge.sh xiao_esp32c3_1btn → tune-button-c3-1btn.bin,
+# c3_board → tune-button-c3-board.bin, xiao_board → tune-button-xiao-board.bin
 set -eu
 cd "$(dirname "$0")/.."
 ENV=${1:-xiao_esp32c3}
 B=.pio/build/$ENV
-OUT=tune-button-c3${ENV#xiao_esp32c3}.bin
+case $ENV in
+  xiao_esp32c3*) OUT=tune-button-c3${ENV#xiao_esp32c3}.bin ;;
+  *) OUT=tune-button-$ENV.bin ;;
+esac
 OUT=$(echo "$OUT" | tr _ -)
 P=${PLATFORMIO_CORE_DIR:-$HOME/.platformio}/packages
 python3 "$P/tool-esptoolpy/esptool.py" --chip esp32c3 merge_bin -o "$OUT" \

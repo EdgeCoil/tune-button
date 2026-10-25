@@ -1,7 +1,59 @@
 {
-  "version": 1,
+  "version": 2,
   "company_id": 65535,
   "press": [
+    {
+      "device_id": "a1b2c3d4",
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "counter": 1,
+      "button": 1,
+      "battery": 87,
+      "history": "0000",
+      "age": 0,
+      "payload": "544202a1b2c3d40100000001570000c473d187625748bb00"
+    },
+    {
+      "device_id": "a1b2c3d4",
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "counter": 2,
+      "button": 2,
+      "battery": 86,
+      "history": "0100",
+      "age": 37,
+      "payload": "544202a1b2c3d40200000002560100461192cec3f5026225"
+    },
+    {
+      "device_id": "a1b2c3d4",
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "counter": 3,
+      "button": 19,
+      "battery": 86,
+      "history": "0201",
+      "age": 1,
+      "payload": "544202a1b2c3d4030000001356020150daaa491324a2f001"
+    },
+    {
+      "device_id": "00000000",
+      "key": "00000000000000000000000000000000",
+      "counter": 4294967294,
+      "button": 36,
+      "battery": 255,
+      "history": "0404",
+      "age": 255,
+      "payload": "54420200000000feffffff24ff0404c62c43f23d04ffa7ff"
+    },
+    {
+      "device_id": "deadbeef",
+      "key": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      "counter": 123456,
+      "button": 34,
+      "battery": 100,
+      "history": "1203",
+      "age": 5,
+      "payload": "544202deadbeef40e20100226412030fe908a8f0ac12e705"
+    }
+  ],
+  "press_v1": [
     {
       "device_id": "a1b2c3d4",
       "key": "000102030405060708090a0b0c0d0e0f",
@@ -37,6 +89,26 @@
       "battery": 100,
       "age": 5,
       "payload": "544201deadbeef40e201000264c15e8c06f8314e7405"
+    }
+  ],
+  "settings": [
+    {
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "nonce": "0001020304050607",
+      "config": 0,
+      "tag": "acfce782b70999e5"
+    },
+    {
+      "key": "000102030405060708090a0b0c0d0e0f",
+      "nonce": "f0e1d2c3b4a59687",
+      "config": 132,
+      "tag": "6384a51975ddd1a8"
+    },
+    {
+      "key": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+      "nonce": "0000000000000000",
+      "config": 255,
+      "tag": "f24e3ac3f7e88ec4"
     }
   ],
   "hmac_sha256": [

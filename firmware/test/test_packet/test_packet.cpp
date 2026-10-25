@@ -32,16 +32,29 @@ static void test_sha256_multiblock() {
 static void test_press_vectors() {
   for (const auto &v : PRESS_VECTORS) {
     uint8_t out[tb::PAYLOAD_LEN];
-    tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, v.age, out);
+    tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, v.history, v.age, out);
     TEST_ASSERT_EQUAL_HEX8_ARRAY(v.payload, out, tb::PAYLOAD_LEN);
   }
+}
+
+static void test_settings_vectors() {
+  for (const auto &v : SETTINGS_VECTORS) {
+    uint8_t tag[tb::TAG_LEN];
+    tb::settings_tag(v.key, v.nonce, v.config, tag);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(v.tag, tag, tb::TAG_LEN);
+  }
+}
+
+static void test_fits_legacy_advert() {
+  // Flags AD (3) + manufacturer data AD header (2) + company id (2) + payload, in 31 bytes.
+  TEST_ASSERT_TRUE(3 + 2 + 2 + tb::PAYLOAD_LEN <= 31);
 }
 
 static void test_age_outside_tag() {
   const auto &v = PRESS_VECTORS[0];
   uint8_t a[tb::PAYLOAD_LEN], b[tb::PAYLOAD_LEN];
-  tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, 0, a);
-  tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, 200, b);
+  tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, v.history, 0, a);
+  tb::encode_press(v.device_id, v.key, v.counter, v.button, v.battery, v.history, 200, b);
   TEST_ASSERT_EQUAL_HEX8_ARRAY(a, b, tb::PAYLOAD_LEN - 1);
   tb::set_age(a, 200);
   TEST_ASSERT_EQUAL_HEX8_ARRAY(b, a, tb::PAYLOAD_LEN);
@@ -64,6 +77,8 @@ int main() {
   RUN_TEST(test_hmac_rfc4231);
   RUN_TEST(test_sha256_multiblock);
   RUN_TEST(test_press_vectors);
+  RUN_TEST(test_settings_vectors);
+  RUN_TEST(test_fits_legacy_advert);
   RUN_TEST(test_age_outside_tag);
   RUN_TEST(test_lipo_percent);
   return UNITY_END();

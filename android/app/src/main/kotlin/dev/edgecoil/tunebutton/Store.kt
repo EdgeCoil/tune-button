@@ -34,6 +34,26 @@ class Store(context: Context) {
         get() = prefs.getString("playlist_name", null)
         set(v) = prefs.edit().putString("playlist_name", v).apply()
 
+    /** What [key]'s [gesture] does; the default until one is chosen. */
+    fun slot(key: Int, gesture: Int): Action =
+        Action.fromJson(prefs.getString("slot_${key}_$gesture", null))
+            ?: Action.default(key, gesture, playlistId, playlistName)
+
+    fun setSlot(key: Int, gesture: Int, a: Action) = prefs.edit().putString("slot_${key}_$gesture", a.toJson()).apply()
+
+    /** The settings byte these slots need on the button. */
+    val wantedSettings: Int get() = Action.settingsByte(::slot)
+
+    /** The settings byte last written to the button, or -1 if never (firmware before four keys). */
+    var deviceSettings: Int
+        get() = prefs.getInt("device_settings", -1)
+        set(v) = prefs.edit().putInt("device_settings", v).apply()
+
+    /** Spotify scopes granted with the current token, space separated. */
+    var grantedScopes: String
+        get() = prefs.getString("scopes", "") ?: ""
+        set(v) = prefs.edit().putString("scopes", v).apply()
+
     var scanMode: Int
         get() = prefs.getInt("scan_mode", 1)  // ScanSettings.SCAN_MODE_BALANCED
         set(v) = prefs.edit().putInt("scan_mode", v).apply()
@@ -70,10 +90,14 @@ class Store(context: Context) {
 
     val lastCounter: Long get() = prefs.getLong("last_counter", -1)
 
-    /** Accept a press counter atomically: true exactly once per new counter. */
-    fun advanceCounter(counter: Long): Boolean = synchronized(LOCK) {
-        if (!Packet.isNew(lastCounter, counter)) return false
-        prefs.edit().putLong("last_counter", counter).commit()
+    /**
+     * Accept a press atomically: its events not yet acted on, oldest first, exactly once each (see
+     * [Packet.newEvents]); empty for a repeat or a replay.
+     */
+    fun accept(press: Packet.Press): List<Packet.Event> = synchronized(LOCK) {
+        val events = Packet.newEvents(lastCounter, press)
+        if (events.isNotEmpty()) prefs.edit().putLong("last_counter", press.counter).commit()
+        events
     }
 
     fun resetCounter(to: Long) = synchronized(LOCK) { prefs.edit().putLong("last_counter", to).commit() }

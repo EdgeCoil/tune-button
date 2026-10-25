@@ -96,7 +96,8 @@ void hmac_sha256(const uint8_t *key, size_t key_len, const uint8_t *data, size_t
 }
 
 void encode_press(const uint8_t device_id[ID_LEN], const uint8_t key[KEY_LEN], uint32_t counter,
-                  uint8_t button, uint8_t battery, uint8_t age, uint8_t out[PAYLOAD_LEN]) {
+                  uint8_t button, uint8_t battery, const uint8_t history[HISTORY], uint8_t age,
+                  uint8_t out[PAYLOAD_LEN]) {
   out[0] = 'T';
   out[1] = 'B';
   out[2] = VERSION;
@@ -104,10 +105,21 @@ void encode_press(const uint8_t device_id[ID_LEN], const uint8_t key[KEY_LEN], u
   for (int i = 0; i < 4; i++) out[7 + i] = (uint8_t)(counter >> (8 * i));
   out[11] = button;
   out[12] = battery;
+  memcpy(out + 13, history, HISTORY);
   uint8_t mac[32];
   hmac_sha256(key, KEY_LEN, out, AUTH_LEN, mac);
   memcpy(out + AUTH_LEN, mac, TAG_LEN);
   out[PAYLOAD_LEN - 1] = age;
+}
+
+void settings_tag(const uint8_t key[KEY_LEN], const uint8_t nonce[NONCE_LEN], uint8_t config,
+                  uint8_t out[TAG_LEN]) {
+  uint8_t msg[5 + NONCE_LEN + 1] = {'T', 'B', 'c', 'f', 'g'};
+  memcpy(msg + 5, nonce, NONCE_LEN);
+  msg[5 + NONCE_LEN] = config;
+  uint8_t mac[32];
+  hmac_sha256(key, KEY_LEN, msg, sizeof msg, mac);
+  memcpy(out, mac, TAG_LEN);
 }
 
 uint8_t lipo_percent(uint32_t mv) {

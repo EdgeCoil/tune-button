@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
@@ -32,15 +33,20 @@ class PressReceiver : BroadcastReceiver() {
         for (r in results) {
             val data = r.scanRecord?.getManufacturerSpecificData(Packet.COMPANY_ID)
             val press = Packet.verify(data, device.id, device.key) ?: continue
-            if (!store.advanceCounter(press.counter)) continue  // a repeat from the same burst, or a replay
-            val work = OneTimeWorkRequestBuilder<PressWorker>()
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .setInputData(workDataOf(
-                    "button" to press.button, "counter" to press.counter, "battery" to (press.battery ?: -1),
-                    "age_ms" to press.ageMs, "rssi" to r.rssi,
-                ))
-                .build()
-            WorkManager.getInstance(ctx).enqueue(work)
+            for (e in store.accept(press)) {
+                val work = OneTimeWorkRequestBuilder<PressWorker>()
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .setInputData(workDataOf(
+                        "key" to e.key, "gesture" to e.gesture, "counter" to e.counter,
+                        "battery" to (press.battery ?: -1), "rssi" to r.rssi,
+                        // Only the advert's own event has an age; earlier ones it names don't.
+                        "age_ms" to (if (e == press.event) press.ageMs else -1),
+                    ))
+                    .build()
+                // One at a time, in order: two quick skips are two skips, and a volume step reads
+                // the volume the step before it set.
+                WorkManager.getInstance(ctx).beginUniqueWork(PressWorker.QUEUE, ExistingWorkPolicy.APPEND_OR_REPLACE, work).enqueue()
+            }
         }
     }
 }

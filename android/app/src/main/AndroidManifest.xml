@@ -23,7 +23,10 @@
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
+    <!-- Cleartext allowed only so a webhook can be a plain http:// address on the home network
+         (Home Assistant often is). Every Spotify call is https. -->
     <application
+        android:usesCleartextTraffic="true"
         android:name=".App"
         android:label="@string/app_name"
         android:icon="@drawable/ic_launcher"

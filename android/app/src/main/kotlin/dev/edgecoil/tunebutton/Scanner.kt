@@ -41,16 +41,19 @@ object Scanner {
         val scanner = adapter.bluetoothLeScanner ?: return "Bluetooth is off"
         val pi = pendingIntent(ctx)
         try { scanner.stopScan(pi) } catch (e: Exception) { }
-        val prefix = Packet.filterPrefix(device.id)
-        val filter = ScanFilter.Builder()
-            .setManufacturerData(Packet.COMPANY_ID, prefix, ByteArray(prefix.size) { 0xFF.toByte() })
-            .build()
+        // Version 1 too, so a button not yet reflashed for four keys keeps working.
+        val filters = listOf(Packet.VERSION, Packet.VERSION_1).map { v ->
+            val prefix = Packet.filterPrefix(device.id, v)
+            ScanFilter.Builder()
+                .setManufacturerData(Packet.COMPANY_ID, prefix, ByteArray(prefix.size) { 0xFF.toByte() })
+                .build()
+        }
         val settings = ScanSettings.Builder()
             .setScanMode(Store(ctx).scanMode)
             .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
             .setReportDelay(0)
             .build()
-        val rc = scanner.startScan(listOf(filter), settings, pi)
+        val rc = scanner.startScan(filters, settings, pi)
         return if (rc == 0) null else "startScan failed ($rc)"
     }
 }

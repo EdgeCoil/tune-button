@@ -15,7 +15,8 @@ import org.json.JSONObject
 
 /**
  * The few Spotify Web API calls this needs, using the endpoints as of the February 2026 changes:
- * library saves go to PUT /me/library (URIs), playlist adds to POST /playlists/{id}/items.
+ * library saves and removals go to /me/library (URIs), playlist changes to /playlists/{id}/items.
+ * Playback control is the /me/player family, unchanged by them.
  * Auth is Authorization Code with PKCE, so no client secret exists anywhere.
  */
 class Spotify(private val store: Store) {
@@ -24,6 +25,7 @@ class Spotify(private val store: Store) {
 
     data class Playing(val uri: String, val title: String, val artist: String)
     data class Playlist(val id: String, val name: String)
+    data class Player(val isPlaying: Boolean, val shuffle: Boolean, val repeat: String, val volume: Int?, val playing: Playing?)
 
     // ---------------------------------------------------------------- auth
 
@@ -61,6 +63,9 @@ class Spotify(private val store: Store) {
 
     fun signedIn(): Boolean = store.refreshToken != null
 
+    /** False for a sign-in from before playback control was asked for: sign in again to grant it. */
+    fun canControlPlayback(): Boolean = "user-modify-playback-state" in store.grantedScopes.split(" ")
+
     fun signOut() {
         store.refreshToken = null
         store.accessToken = null
@@ -94,6 +99,7 @@ class Spotify(private val store: Store) {
         store.accessExpiresAt = System.currentTimeMillis() + j.getLong("expires_in") * 1000
         // PKCE refresh tokens may rotate; keep the newest.
         j.optString("refresh_token").takeIf { it.isNotEmpty() }?.let { store.refreshToken = it }
+        j.optString("scope").takeIf { it.isNotEmpty() }?.let { store.grantedScopes = it }
     }
 
     // ---------------------------------------------------------------- API
@@ -101,7 +107,11 @@ class Spotify(private val store: Store) {
     fun nowPlaying(): Playing? {
         val (code, text) = call("GET", "/me/player/currently-playing?additional_types=episode")
         if (code == 204 || text.isBlank()) return null
-        val item = JSONObject(text).optJSONObject("item") ?: return null
+        return playing(JSONObject(text))
+    }
+
+    private fun playing(j: JSONObject): Playing? {
+        val item = j.optJSONObject("item") ?: return null
         val uri = item.optString("uri")
         if (uri.isEmpty()) return null
         val artist = item.optJSONArray("artists")?.let { a ->
@@ -114,12 +124,43 @@ class Spotify(private val store: Store) {
         call("PUT", "/me/library?uris=" + URLEncoder.encode(uri, "UTF-8"))
     }
 
+    fun unlike(uri: String) {
+        call("DELETE", "/me/library?uris=" + URLEncoder.encode(uri, "UTF-8"))
+    }
+
     fun addToPlaylist(playlistId: String, uri: String) {
         call("POST", "/playlists/$playlistId/items", JSONObject().put("uris", JSONArray().put(uri)))
     }
 
-    /** Playlists the user can add to: their own, plus collaborative ones. */
-    fun writablePlaylists(): List<Playlist> {
+    /** Removes every occurrence of [uri] from the playlist. */
+    fun removeFromPlaylist(playlistId: String, uri: String) {
+        call("DELETE", "/playlists/$playlistId/items", JSONObject().put("items", JSONArray().put(JSONObject().put("uri", uri))))
+    }
+
+    /** The playback state, or null when no device is active. */
+    fun player(): Player? {
+        val (code, text) = call("GET", "/me/player?additional_types=episode")
+        if (code == 204 || text.isBlank()) return null
+        val j = JSONObject(text)
+        val volume = j.optJSONObject("device")
+            ?.takeIf { it.optBoolean("supports_volume", true) && !it.isNull("volume_percent") }?.optInt("volume_percent")
+        return Player(j.optBoolean("is_playing"), j.optBoolean("shuffle_state"), j.optString("repeat_state", "off"), volume, playing(j))
+    }
+
+    /** Resumes, or starts [contextUri] (a playlist) from the top. */
+    fun play(contextUri: String? = null) {
+        call("PUT", "/me/player/play", contextUri?.let { JSONObject().put("context_uri", it) })
+    }
+
+    fun pause() { call("PUT", "/me/player/pause") }
+    fun next() { call("POST", "/me/player/next") }
+    fun previous() { call("POST", "/me/player/previous") }
+    fun volume(percent: Int) { call("PUT", "/me/player/volume?volume_percent=${percent.coerceIn(0, 100)}") }
+    fun shuffle(on: Boolean) { call("PUT", "/me/player/shuffle?state=$on") }
+    fun repeat(state: String) { call("PUT", "/me/player/repeat?state=$state") }
+
+    /** Playlists the user can add to (their own, plus collaborative ones), or with [all], every one they have. */
+    fun playlists(all: Boolean = false): List<Playlist> {
         val me = JSONObject(call("GET", "/me").second).getString("id")
         val out = mutableListOf<Playlist>()
         var path: String? = "/me/playlists?limit=50"
@@ -129,7 +170,7 @@ class Spotify(private val store: Store) {
             for (i in 0 until items.length()) {
                 val p = items.optJSONObject(i) ?: continue
                 val owner = p.optJSONObject("owner")?.optString("id")
-                if (owner == me || p.optBoolean("collaborative")) out += Playlist(p.getString("id"), p.optString("name"))
+                if (all || owner == me || p.optBoolean("collaborative")) out += Playlist(p.getString("id"), p.optString("name"))
             }
             path = page.optString("next").takeIf { it.isNotEmpty() && it != "null" }?.removePrefix(API)
         }
@@ -157,7 +198,9 @@ class Spotify(private val store: Store) {
         } catch (e: IOException) { "" }
         when {
             code == 401 -> { store.accessToken = null; throw AuthRequired("Spotify rejected the token; sign in again") }
-            code == 403 -> throw ApiError(code, "Spotify refused (403). Is this account a user of the developer app?")
+            code == 403 -> throw ApiError(code, if (text.isBlank()) "Spotify refused (403). Is this account a user of the developer app?"
+                else "Spotify refused: ${errorMessage(text)}")
+            code == 404 && "NO_ACTIVE_DEVICE" in text -> throw ApiError(code, "No Spotify device is active; start playing on one first")
             code == 429 -> throw ApiError(code, "Spotify rate limit; try again shortly")
             code >= 400 -> throw ApiError(code, "Spotify error $code: ${errorMessage(text)}")
         }
@@ -172,7 +215,7 @@ class Spotify(private val store: Store) {
         private const val AUTH_URL = "https://accounts.spotify.com/authorize"
         private const val TOKEN_URL = "https://accounts.spotify.com/api/token"
         private const val API = "https://api.spotify.com/v1"
-        private const val SCOPES = "user-read-currently-playing user-read-playback-state user-library-modify " +
+        private const val SCOPES = "user-read-currently-playing user-read-playback-state user-modify-playback-state user-library-modify " +
             "playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private"
 
         private fun b64url(b: ByteArray) = Base64.encodeToString(b, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)

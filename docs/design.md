@@ -12,16 +12,20 @@ online to stream anyway, so the API is always reachable when it matters.
 
 ## How a press travels
 
-1. A button press pulls GPIO3 or GPIO4 low, which wakes the C3 from deep sleep.
-2. The firmware increments a counter that it keeps in NVS, then builds the 22-byte press payload
-   ([protocol/spec.md](../protocol/spec.md)) with an HMAC tag. It broadcasts it as a non-connectable
-   advert every 30–40 ms for `TB_BURST_MS`.
+1. A key press pulls its GPIO low, which wakes the C3 from deep sleep.
+2. The firmware works out the gesture (press, hold or double press; a key with no hold or double
+   action sends at once). It increments a counter that it keeps in NVS, then builds the 24-byte
+   press payload ([protocol/spec.md](../protocol/spec.md)) with an HMAC tag. It broadcasts it as a
+   non-connectable advert every 30–40 ms until `TB_BURST_MS` after the last event. Each advert
+   also names the two events before it, so quick presses aren't lost.
 3. On the phone, a scan registered with a `PendingIntent` and a manufacturer-data filter
    (magic + version + device id) is running in the Bluetooth controller. When the advert matches,
    Android starts `PressReceiver`, even if the app process was dead.
-4. `PressReceiver` checks the tag and the counter, and queues an expedited WorkManager job.
-5. `PressWorker` asks Spotify what is playing, then likes it (`PUT /me/library`) or adds it to the
-   chosen playlist (`POST /playlists/{id}/items`). It shows a notification, which also buzzes.
+4. `PressReceiver` checks the tag and the counter, and queues an expedited WorkManager job for
+   each new event, in order.
+5. `PressWorker` runs the action set for that key and gesture: for example, it asks Spotify what is
+   playing and likes it (`PUT /me/library`), or skips (`POST /me/player/next`). It shows a
+   notification, which also buzzes.
 
 The connection is never held open, so the device costs nothing between presses beyond deep-sleep current.
 
@@ -104,12 +108,16 @@ None of these has been done yet.
 |---|---|---|
 | 1 | Boots and flashes with the battery divider fitted (GPIO2 strapping) | Enumerates, and the log shows a wake |
 | 2 | Deep-sleep current from the battery (meter in series with BAT+) | ≤ 60 µA |
-| 3 | Each button wakes it and sends the right button (nRF Connect shows the payload, byte 11) | 01 / 02 |
-| 4 | Holding a button down does not leave it awake or wake-looping | Timer wake once a minute, otherwise asleep |
-| 5 | Hold both 3 s (one-button build: hold 5 s) → LED flashes, the app pairs, and the LED triple-flashes | Paired |
+| 3 | Each key wakes it and sends the right button byte (nRF Connect shows the payload, byte 11) | 01–04 |
+| 3a | Give key 3 a hold and key 4 a double press in the app, send the settings, then hold key 3 and double-press key 4 | 13, then 24; key 1 still sends at once |
+| 3b | Press key 3 three times quickly | Three skips (the history bytes) |
+| 3c | XIAO board: the quickest tap you can on K4, and a few K3 presses | K4 reads as key 4 (the wake stub); K3 never sends a key 4 as well |
+| 3d | Press key 3, then within 10 s hold keys 1 and 2 for 3 s | Pairing mode starts (Bluetooth restarts within one wake) |
+| 4 | Holding a key down does not leave it awake, wake-looping or repeating its action | Timer wake once a minute, otherwise asleep, nothing sent |
+| 5 | Hold keys 1 and 2 for 3 s (one-button build: hold 5 s) → LED flashes, the app pairs, and the LED triple-flashes | Paired |
 | 5a | Hold to pair but don't pair from the app; let the 60 s window lapse | The phone that was already paired still works |
-| 6 | Screen off, app swiped away: the like button likes the current song | Notification, and the song is in Liked Songs |
-| 7 | Same for the playlist button | The song is in the playlist |
+| 6 | Screen off, app swiped away: key 1 likes the current song | Notification, and the song is in Liked Songs |
+| 7 | Same for key 2 (playlist), key 3 (skip) and key 4 (play/pause) | Each does its action |
 | 8 | Replay: record an advert with nRF Connect and re-broadcast it | Nothing happens; no log entry |
 | 9 | Reboot the phone, press without opening the app | Still works (BootReceiver) |
 | 10 | Charge from USB-C while running; the charge LED is visible through the case | Charges |

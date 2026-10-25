@@ -19,8 +19,8 @@ stand-ins.</sub>
 
 > **Status: rev A was ordered on 2026-10-25 (tag `rev-a`, all three boards on one JLC panel) and is
 > not yet built or tested.** Every board passes KiCad's electrical and design rules checks, with
-> nothing unconnected and the board matching its schematic. The firmware doesn't support four keys
-> yet (see [Firmware](#firmware)).
+> nothing unconnected and the board matching its schematic. The four-key firmware is written but
+> hasn't run on these boards yet (see [Firmware](#firmware)).
 
 ## The three boards at a glance
 
@@ -168,8 +168,8 @@ than snapping them.
 
 | Signal | XIAO board | C3 boards | Notes |
 |---|---|---|---|
-| K1 (top left) | D1 / GPIO3 | GPIO3 | Same as today's like button |
-| K2 (top right) | D2 / GPIO4 | GPIO4 | Same as today's playlist button |
+| K1 (top left) | D1 / GPIO3 | GPIO3 | Same pin as the hand-wired like button |
+| K2 (top right) | D2 / GPIO4 | GPIO4 | Same pin as the hand-wired playlist button |
 | K3 (bottom left) | D3 / GPIO5 | GPIO5 | |
 | K4 (bottom right) | D4 / GPIO6, and through D1 (1N4148WS) onto GPIO5 | GPIO0 | See below |
 | Battery divider (2 × 220 kΩ) | D0 / GPIO2 | GPIO1 | ADC1 |
@@ -252,15 +252,9 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 ## Firmware
 
-The firmware handles one or two buttons. Four keys still need:
-- a build flag per board with the pin map above;
-- two more button codes in [`protocol/spec.md`](../../protocol/spec.md) (byte 11);
-- app actions for them;
-- on the XIAO board, a wake stub that reads D4.
-
-The existing build's pins don't match either board:
-- `TB_LED_PIN=5` would drive the XIAO board's K3 line, since that board's LED is on D5, GPIO7.
-- The C3 boards have no build environment yet (battery on GPIO1, LED on GPIO10).
+Build `xiao_board` for the XIAO board and `c3_board` for `c3` and `c3-jst` (see the top-level
+README). Neither has run on a real board yet. On the XIAO board, a deep-sleep wake stub reads D4
+within microseconds of waking, so even a very quick tap on K4 reads as K4.
 
 ## Rebuilding
 
