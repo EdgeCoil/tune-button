@@ -9,7 +9,7 @@ Mouse-bite tabs join neighbours and the rails, only where no track, via or pad c
 the edge and no part reaches it (so a bite never tears copper), and the ground pour is held back
 around each tab.
 The frame carries four tooling holes and three fiducials. The panel BOM and placement file are written
-here too, with fab_jlc.py's per-part corrections, every reference prefixed with its board.
+here too, with edgecoil_pcb.jlc's per-part corrections, every reference prefixed with its board.
 
     python3 panel.py      (after ./build.sh; needs KiKit 1.8.1 where KiCad's pcbnew module is visible,
                            e.g. python3 -m venv --system-site-packages v && v/bin/pip install kikit==1.8.1)
@@ -29,8 +29,8 @@ from kikit.units import mm
 from shapely.geometry import LineString, box
 from shapely.ops import unary_union
 
-from fab_jlc import jlc_place
-from gen import set_stackup
+from gen import set_stackup  # puts vendor/ on the path first
+from edgecoil_pcb.jlc import jlc_place  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "panel")

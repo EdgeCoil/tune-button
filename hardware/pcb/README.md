@@ -82,8 +82,9 @@ Standard, and Standard needs at least 70 × 70 mm, which no single board is. Run
 - Add a remark: *"Customer panel of 3 designs. The modules' antennas and the USB-C sockets overhang
   their board edges by design."*
 - Each part is prefixed with its board (`XIAO_`, `C3_`, `JST_`).
-- **Check the placement preview before paying.** `fab_jlc.py` already corrects every rotation where
-  JLC's footprint differs from KiCad's (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST, the
+- **Check the placement preview before paying.** `edgecoil_pcb.jlc` (in `vendor/`) already corrects every
+  rotation where JLC's footprint differs from KiCad's, each checked pad by pad against JLC's own footprint by
+  `edgecoil_pcb.jlc_verify` (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST, the
   XIAO board's sockets and header), but a wrong SRV05-4 rotation (U2, and U5 on `c3-jst`) would
   short the 3V3 rail.
 
@@ -262,7 +263,8 @@ Everything is generated. Edit the scripts and rebuild; don't edit the KiCad file
 overwrites them.
 
 1. **[`gen.py`](gen.py)** holds the parts, nets and placement for all three boards. It writes the
-   schematic, with a label on every pin, and an unrouted board from the same netlist.
+   schematic, with a label on every pin, and an unrouted board from the same netlist, through the
+   shared pipeline vendored in [`vendor/`](vendor/).
 2. **[`route.py`](route.py)** lays the copper and fills the pours.
    - **Frozen routing:** each board's `routing.json` holds its reviewed tracks and vias, and
      `route.py` replays them. A fix is then a small edit to that file, not a new layout.
