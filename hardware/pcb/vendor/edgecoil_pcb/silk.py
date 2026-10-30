@@ -3,6 +3,7 @@
 """Silkscreen: footprint silk kept clear of pads and the edge, part labels placed where they can be
 read once the parts are on, and a mark rasterised into back-silk strokes."""
 import math
+import re
 import sys
 
 import pcbnew
@@ -10,7 +11,28 @@ import pcbnew
 from .geom import mm
 
 
-def trim_silk(board, w, h, pad_gap=0.2, edge_gap=0.25):
+def _natkey(ref):
+    """R2 before R10."""
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", ref)]
+
+
+def _fps(board, free):
+    """The board's footprints: by reference if `free`, else in the order they were added (which
+    breaks ties in the silk and label code, so a board built from the same parts in another order
+    came out different; boards ordered before order_free_silk keep it to stay identical)."""
+    fps = list(board.Footprints())
+    return sorted(fps, key=lambda f: _natkey(f.GetReference())) if free else fps
+
+
+def _pads(board, free):
+    pads = list(board.GetPads())
+    if free:
+        pads.sort(key=lambda p: (_natkey(p.GetParentFootprint().GetReference()), p.GetNumber(),
+                                 p.GetPosition().x, p.GetPosition().y))
+    return pads
+
+
+def trim_silk(board, w, h, pad_gap=0.2, edge_gap=0.25, order_free=False):
     """Keep footprints' silk clear of pads and the board edge. The LCSC footprints draw outlines as
     close as 0.045 mm to a pad; the gerbers clip silk off the mask opening anyway, but JLC's DFM check
     flags anything under 0.18 mm (danger under 0.13), and lines off the edge.
@@ -22,7 +44,7 @@ def trim_silk(board, w, h, pad_gap=0.2, edge_gap=0.25):
     and the build stops if there's nowhere to put one."""
     copper = {pcbnew.F_SilkS: pcbnew.F_Cu, pcbnew.B_SilkS: pcbnew.B_Cu}
     # Polygons, not SHAPE.GetClearance: that reports a positive gap for shapes that overlap.
-    pads = {l: [(pd, pd.GetEffectivePolygon(c), pd.GetBoundingBox()) for pd in board.GetPads() if pd.IsOnLayer(c)]
+    pads = {l: [(pd, pd.GetEffectivePolygon(c), pd.GetBoundingBox()) for pd in _pads(board, order_free) if pd.IsOnLayer(c)]
             for l, c in copper.items()}
     polys = {l: [poly for _, poly, _ in v] for l, v in pads.items()}
     gap = pcbnew.FromMM(pad_gap)
@@ -63,7 +85,7 @@ def trim_silk(board, w, h, pad_gap=0.2, edge_gap=0.25):
                 return True
         return False
 
-    for fp in board.Footprints():
+    for fp in _fps(board, order_free):
         # Specks (EasyEDA's 0.2 mm circles, sub-0.2 mm dashes) print as dirt, not marks: off to Fab, and
         # a part whose only pin-1 mark was one gets a proper dot.
         for g in list(fp.GraphicalItems()):
@@ -160,7 +182,7 @@ def trim_silk(board, w, h, pad_gap=0.2, edge_gap=0.25):
             dropped.append(fp)
     # Short outline lines (a 0603's are 0.5 mm) count as marks above, so two neighbours' can still
     # print as one bar: drop the line of whichever part is farther from the overlap.
-    segs = [(fp, g) for fp in board.Footprints() for g in fp.GraphicalItems()
+    segs = [(fp, g) for fp in _fps(board, order_free) for g in fp.GraphicalItems()
             if g.GetLayer() in copper and isinstance(g, pcbnew.PCB_SHAPE) and g.GetShape() == pcbnew.SHAPE_T_SEGMENT]
     for i, (fa, ga) in enumerate(segs):
         for fb, gb in segs[i + 1:]:
@@ -329,7 +351,7 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
     # count on both.
     bodies = {pcbnew.F_SilkS: {}, pcbnew.B_SilkS: {}}
     side_of = {}
-    for fp in board.Footprints():
+    for fp in _fps(board, cfg.order_free_silk):
         back = fp.GetLayer() == pcbnew.B_Cu
         fab, silk = (pcbnew.B_Fab, pcbnew.B_SilkS) if back else (pcbnew.F_Fab, pcbnew.F_SilkS)
         box = pcbnew.BOX2I()
@@ -339,7 +361,7 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
         bodies[silk][fp.GetReference()] = box
         side_of[fp.GetReference()] = silk
     # Keycaps on front-mounted switches cover an 18 mm square round the centre post.
-    for fp in board.Footprints():
+    for fp in _fps(board, cfg.order_free_silk):
         if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:") and fp.GetLayer() == pcbnew.F_Cu:
             post = max(fp.Pads(), key=lambda p: p.GetDrillSize().x).GetPosition()
             half = pcbnew.FromMM(cfg.keycap / 2)
@@ -352,13 +374,13 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
     if notch:  # no board there
         for layer in bodies:
             bodies[layer]["notch"] = pcbnew.BOX2I(mm(0, 0), mm(notch[0] + 0.5, notch[1] + 0.5))
-    pads = [grow(p.GetBoundingBox(), 0.15) for p in board.GetPads()]
+    pads = [grow(p.GetBoundingBox(), 0.15) for p in _pads(board, cfg.order_free_silk)]
     pads += [grow(pcbnew.BOX2I(pcbnew.VECTOR2I(x - d // 2, y - d // 2), pcbnew.VECTOR2I(d, d)), 0.1) for x, y, d in vias]
     texts = {layer: [grow(d.GetBoundingBox(), 0.1) for d in board.Drawings()
                      if d.GetLayer() == layer and (isinstance(d, pcbnew.PCB_TEXT) or d.GetShape() == pcbnew.SHAPE_T_SEGMENT)]
              for layer in bodies}
     # Footprints' own silk marks (a polarity "+", a pin-1 dot) are as much in the way as a label.
-    for fp in (board.Footprints() if cfg.labels_avoid_marks else ()):
+    for fp in (_fps(board, cfg.order_free_silk) if cfg.labels_avoid_marks else ()):
         for item in fp.GraphicalItems():
             b = item.GetBoundingBox()
             if (item.GetLayer() in texts and isinstance(item, pcbnew.PCB_SHAPE)
@@ -377,7 +399,7 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
             return None
         return parts[0][1]
     # Small parts first: they have the fewest places to go.
-    order = sorted((fp for fp in board.Footprints() if fp.Reference().IsVisible()),
+    order = sorted((fp for fp in _fps(board, cfg.order_free_silk) if fp.Reference().IsVisible()),
                    key=lambda fp: bodies[side_of[fp.GetReference()]][fp.GetReference()].GetArea())
     for fp in order:
         ref = fp.Reference()

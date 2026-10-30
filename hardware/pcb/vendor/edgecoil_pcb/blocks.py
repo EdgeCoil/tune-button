@@ -49,21 +49,32 @@ class Block:
             return nets[n]
         return prefix + n  # an internal net, kept apart from another instance's
 
-    def parts(self, at, rot=0, refs=None, nets=None, prefix=""):
-        """The block's parts, placed: board refs from `refs` (local -> board), else prefixed."""
+    def parts(self, at, rot=0, refs=None, nets=None, prefix="", libs=None):
+        """The block's parts, placed: board refs from `refs` (local -> board), else prefixed. `libs`
+        renames library nicknames (the toolkit's "ec" -> a board's own copy of the same part)."""
         from .parts import Part
-        refs, nets = refs or {}, nets or {}
+        refs, nets, libs = refs or {}, nets or {}, libs or {}
+
+        def lib(lib_id):
+            nick, _, name = lib_id.partition(":")
+            return f"{libs.get(nick, nick)}:{name}" if name else lib_id
         if rot % 90:
             raise SystemExit(f"block {self.name}: rot must be a multiple of 90")
         out = []
         for p in self.data["parts"]:
             dx, dy = _rot(p["at"][0], p["at"][1], rot)
-            out.append(Part(refs.get(p["ref"], prefix + p["ref"]), p["sym"], p["fp"], p["value"],
+            out.append(Part(refs.get(p["ref"], prefix + p["ref"]), lib(p["sym"]) if p["sym"] else p["sym"], lib(p["fp"]), p["value"],
                             {k: (self._net(v, nets, prefix) if v else "") for k, v in p["pins"].items()},
                             (round(at[0] + dx, 6), round(at[1] + dy, 6)), (p["rot"] + rot) % 360,
                             mpn=p.get("mpn", ""), note=p.get("note", ""), lcsc=p.get("lcsc", ""),
                             side=p.get("side", "F")))
         return out
+
+    def board_refs(self, key, refs=None, prefix=""):
+        """The board references of the block parts listed under `key` in block.json (e.g.
+        "esd_ground": the parts for Config.esd_refs)."""
+        refs = refs or {}
+        return tuple(refs.get(r, prefix + r) for r in self.data.get(key, ()))
 
     def copper(self, at, rot=0, nets=None, prefix=""):
         """The block's tracks and vias in routing.json's form, board coordinates (nm)."""
@@ -235,8 +246,9 @@ def selftest(block, cfg_libs=None, at=(60.0, 60.0)):
     import pcbnew
     from .config import Config
     from .geom import mm
+    from .config import TOOLKIT_LIBS
     cfg = Config(project="selftest", here=os.path.dirname(block.path), ns=__import__("uuid").uuid4(), variants={},
-                 local_libs=cfg_libs or {})
+                 local_libs=cfg_libs or {}, toolkit_libs=tuple(TOOLKIT_LIBS))
     problems = []
     for rot in (0, 90, 180, 270):
         board = pcbnew.BOARD()

@@ -341,6 +341,9 @@ CFG = Config(
     power_nets=("GND", "VBAT", "VBUS", "VSYS", "3V3"),
     back_text=lambda v, w, h: [(w / 2, h - 6.0, f"tune-button {v}\nedgecoil.dev  rev A", 1.0)],
     logo_svg=os.path.join(HERE, "edgecoil-mark.svg"),
+    # Built before blocks: the silk and labels break ties in part order, and esd_ground's via goes
+    # on U2 by convention. Both kept so the board stays as ordered.
+    order_free_silk=False, esd_refs=("U2",),
 )
 
 

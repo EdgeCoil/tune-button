@@ -184,6 +184,10 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
         lib, fpname = p.fp.split(":")
         fp = pcbnew.FootprintLoad(os.path.join(cfg.lib_dir(lib) or cfg.footprint_dir, lib + ".pretty"), fpname)
         fp.SetFPIDAsString(p.fp)
+        if lib in cfg.toolkit_libs and lib not in cfg.local_libs:
+            models = fp.Models()  # by index: iterating the SWIG vector yields copies, so edits there are lost
+            for k in range(len(models)):
+                models[k].m_Filename = models[k].m_Filename.replace("${EC_3D}", cfg.model_dir(lib, name))
         fp.SetReference(p.ref)
         fp.SetValue(p.value)
         # The test pads' silk square sits 0.12 mm from the pad, which JLC's DFM check flags; the TX/RX
@@ -271,7 +275,8 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
     if cfg.block_copper:
         from .blocks import lay
         lay(board, cfg.block_copper)
-    esd_ground(board)
+    for ref in cfg.esd_refs:
+        esd_ground(board, ref)
     # Back-side SMD parts are soldered by hand: keep tracks and vias out from between their pads.
     for fp in board.Footprints():
         smd = [pd.GetBoundingBox() for pd in fp.Pads() if pd.GetAttribute() == pcbnew.PAD_ATTRIB_SMD]
@@ -350,7 +355,7 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
     vias += [(t.GetPosition().x, t.GetPosition().y, t.GetWidth(pcbnew.F_Cu)) for t in board.GetTracks()
              if t.GetClass() == "PCB_VIA"]
     if cfg.trim_silk:
-        trim_silk(board, w, h)
+        trim_silk(board, w, h, order_free=cfg.order_free_silk)
     if cfg.title_block:
         tb = board.GetTitleBlock()
         tb.SetTitle(name); tb.SetRevision("A")
