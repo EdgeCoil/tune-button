@@ -10,6 +10,9 @@
 # are not in /usr/share/kicad/symbols), Java 21 and Freerouting 2.1.0 (FREEROUTING=path/to/jar).
 # Fab files land in <variant>/fab/, which is not committed.
 set -euo pipefail
+# Gerber, drill and job files stamp the local time with its offset: build in UTC so they carry no
+# timezone (+11:00 here would point at a place).
+export TZ=UTC
 cd "$(dirname "$0")"
 variants=("$@")
 [ ${#variants[@]} -eq 0 ] && variants=(xiao c3 c3-jst)
