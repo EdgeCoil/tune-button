@@ -44,6 +44,7 @@ class Config:
     power_nets: tuple = ("VBUS", "3V3")    # the wide "Power" net class
     back_text: Optional[Callable] = None   # (variant, w, h) -> [(x, y, text, size)]
     board_hooks: tuple = ()                # functions (board) run after the shell keepouts
+    block_copper: list = field(default_factory=list)  # placed blocks' copper (Block.copper), laid locked
     logo_svg: Optional[str] = None         # the board supplies its own mark; the toolkit ships none
     trim_silk: bool = True                 # clear footprint silk off pads and the edge (cec-bridge)
     title_block: bool = True               # board title block: variant name, rev A

@@ -268,6 +268,9 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
     # Shells and other board-specific keepouts (a connector whose footprint draws no body, say).
     for hook in cfg.board_hooks:
         hook(board)
+    if cfg.block_copper:
+        from .blocks import lay
+        lay(board, cfg.block_copper)
     esd_ground(board)
     # Back-side SMD parts are soldered by hand: keep tracks and vias out from between their pads.
     for fp in board.Footprints():

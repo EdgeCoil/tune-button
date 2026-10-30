@@ -264,7 +264,7 @@ overwrites them.
 
 1. **[`gen.py`](gen.py)** holds the parts, nets and placement for all three boards. It writes the
    schematic, with a label on every pin, and an unrouted board from the same netlist, through the
-   shared pipeline vendored in [`vendor/`](vendor/).
+   shared pipeline, [EdgeCoil/edgecoil-pcb](https://github.com/EdgeCoil/edgecoil-pcb), vendored in [`vendor/`](vendor/).
 2. **[`route.py`](route.py)** lays the copper and fills the pours.
    - **Frozen routing:** each board's `routing.json` holds its reviewed tracks and vias, and
      `route.py` replays them. A fix is then a small edit to that file, not a new layout.
