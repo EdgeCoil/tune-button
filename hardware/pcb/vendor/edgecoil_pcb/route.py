@@ -459,6 +459,10 @@ def replay(cfg, name):
     if lost > LOST_POUR or crowded:
         raise SystemExit(f"{name}: routing.json loses {lost:.1f} mm2 of back pour; pins crowded: {crowded or 'none'}")
     board.Save(path)
+    from .blocks import renetted
+    moved = renetted(path, items)
+    if moved:
+        refuse(f"routing.json items changed net on save (each touches another net's pad): {moved}")
     print(f"{name}: replayed {os.path.relpath(routing_file(cfg, name), cfg.here)}")
 
 

@@ -38,14 +38,25 @@ PROVENANCE = {
     "C23138": V, "C23162": V, "C23186": V, "C25803": V, "C25804": V, "C265453": V, "C2932672": V, "C2934560": V,
     "C295747": V, "C318884": V, "C32574": V, "C435835": V, "C45783": V, "C492401": V, "C82045": V, "C841192": V,
     "C84256": V, "C85364": V, "C91447": V,
+    ("C435835", "SOT-223-3_TabPin2"): V,
 }
 
 
-def jlc_place(lcsc, x, y, rot):
-    """A part's KiCad position and rotation, moved to JLC's footprint origin and rotation."""
-    ox, oy = OFFSET.get(lcsc, (0.0, 0.0))
+# The same part on another footprint can need another correction: (LCSC, KiCad footprint name) ->
+# degrees, ahead of ROTATE. The LDL1117 is placed at 0 on EasyEDA's own SOT-223-4 (the cec-bridge's)
+# and at 180 on KiCad's SOT-223-3_TabPin2 (the ldo-ldl1117 block's), which is EasyEDA's turned
+# 180 degrees (not mirrored: a mirror would swap pins 1 and 3).
+ROTATE_FP = {("C435835", "SOT-223-3_TabPin2"): 180}
+OFFSET_FP = {}
+
+
+def jlc_place(lcsc, x, y, rot, fp=None):
+    """A part's KiCad position and rotation, moved to JLC's footprint origin and rotation. `fp` is the
+    KiCad footprint's name (the pos file's Package), for corrections that depend on it."""
+    ox, oy = OFFSET_FP.get((lcsc, fp), OFFSET.get(lcsc, (0.0, 0.0)))
+    turn = ROTATE_FP.get((lcsc, fp), ROTATE.get(lcsc, 0))
     a = math.radians(rot)
-    return x + ox * math.cos(a) - oy * math.sin(a), y + ox * math.sin(a) + oy * math.cos(a), (rot + ROTATE.get(lcsc, 0)) % 360
+    return x + ox * math.cos(a) - oy * math.sin(a), y + ox * math.sin(a) + oy * math.cos(a), (rot + turn) % 360
 
 
 def main(bom_in, pos_in, bom_out, cpl_out):
@@ -64,10 +75,11 @@ def main(bom_in, pos_in, bom_out, cpl_out):
         for row in csv.DictReader(f):
             lcsc = fitted.get(row["Ref"])
             if lcsc:
-                x, y, rot = jlc_place(lcsc, float(row["PosX"]), float(row["PosY"]), float(row["Rot"]))
+                x, y, rot = jlc_place(lcsc, float(row["PosX"]), float(row["PosY"]), float(row["Rot"]), row.get("Package"))
                 w.writerow([row["Ref"], f"{x:.6f}mm", f"{y:.6f}mm", row["Side"].capitalize(), f"{rot:.6f}"])
 
-    unchecked = sorted(set(fitted.values()) - set(PROVENANCE))
+    unchecked = sorted(set(fitted.values()) - set(PROVENANCE))  # (a footprint-keyed entry counts too)
+    unchecked = [c for c in unchecked if not any(isinstance(k, tuple) and k[0] == c for k in PROVENANCE)]
     if unchecked:
         print(f"jlc: placement not checked against JLC's footprint for {', '.join(unchecked)}: "
               "run python3 -m edgecoil_pcb.jlc_verify on the board", file=sys.stderr)

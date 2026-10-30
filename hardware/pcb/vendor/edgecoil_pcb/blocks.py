@@ -51,7 +51,7 @@ class Block:
 
     def parts(self, at, rot=0, refs=None, nets=None, prefix="", libs=None):
         """The block's parts, placed: board refs from `refs` (local -> board), else prefixed. `libs`
-        renames library nicknames (the toolkit's "ec" -> a board's own copy of the same part)."""
+        renames library nicknames (a block's part -> a board's own copy of it)."""
         from .parts import Part
         refs, nets, libs = refs or {}, nets or {}, libs or {}
 
@@ -116,6 +116,34 @@ def lay(board, items):
             t.SetLayer(board.GetLayerID(i["layer"])); t.SetWidth(i["w"])
         t.SetNet(net); t.SetLocked(True)
         board.Add(t)
+
+
+def renetted(path, items):
+    """Laid copper whose net changed on the way to the file. KiCad renames a track or via whose only
+    connection is another net's pad to that net when the board is saved, silently, so a frozen item
+    placed onto the wrong pad would leave its record and the board disagreeing (found 2026-10-30 by a
+    planted track that DRC then never saw). Returns [(item's net, the board's, where)]."""
+    import pcbnew
+    board = pcbnew.LoadBoard(path)
+    found = {}
+    for t in board.GetTracks():
+        if t.GetClass() == "PCB_VIA":
+            key = ("via", t.GetPosition().x, t.GetPosition().y)
+        else:
+            a, b = (t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y)
+            key = ("seg", board.GetLayerName(t.GetLayer())) + tuple(sorted([a, b]))
+        found.setdefault(key, []).append(t.GetNetname())
+    out = []
+    for i in items:
+        if "via" in i:
+            key = ("via", i["via"][0], i["via"][1])
+        else:
+            key = ("seg", i["layer"]) + tuple(sorted([tuple(i["start"]), tuple(i["end"])]))
+        nets = found.get(key, [])
+        if i["net"] not in nets:
+            where = i.get("via") or i["start"]
+            out.append((i["net"], nets[0] if nets else "missing", (where[0] / 1e6, where[1] / 1e6)))
+    return out
 
 
 # ------------------------------------------------------------------------------------------- cutting
@@ -246,9 +274,8 @@ def selftest(block, cfg_libs=None, at=(60.0, 60.0)):
     import pcbnew
     from .config import Config
     from .geom import mm
-    from .config import TOOLKIT_LIBS
     cfg = Config(project="selftest", here=os.path.dirname(block.path), ns=__import__("uuid").uuid4(), variants={},
-                 local_libs=cfg_libs or {}, toolkit_libs=tuple(TOOLKIT_LIBS))
+                 local_libs=cfg_libs or {})
     problems = []
     for rot in (0, 90, 180, 270):
         board = pcbnew.BOARD()

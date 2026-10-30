@@ -124,6 +124,7 @@ def schematic_pin_names(sch_path):
 GEOM = 0.35    # mm: pads of one part drawn by two libraries differ in size, so their centres too
 CENTRE = 0.05  # mm: but the pattern must be centred where JLC's is, to this or 5 % of the smallest
                # pad along that axis if more (a 0.075 mm shift along a 3.5 mm connector pad is nothing)
+WHOLE = 0.2    # mm, on an axis only the whole pattern can judge (see fit)
 
 
 def fit(kpads, epads, x0, y0, rot, core=None):
@@ -147,11 +148,21 @@ def fit(kpads, epads, x0, y0, rot, core=None):
     # Centred on the pads both libraries number alike (`core`), where there are any: shell legs and
     # mounting tabs are drawn differently by each and say nothing about where the pins land.
     mid = lambda pts, i: (min(p[i] for _, p in pts) + max(p[i] for _, p in pts)) / 2
+    allk, allp = kp, placed
     if core:
         kp = [(n, p) for n, p in kp if n in core]
         placed = [(m, q) for m, q in placed if any(n in core and (m == n or n in re.findall(r"[A-Z]+\d+", m))
                                                      for n in kpads)]
-    centre = (abs(mid(kp, 0) - mid(placed, 0)), abs(mid(kp, 1) - mid(placed, 1)))
+    # On an axis where the core pads all sit in one row (a SOT-223's three pins opposite its tab, a USB-C's
+    # signal row), their middle says where each library put its pads, not where the part sits. There
+    # the whole pattern decides, to the looser WHOLE (its mechanical pads differ between libraries:
+    # the USB-C's shell legs by 0.15 mm). A negative error marks an axis judged that way.
+    def axis(i):
+        span = max(p[i] for _, p in kp) - min(p[i] for _, p in kp)
+        if span > 0.5:
+            return abs(mid(kp, i) - mid(placed, i))
+        return -abs(mid(allk, i) - mid(allp, i))
+    centre = (axis(0), axis(1))
     return worst, centre, lands
 
 
@@ -184,6 +195,8 @@ def judge(kpads, epads, enames, kicad_names, sizes, x0, y0, rot):
     for axis, err in zip("xy", centre):
         dims = [sizes[n][axis == "y"] for n in (core or sizes) if n in sizes]
         tol = max(CENTRE, 0.05 * min(dims)) if dims else CENTRE
+        if err < 0:
+            err, tol = -err, WHOLE
         if err > tol:
             problems.append(f"centred {err:.3f} mm off in {axis} (allowed {tol:.3f})")
     for n, es in sorted(lands.items()):
@@ -215,7 +228,7 @@ def check(lcsc, fp, kicad_names):
     enames = easyeda_pin_names(lcsc)
     kpads, epads = merge_groups(kicad_pads(fp), epads)
     sizes = kicad_pad_extent(fp)
-    x0, y0, rot = jlc_place(lcsc, 0.0, 0.0, 0.0)
+    x0, y0, rot = jlc_place(lcsc, 0.0, 0.0, 0.0, fp.GetFPIDAsString().split(":")[-1])
     worst, centre, problems, notes = judge(kpads, epads, enames, kicad_names, sizes, x0, y0, rot)
     # Would another rotation pass as well? A symmetric part's would; an asymmetric one's shouldn't,
     # and if it does the table entry is a guess the geometry can't settle.
@@ -223,7 +236,7 @@ def check(lcsc, fp, kicad_names):
            and not judge(kpads, epads, enames, kicad_names, sizes, x0, y0, r)[2]]
     if alt and not problems:
         notes.append(f"also passes at {alt}")
-    return package, worst, centre, problems, notes
+    return package, worst, tuple(abs(c) for c in centre), problems, notes
 
 
 def main(paths):
@@ -237,7 +250,7 @@ def main(paths):
                 seen[lcsc] = (fp, names.get(fp.GetReference(), {}))
     for lcsc, (fp, names) in sorted(seen.items()):
         package, worst, centre, problems, notes = check(lcsc, fp, names)
-        x0, y0, rot = jlc_place(lcsc, 0.0, 0.0, 0.0)
+        x0, y0, rot = jlc_place(lcsc, 0.0, 0.0, 0.0, fp.GetFPIDAsString().split(":")[-1])
         bad += bool(problems)
         print(f"{'BAD' if problems else 'ok '} {lcsc:>10} rot {rot:>3.0f} off ({x0:.3f},{y0:.3f}) {fp.GetReference():>4} "
               f"{fp.GetFPIDAsString().split(':')[1][:34]:34} [{package[:30]}] pads {worst:.2f} centre {max(centre):.3f}"

@@ -51,14 +51,10 @@ def write_project(cfg, name, path):
     # The only through-hole pads off the GND net are hand-soldered pins (switches, sockets, headers):
     # hold the pour as far from them as route.py holds other nets' tracks (PIN_GAP).
     d = os.path.dirname(path)
-    from .config import TOOLKIT_LIB_DIR, TOOLKIT_LIBS
-    for kind, ext in (("sym", ".kicad_sym"), ("fp", ".pretty")) if (cfg.local_libs or cfg.toolkit_libs) else ():
+    for kind, ext in (("sym", ".kicad_sym"), ("fp", ".pretty")) if cfg.local_libs else ():
         libs = "".join(
             f'  (lib (name "{nick}")(type "KiCad")(uri "${{KIPRJMOD}}/../{rel}/{nick}{ext}")(options "")(descr "{descr}"))\n'
             for nick, (rel, descr) in cfg.local_libs.items())
-        libs += "".join(
-            f'  (lib (name "{nick}")(type "KiCad")(uri "${{KIPRJMOD}}/{os.path.relpath(TOOLKIT_LIB_DIR, d)}/{nick}{ext}")'
-            f'(options "")(descr "{TOOLKIT_LIBS[nick]}"))\n' for nick in cfg.toolkit_libs)
         open(os.path.join(d, f"{kind}-lib-table"), "w").write(f'({kind}_lib_table\n  (version 7)\n{libs})\n')
     open(path[:-len(".kicad_pro")] + ".kicad_dru", "w").write(
         '(version 1)\n(rule "hand-soldered pins to pour"\n  (constraint clearance (min 0.4mm))\n'

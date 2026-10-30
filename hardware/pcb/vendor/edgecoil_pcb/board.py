@@ -184,10 +184,6 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
         lib, fpname = p.fp.split(":")
         fp = pcbnew.FootprintLoad(os.path.join(cfg.lib_dir(lib) or cfg.footprint_dir, lib + ".pretty"), fpname)
         fp.SetFPIDAsString(p.fp)
-        if lib in cfg.toolkit_libs and lib not in cfg.local_libs:
-            models = fp.Models()  # by index: iterating the SWIG vector yields copies, so edits there are lost
-            for k in range(len(models)):
-                models[k].m_Filename = models[k].m_Filename.replace("${EC_3D}", cfg.model_dir(lib, name))
         fp.SetReference(p.ref)
         fp.SetValue(p.value)
         # The test pads' silk square sits 0.12 mm from the pad, which JLC's DFM check flags; the TX/RX
@@ -371,6 +367,11 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
         x0, y0, x1, y1 = (pcbnew.ToMM(v) for v in (b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()))
         zone(board, None, None, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], via_free=True)
     board.Save(path)
+    if cfg.block_copper:
+        from .blocks import renetted
+        bad = renetted(path, cfg.block_copper)
+        if bad:
+            raise SystemExit(f"{name}: block copper changed net on save (it touches another net's pad): {bad}")
     set_stackup(path)
 
 

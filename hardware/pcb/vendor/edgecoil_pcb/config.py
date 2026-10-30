@@ -12,10 +12,6 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 PAPER = {"A3": (420.0, 297.0), "A2": (594.0, 420.0)}
-# Libraries the toolkit ships (lib/<nickname>.kicad_sym, .pretty, .3dshapes): parts its blocks need
-# that KiCad's own libraries lack. A board names the ones it uses in Config.toolkit_libs.
-TOOLKIT_LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")
-TOOLKIT_LIBS = {"ec": "EdgeCoil toolkit parts (see lib/README.md for sources)"}
 
 
 @dataclass
@@ -29,7 +25,6 @@ class Config:
     # Local symbol/footprint libraries: nickname -> (directory relative to `here`, description).
     # The directory holds <nickname>.kicad_sym and <nickname>.pretty.
     local_libs: dict = field(default_factory=dict)
-    toolkit_libs: tuple = ()               # nicknames from TOOLKIT_LIBS the board uses ("ec")
     symbol_dir: str = os.environ.get("KICAD_SYMBOL_DIR", "/usr/share/kicad/symbols")
     footprint_dir: str = os.environ.get("KICAD_FOOTPRINT_DIR", "/usr/share/kicad/footprints")
 
@@ -76,15 +71,7 @@ class Config:
         """The directory a library nickname lives in, or None for KiCad's own."""
         if nickname in self.local_libs:
             return os.path.join(self.here, self.local_libs[nickname][0])
-        if nickname in self.toolkit_libs:
-            return TOOLKIT_LIB_DIR
         return None
-
-    def model_dir(self, nickname, variant):
-        """A toolkit library's 3D models as a project-relative path for a variant's board, which
-        replaces the ${EC_3D} its footprints carry."""
-        rel = os.path.relpath(os.path.join(TOOLKIT_LIB_DIR, f"{nickname}.3dshapes"), os.path.join(self.here, variant))
-        return "${KIPRJMOD}/" + rel
 
     def sheet(self):
         return PAPER[self.paper]
