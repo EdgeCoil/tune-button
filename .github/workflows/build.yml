@@ -1,0 +1,98 @@
+# SPDX-FileCopyrightText: 2026 edgecoil
+# SPDX-License-Identifier: MIT
+#
+# Rebuild the three boards from source on every push and pull request, prove each rebuild is the
+# committed board, and build the panel. The routing is frozen, so this replays it: no autorouter.
+# KiCad is pinned by digest because a different KiCad can change the output.
+#
+# The panel is built and checked but not compared exactly: KiKit's geometry varies by ~10 nm
+# between machines (board-edge arcs and the zones that follow them), so an exact comparison of the
+# panel fails on noise. The boards inside it are compared exactly.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  boards:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: kicad/kicad:9.0.2-full@sha256:e26b62eefe0a54d54c850bddc089162a585d2ba01180bd9659efcc9e1ba689ef
+      options: --user root
+    env:
+      TZ: UTC
+      KICAD_SYMBOL_DIR: /usr/share/kicad/symbols
+      KICAD_FOOTPRINT_DIR: /usr/share/kicad/footprints
+      PYTHONPATH: ${{ github.workspace }}/hardware/pcb/vendor
+    defaults:
+      run:
+        working-directory: hardware/pcb
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Tools beyond KiCad (and KiKit 1.8.1 for the panel)
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends librsvg2-bin python3-pil python3-venv python3-pip curl ca-certificates >/dev/null
+          python3 -m venv --system-site-packages /opt/kikit
+          /opt/kikit/bin/pip install -q kikit==1.8.1
+          python3 -c "import pcbnew; print('pcbnew', pcbnew.Version())"
+
+      - name: Keep the committed boards for comparison
+        run: |
+          for v in xiao c3 c3-jst; do
+            mkdir -p /tmp/committed/$v
+            cp $v/tune-button-$v.kicad_pcb $v/tune-button-$v.kicad_pro $v/tune-button-$v.kicad_dru /tmp/committed/$v/
+          done
+
+      - name: Build (generate, replay routing, ERC, DRC with schematic parity, fab files)
+        run: ./build.sh
+
+      - name: Each rebuild is the committed board
+        run: |
+          for v in xiao c3 c3-jst; do
+            python3 -m edgecoil_pcb.canon /tmp/committed/$v/tune-button-$v.kicad_pcb $v/tune-button-$v.kicad_pcb
+          done
+
+      - name: Negative control - canon must fail on a via moved by 1 um
+        run: |
+          mkdir -p /tmp/nudged
+          python3 ../../ci/nudge_via.py /tmp/committed/c3/tune-button-c3.kicad_pcb /tmp/nudged/tune-button-c3.kicad_pcb
+          cp /tmp/committed/c3/tune-button-c3.kicad_pro /tmp/committed/c3/tune-button-c3.kicad_dru /tmp/nudged/
+          if python3 -m edgecoil_pcb.canon /tmp/committed/c3/tune-button-c3.kicad_pcb /tmp/nudged/tune-button-c3.kicad_pcb >/dev/null 2>&1; then
+            echo "canon passed a moved via: the comparison is testing nothing"; exit 1
+          fi
+          echo "canon caught the moved via"
+
+      - name: Fab outputs present, sized and UTC
+        run: |
+          python3 ../../ci/check_outputs.py xiao/fab tune-button-xiao 5 8
+          python3 ../../ci/check_outputs.py c3/fab tune-button-c3
+          python3 ../../ci/check_outputs.py c3-jst/fab tune-button-c3-jst
+
+      - name: JLC placements against JLC's own footprints
+        run: python3 -m edgecoil_pcb.jlc_verify xiao/tune-button-xiao.kicad_pcb c3/tune-button-c3.kicad_pcb c3-jst/tune-button-c3-jst.kicad_pcb
+
+      - name: Panel (KiKit; its own tab and distance checks stop the build if broken)
+        run: |
+          /opt/kikit/bin/python panel.py
+          python3 ../../ci/check_outputs.py panel/fab tune-button-panel 20 40
+
+      - name: Keep the fab files
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: tune-button-fab
+          path: |
+            hardware/pcb/*/fab/*.zip
+            hardware/pcb/*/fab/*.csv
+            hardware/pcb/*/fab/*.pdf
+            hardware/pcb/*/fab/*.rpt
+          retention-days: 14
