@@ -64,9 +64,19 @@ JST-PH, 2 mm pitch. Each button goes between its K pin and GND.
 
 ## Ordering
 
-The boards are ordered as **one panel** with JLC's Standard assembly: the ESP32 module needs
-Standard, and Standard needs at least 70 × 70 mm, which no single board is. Run `./build.sh`, then
-`python3 panel.py` (see [Rebuilding](#rebuilding)), and upload from `panel/fab/`.
+**For a few boards, order the one you want on its own, with Economic assembly** (see *Ordering one
+board on its own* below). Economic has lower set-up and stencil fees, and Basic and Preferred parts
+carry no per-type fee there.
+
+Rev A was ordered as one panel with JLC's Standard assembly, because Standard needs at least
+70 × 70 mm, which no single board is. That rested on an assumption nobody checked: that the ESP32
+module needs Standard. The Wiegand Bridge's ESP32-S3 module was refused Economic, but JLC has
+offered Economic for two later boards with this same ESP32-C3-WROOM-02, and it was never tried for
+these. The panel is still the way to get all three designs in one order, or many of one. Whether
+Economic accepts a customer panel of several designs is untested.
+
+For the panel: run `./build.sh`, then `python3 panel.py` (see [Rebuilding](#rebuilding)), and
+upload from `panel/fab/`.
 
 **PCB options**
 - Upload `tune-button-panel-gerbers.zip`. It should read about 148 × 87 mm, 2 layers.
@@ -115,7 +125,7 @@ Upload `<board>/fab/tune-button-<board>-gerbers.zip` with the same board options
 assembly, add `-jlc-bom.csv` and `-jlc-cpl.csv`, top side only. Black mask and lead-free HASL are
 available with Economic assembly for 2–50 boards; ENIG would force green.
 
-The C3 boards are under Standard's 70 × 70 mm minimum, so order Economic. Their USB-C, battery
+The boards are under Standard's 70 × 70 mm minimum, so order Economic. Their USB-C, battery
 socket and module sit closer to the edges than JLC's 2.5 mm assembly rule, so if JLC asks for rails:
 - have them on the **left and right edges only**, since the USB-C overhangs the bottom edge and
   the antenna overhangs the top;
