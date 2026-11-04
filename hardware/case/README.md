@@ -100,6 +100,15 @@ A printed alternative to the `c3` stack, in two parts: `tune-button-c3-base.stl`
     MX holes at the top face.
   - The parting line runs through the USB-C opening, so each part has an open notch instead of a
     bridge.
+  - **Chamfers and fillets, for printing** (the sizes are parameters at the top of the file):
+    - 0.6 mm on each part's bed edge, to take up elephant foot, and 0.4 mm on both edges at the
+      parting line, so a small step between the parts reads as a groove.
+    - 1 mm fillets where the 12 mm spacers meet the floor and the posts meet the plate.
+    - Lead-ins on the insert holes, the peg and its socket, and the spacers' pins.
+    - 0.3 mm on the MX holes at the top face. The switch flange still bears on 0.45 mm each side.
+  - **Each screw hole is closed by one 0.2 mm layer at the bottom of its counterbore,** so the
+    screw head's seat prints as a clean bridge instead of an overhang. Push the layer out with a
+    3 mm drill or a hot awl before fitting the screws.
 
 **Hardware:** 3 × M3 × 8 socket head cap screws (ISO 4762), 3 × M3 heat-set inserts.
 
