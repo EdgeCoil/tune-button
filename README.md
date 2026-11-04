@@ -27,7 +27,8 @@ and does what you set that key to do.
 
 - **The button:** one of the four-key boards (see [Hardware](#hardware)), or a hand-wired Seeed
   Studio XIAO ESP32-C3 with a small LiPo cell and one or two 12 mm tactile switches
-  ([`hardware/wiring.md`](hardware/wiring.md)). There's also a 3D-printable case.
+  ([`hardware/wiring.md`](hardware/wiring.md)). There are 3D-printable cases, and layered acrylic
+  cases for the four-key boards ([`hardware/case`](hardware/case/README.md)).
 - **An Android phone**, version 8.0 or later.
 - **Spotify Premium.** Spotify requires it on the account that owns the developer app, and the
   developer app works for up to five users.
