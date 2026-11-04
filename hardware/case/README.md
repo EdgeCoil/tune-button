@@ -2,8 +2,12 @@
 
 Two kinds of case:
 
-- **Printed:** `tune-button.scad` (a hand-wired XIAO with two buttons) and `tune-button-1btn.scad`
-  (a round puck for one 22 mm button). The instructions are at the top of each file.
+- **Printed:**
+  - `tune-button.scad`: a hand-wired XIAO with two buttons.
+  - `tune-button-1btn.scad`: a round puck for one 22 mm button.
+  - `tune-button-c3-printed.scad`: the `c3` four-key board (see *Printed `c3` case* below).
+
+  The instructions are at the top of each file.
 - **Layered acrylic (`stack.scad`):** one for each four-key board, cut from 3 mm acrylic with very
   little printing. The rest of this page covers these.
 
@@ -66,6 +70,30 @@ Metal near the ESP32-C3 module's antenna detunes it.
 Moving these bolts along the wall instead was tried, and left only about 1.6 mm of acrylic beside
 the cavity.
 
+## Printed `c3` case
+
+A printed alternative to the `c3` stack, in two parts: `tune-button-c3-base.stl` and
+`tune-button-c3-top.stl`. It's 61 × 79 × 24 mm, slightly smaller than the stack.
+
+- **Its geometry comes from `stack.scad`:** the same cavity, cell pocket, battery-plug pocket,
+  USB-C slot and board height. The same clearance check covers it.
+- **The plate is 1.5 mm, so the MX clips latch,** unlike the 3 mm acrylic. Its holes are 14.1 mm,
+  because FDM prints holes slightly small. If your switches are loose, set `mx_hole` back to
+  14.0.
+- **Base:** floor, walls, four board spacers with pins, and a fence around the cell.
+- **Top:** the plate and bezel in one piece, with windows for the two LEDs.
+- **Three M2 self-tapping screws** (about 12 mm) go down through the top's corners. The
+  fourth corner is next to the antenna, so it has no screw: a printed peg on the top drops into
+  a socket in the base instead.
+- **Printing:** print the base floor down and the top plate side down, bezel up, with no
+  supports. The USB-C slot is a 13 mm bridge. Use 3 or more perimeters, for the screw bosses.
+
+**Assembly:**
+1. Solder the LEDs.
+2. Put the switches through the printed top and solder them to the board, as with the stack.
+3. Tape the cell inside its fence and plug in the battery, **checking the polarity first**.
+4. Lower the top and board as one assembly onto the spacers, then screw it down.
+
 ## Files
 
 `./build-stack.sh` rebuilds everything in `stack/` from `stack.scad`. It needs OpenSCAD 2021.01
@@ -79,6 +107,7 @@ or later, and `xvfb-run` for the preview images when headless.
 | `stack/<board>/spacers.stl` | the four board spacers (`xiao`, `c3`) |
 | `stack/c3-jst/wall.stl` | the printed alternative to layers 5–15 |
 | `stack/<board>/preview.png` | assembly render |
+| `tune-button-c3-base.stl`, `tune-button-c3-top.stl` | the printed `c3` case; `stack/c3/printed-preview.png` |
 
 The SVGs are in millimetres. `kerf` (default 0.10 mm) grows each outline and shrinks each hole
 by half the kerf, so the cut parts come out at nominal size. Set it to your laser's kerf, and
@@ -135,7 +164,8 @@ whose firmware doesn't boot. For that, unbolt the case.
 
 ## Checking
 
-`python3 check-stack.py` reads every footprint from the KiCad files in `../pcb`. It gives each part
+`python3 check-stack.py` checks every layer of the three stacks, and the printed `c3` base and top.
+It reads every footprint from the KiCad files in `../pcb`. It gives each part
 a height (listed in the script; connector and keycap heights are estimates), adds the cells,
 plugs, keycaps and arcade buttons, and intersects each one with every layer in OpenSCAD. It exits
 1 on any collision.

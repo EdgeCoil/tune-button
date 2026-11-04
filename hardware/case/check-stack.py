@@ -184,6 +184,21 @@ def main():
                     failed += 1
                     print(f"COLLISION {v} L{i:02d} {kind}: {b[0]} z {b[2]:.1f}-{b[3]:.1f}")
         print(f"{v}: {len(bs)} parts checked against {len(layers)} layers")
+        if v == "c3":
+            # the printed c3 case: base, and the top in its assembled position
+            for label, expr in (("printed base", "base();"), ("printed top", "translate([0, 0, plate_z]) top();")):
+                for b in bs:
+                    one = (f'include <{os.path.join(HERE, "tune-button-c3-printed.scad")}>\n'
+                           f"intersection() {{ {expr}\n"
+                           f"translate([{b[1][0]}, {-b[1][3]}, {b[2]}]) cube([{b[1][2] - b[1][0]}, {b[1][3] - b[1][1]}, {b[3] - b[2]}]); }}\n")
+                    with tempfile.NamedTemporaryFile("w", suffix=".scad", delete=False) as g:
+                        g.write(one)
+                    r = subprocess.run(["openscad", "-D", 'piece="none"', *extra, "-o", g.name[:-5] + ".stl", g.name],
+                                       capture_output=True, text=True)
+                    if "top level object is empty" not in r.stderr.lower():
+                        failed += 1
+                        print(f"COLLISION c3 {label}: {b[0]} z {b[2]:.1f}-{b[3]:.1f}")
+            print(f"c3: {len(bs)} parts checked against the printed base and top")
     sys.exit(1 if failed else 0)
 
 
