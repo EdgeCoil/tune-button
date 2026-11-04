@@ -257,36 +257,66 @@ def main():
                     failed += 1
                     print(f"COLLISION {v} L{i:02d} {kind}: {o[0]} z {o[2]:.1f}-{o[3]:.1f}")
         print(f"{v}: {len(obstacles)} parts and the board checked against {len(layers)} layers")
-        if v == "c3":
-            failed += check_printed(obstacles, board, extra)
+        if v in PRINTED:
+            failed += check_printed(v, obstacles, extra)
     sys.exit(1 if failed else 0)
 
 
-def check_printed(obstacles, board, extra):
-    """The printed c3 case: nothing may enter either part, and the clamp must close."""
-    inc, pd, failed = "tune-button-c3-printed.scad", ["-D", 'piece="none"', *extra], 0
-    base, lid = "base();", "translate([0, 0, part_z]) lid();"
-    for label, expr in (("base", base), ("lid", lid)):
+def volume(inc, body, defines):
+    """The volume of the OpenSCAD geometry `body`, in mm^3 (0 if empty). Faces that only touch
+    give a zero-thickness result, which has no volume."""
+    with tempfile.NamedTemporaryFile("w", suffix=".scad", delete=False) as f:
+        f.write(f"include <{os.path.join(HERE, inc)}>\n{body}\n")
+    stl = f.name[:-5] + ".stl"
+    r = subprocess.run(["openscad", *defines, "-o", stl, f.name], capture_output=True, text=True)
+    if "top level object is empty" in r.stderr.lower():
+        return 0.0
+    if r.returncode != 0:
+        sys.exit(f"openscad failed on {f.name}:\n{r.stderr[-800:]}")
+    v = [tuple(map(float, m)) for m in re.findall(r"vertex\s+(\S+)\s+(\S+)\s+(\S+)", open(stl).read())]
+    tot = 0.0
+    for k in range(0, len(v), 3):
+        (ax, ay, az), (bx, by, bz), (cx, cy, cz) = v[k:k + 3]
+        tot += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6
+    return abs(tot)
+
+
+PRINTED = {   # variant: its printed parts, each in its assembled position
+    "c3": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();")],
+    "xiao": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("hood", "hood();")],
+}
+
+
+def check_printed(v, obstacles, extra):
+    """A printed case: nothing may enter any part, no two parts may overlap, and the clamp must
+    close: a spacer from below and a post or bracket from above at every mounting hole."""
+    inc, failed = "tune-button-printed.scad", 0
+    pd = ["-D", f'variant="{v}"', "-D", 'piece="none"', *extra]
+    parts_ = PRINTED[v]
+    for label, expr in parts_:
         for o in obstacles:
             if nonempty(inc, f"intersection() {{ {expr}\n{o[1]} }}", pd):
                 failed += 1
-                print(f"COLLISION c3 printed {label}: {o[0]} z {o[2]:.1f}-{o[3]:.1f}")
-    # raised 0.01: faces that only touch at the parting line give a zero-thickness "intersection"
-    if nonempty(inc, f"intersection() {{ {base}\ntranslate([0, 0, 0.01]) {lid} }}", pd):
-        failed += 1
-        print("COLLISION c3 printed: the base and the lid overlap")
-    # The clamp: grow the board 0.05 mm up and down. Every spacer must then reach it from below
-    # and every post from above, at each mounting hole.
-    pcbdir, mirror, _, key_z, bot_z = VARIANTS["c3"]
-    _, holes = board_outline(pcbdir, mirror)      # from KiCad, not from the case's own list
-    for label, expr, z0 in (("spacer", base, bot_z - 0.05), ("post", lid, key_z)):
-        for k, (hx, hy) in enumerate(holes):
+                print(f"COLLISION {v} printed {label}: {o[0]} z {o[2]:.1f}-{o[3]:.1f}")
+    for a in range(len(parts_)):
+        for b in range(a + 1, len(parts_)):
+            vol = volume(inc, f"intersection() {{ {parts_[a][1]}\n{parts_[b][1]} }}", pd)
+            if vol > 0.001:
+                failed += 1
+                print(f"COLLISION {v} printed: the {parts_[a][0]} and the {parts_[b][0]} overlap by {vol:.3f} mm^3")
+    # The clamp: grow the board 0.05 mm up and down. At each mounting hole (from KiCad, not from
+    # the case's own list) a spacer must reach it from below, and the parts above it from above.
+    pcbdir, mirror, _, key_z, bot_z = VARIANTS[v]
+    _, holes = board_outline(pcbdir, mirror)
+    above = "union() { " + " ".join(e for l, e in parts_ if l != "base") + " }"
+    for label, expr, z0 in (("spacer", "base();", bot_z - 0.05), ("post or bracket", above, key_z)):
+        for hx, hy in holes:
             probe = (f"intersection() {{ {expr}\ntranslate([{hx:.3f}, {-hy:.3f}, {z0}]) "
-                     f"difference() {{ cylinder(d = spacer_d - 0.2, h = 0.05); cylinder(d = 2.4, h = 1, center = true); }} }}")
+                     f"difference() {{ cylinder(d = 4.2, h = 0.05); cylinder(d = 2.4, h = 1, center = true); }} }}")
             if not nonempty(inc, probe, pd):
                 failed += 1
-                print(f"NO CONTACT c3 printed: no {label} reaches the board at its hole ({hx:.1f}, {hy:.1f})")
-    print(f"c3: {len(obstacles)} parts and the board checked against the printed base and lid; clamp checked")
+                print(f"NO CONTACT {v} printed: no {label} reaches the board at its hole ({hx:.1f}, {hy:.1f})")
+    print(f"{v}: {len(obstacles)} parts and the board checked against the printed {', '.join(l for l, e in parts_)}; clamp checked")
     return failed
 
 

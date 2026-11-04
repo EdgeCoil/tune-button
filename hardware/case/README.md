@@ -5,7 +5,8 @@ Two kinds of case:
 - **Printed:**
   - `tune-button.scad`: a hand-wired XIAO with two buttons.
   - `tune-button-1btn.scad`: a round puck for one 22 mm button.
-  - `tune-button-c3-printed.scad`: the `c3` four-key board (see *Printed `c3` case* below).
+  - `tune-button-printed.scad`: the `c3` and `xiao` four-key boards (see *Printed cases for `c3`
+    and `xiao`* below).
 
   The instructions are at the top of each file.
 - **Layered acrylic (`stack.scad`):** one for each four-key board, cut from 3 mm acrylic with very
@@ -70,61 +71,91 @@ Metal near the ESP32-C3 module's antenna detunes it.
 Moving these bolts along the wall instead was tried, and left only about 1.6 mm of acrylic beside
 the cavity.
 
-## Printed `c3` case
+## Printed cases for `c3` and `xiao`
 
-A printed alternative to the `c3` stack, in two parts: `tune-button-c3-base.stl` and
-`tune-button-c3-lid.stl`. It's 64 × 82 × 21 mm.
+Printed alternatives to the `c3` and `xiao` stacks, from one file, `tune-button-printed.scad`:
 
-- **Its geometry comes from `stack.scad`:** the same cavity, cell pocket, battery-plug pocket,
+| | `c3` | `xiao` |
+|---|---|---|
+| Parts | base, lid | base, lid, hood |
+| Outside size | 64 × 82 × 21 mm | 64 × 79 × 33 mm |
+| Screws | 3 × M3 × 8, plus a printed peg at the antenna corner | 4 × M3 × 8 |
+| STLs | `tune-button-c3-base.stl`, `-lid.stl` | `tune-button-xiao-base.stl`, `-lid.stl`, `-hood.stl` |
+
+- **The geometry comes from `stack.scad`:** the same cavity, cell pocket, battery-plug pocket,
   USB-C slot and board height. The same clearance check covers it.
-- **The lid clamps the board.** Four posts under the lid press the board's key face down onto four
-  spacers in the base, at its four mounting holes. The spacers' pins locate the board in the holes.
-  Posts and spacers are sized to meet the board exactly, at the Cherry MX height, so they hold the
-  board rather than the switch joints.
+- **The lid clamps the board.** Posts under the lid (and on `xiao`, brackets in the hood) press
+  the board's key face down onto four spacers in the base, at its four mounting holes. The
+  spacers' pins locate the board in the holes. Posts and spacers are sized to meet the board
+  exactly, at the Cherry MX height, so they hold the board rather than the switch joints.
 - **The lid's top face is the MX plate**, 1.5 mm thick, so the switch clips latch. Its holes are
   14.1 mm because FDM prints holes slightly small. If your switches are loose, set `mx_hole` back
   to 14.0. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
   as a separate part or over a 38 mm bridge.
-- **Three M3 × 8 socket head cap screws** go down through counterbores in the lid's corners, into
-  M3 heat-set inserts in the base. The heads sit just below the top face, with 2.8 mm of lid under
-  them, and each screw reaches 5.2 mm into its insert.
+- **M3 × 8 socket head cap screws** go down through counterbores into M3 heat-set inserts in the
+  base. Every head has 2.8 mm of plastic under it, and every screw reaches 5.2 mm into its insert.
   - The insert holes are 4.0 mm across and 7 mm deep, for the common M3 × 5.7 mm insert (4.6 mm
     outside diameter). Check your inserts' recommended hole and set `insert_hole` to match. A
     shorter M3 × 4 insert works too.
-  - The fourth corner is next to the antenna, so it has no screw: a printed peg on the lid drops
+  - **`c3`:** the corner next to the module's antenna has no screw: a printed peg on the lid drops
     into a socket in the base instead. A brass insert there would be as bad as a steel screw.
-- **Printing:** no supports for either part, 0.2 mm layers, 3 or more perimeters for the bosses.
-  - The base prints floor down.
-  - The lid STL is already upside down: its top face goes on the bed, and the skirt, bosses and
-    posts grow up from it. Turn on elephant-foot compensation, or the first layer narrows the
-    MX holes at the top face.
-  - The parting line runs through the USB-C opening, so each part has an open notch instead of a
-    bridge.
-  - **Chamfers and fillets, for printing** (the sizes are parameters at the top of the file):
-    - 0.6 mm on each part's bed edge, to take up elephant foot, and 0.4 mm on both edges at the
-      parting line, so a small step between the parts reads as a groove.
-    - 1 mm fillets where the 12 mm spacers meet the floor and the posts meet the plate.
-    - Lead-ins on the insert holes, the peg and its socket, and the spacers' pins.
-    - 0.3 mm on the MX holes at the top face. The switch flange still bears on 0.45 mm each side.
-  - **Each screw hole is closed by one 0.2 mm layer at the bottom of its counterbore,** so the
-    screw head's seat prints as a clean bridge instead of an overhang. Push the layer out with a
-    3 mm drill or a hot awl before fitting the screws.
 
-**Hardware:** 3 × M3 × 8 socket head cap screws (ISO 4762), 3 × M3 heat-set inserts.
+### `xiao`: the hood and the antenna
+
+The XIAO stands 13 mm above the board on its sockets, so a hood covers it, like the stack's visor.
+It is open at the front, toward the keys, and the XIAO's USB-C comes out through its back wall.
+
+- **The hood is the third part.** Its side walls sit on the lid's. Its back wall runs down to the
+  base, and its two back corners go down through notches in the lid to the base's inserts. Those
+  two screws hold the hood and the back of the lid.
+- **Two brackets on the inside of the hood's back wall** clamp the board's two back holes. Their
+  tops slope at 45° up to the wall, so they print without support.
+- **The antenna goes in a 41 × 21 × 0.4 mm pocket under the hood's roof.** Peel the backing and
+  stick it in, with its lead toward the XIAO's U.FL socket.
+  - The pocket is sized for a 40 × 20 mm FPC antenna, the figure from a supplier's spec sheet.
+    **Measure yours** and set `antenna` to match.
+  - It is about 9 mm from the nearest corner screw and insert. The roof holds the antenna 1 mm
+    above the XIAO, as the stack's visor does, and the XIAO is the nearest metal. If range is
+    poor, raising `hood_top` gives the antenna more room above it.
+
+### Printing
+
+No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
+- The base prints floor down.
+- The lid STL is already upside down: its top face goes on the bed, and the skirt, bosses and
+  posts grow up from it. Turn on elephant-foot compensation, or the first layer narrows the MX
+  holes at the top face.
+- The `xiao` hood STL is upside down too, roof on the bed.
+- On `c3` the parting line runs through the USB-C opening, so each part has an open notch instead
+  of a bridge. On `xiao` the USB-C window is in the hood's back wall, a 13 mm bridge.
+- **Chamfers and fillets, for printing** (the sizes are parameters at the top of the file):
+  - 0.6 mm on each part's bed edge, to take up elephant foot, and 0.4 mm on both edges at the
+    parting line, so a small step between the parts reads as a groove.
+  - 1 mm fillets where the 12 mm spacers meet the floor and the posts meet the plate.
+  - Lead-ins on the insert holes, the peg and its socket, and the spacers' pins.
+  - 0.3 mm on the MX holes at the top face. The switch flange still bears on 0.45 mm each side.
+- **Each screw hole is closed by one 0.2 mm layer at the bottom of its counterbore,** so the
+  screw head's seat prints as a clean bridge instead of an overhang. Push the layer out with a
+  3 mm drill or a hot awl before fitting the screws.
+
+**Hardware:** M3 × 8 socket head cap screws (ISO 4762) and M3 heat-set inserts: 3 of each for
+`c3`, 4 for `xiao`.
 
 **Assembly:**
-1. **Set the three inserts** into the base's corner bosses with a soldering iron, flush with the
-   top of the boss.
-2. Solder the LEDs.
+1. **Set the inserts** into the base's corner bosses with a soldering iron, flush with the top
+   of each boss.
+2. **`c3`:** solder the LEDs. **`xiao`:** plug the XIAO into its sockets.
 3. Put the switches through the lid from above, so their clips latch, and solder them to the
    board. The lid and board are now one assembly.
 4. Tape the cell inside its fence and plug in the battery, **checking the polarity first**.
-5. Lower the lid and board onto the base. The spacers' pins enter the board's holes, and the peg
-   enters its socket. Screw the lid down.
+5. Lower the lid and board onto the base. The spacers' pins enter the board's holes; on `c3` the
+   peg enters its socket. Screw down the lid's corners.
+6. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
+   over the XIAO, its back corners through the lid's notches, and screw it down.
 
 ## Files
 
-`./build-stack.sh` rebuilds everything in `stack/` from `stack.scad`. It needs OpenSCAD 2021.01
+`./build-stack.sh` rebuilds everything in `stack/` from `stack.scad`, and the printed cases' STLs. It needs OpenSCAD 2021.01
 or later, and `xvfb-run` for the preview images when headless.
 
 | File | What |
@@ -135,7 +166,7 @@ or later, and `xvfb-run` for the preview images when headless.
 | `stack/<board>/spacers.stl` | the four board spacers (`xiao`, `c3`) |
 | `stack/c3-jst/wall.stl` | the printed alternative to layers 5–15 |
 | `stack/<board>/preview.png` | assembly render |
-| `tune-button-c3-base.stl`, `tune-button-c3-lid.stl` | the printed `c3` case (the lid is upside down, ready to print); `stack/c3/printed-preview.png` |
+| `tune-button-<board>-base.stl`, `-lid.stl`, `-hood.stl` | the printed `c3` and `xiao` cases (the lid and hood are upside down, ready to print); `stack/<board>/printed-preview.png` |
 
 The SVGs are in millimetres. `kerf` (default 0.10 mm) grows each outline and shrinks each hole
 by half the kerf, so the cut parts come out at nominal size. Set it to your laser's kerf, and
@@ -192,13 +223,13 @@ whose firmware doesn't boot. For that, unbolt the case.
 
 ## Checking
 
-`python3 check-stack.py` checks every layer of the three stacks, and the printed `c3` base and lid.
+`python3 check-stack.py` checks every layer of the three stacks, and every part of the printed `c3` and `xiao` cases.
 It reads every footprint, and each board's outline and mounting holes, from the KiCad files in
 `../pcb`. It gives each part
 a height (listed in the script; connector and keycap heights are estimates), adds the cells,
 plugs, keycaps and arcade buttons, and intersects each one, and the bare board, with every layer in
-OpenSCAD. For the printed `c3` case it also checks that the base and lid don't overlap, and that a
-spacer and a post meet the board at every mounting hole. It exits 1 on any failure.
+OpenSCAD. For the printed cases it also checks that no two parts overlap, and that a spacer and a post
+or bracket meet the board at every mounting hole. It exits 1 on any failure.
 
 Passing extra overrides runs it against a deliberately broken design, which shows it can fail.
 For example, `python3 check-stack.py mx_hole=13.5` and `'usb_slot=[8,8]'` both report collisions.
