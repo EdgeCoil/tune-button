@@ -6,7 +6,8 @@
 Every part's footprint comes from the KiCad board files in ../pcb (courtyard bounding boxes), not
 from stack.scad. Each is given a height (HEIGHT below; the connector, switch and module heights
 are datasheet figures or ESTIMATES, marked), turned into a box on the right side of the board, and
-intersected with every acrylic layer in OpenSCAD. A non-empty intersection is a collision.
+intersected with every acrylic layer in OpenSCAD. A non-empty intersection is a collision. The bare
+board itself (its Edge.Cuts outline, less its mounting holes) is an obstacle too.
 
 The mating plugs, cells, keycaps and arcade buttons are added as boxes too. Run from this
 directory: python3 check-stack.py. Exits 1 on any collision.
@@ -77,13 +78,83 @@ def parts(pcbdir):
         ref = re.search(r'\(property "Reference" "([^"]+)"', fp).group(1)
         x0, y0, r = float(at[0]), float(at[1]), math.radians(float(at[2] or 0))
         xs, ys = [], []
-        for m in re.finditer(r"\(fp_(?:line|rect|circle|poly)\b(.*?)\(layer \"[FB]\.CrtYd\"\)", fp, re.S):
-            for q in re.finditer(r"\((?:start|end|center|xy) ([-\d.]+) ([-\d.]+)\)", m.group(1)):
-                lx, ly = float(q.group(1)), float(q.group(2))
+        for g in blocks(fp, "fp_"):
+            kind = re.match(r"\(fp_(\w+)", g).group(1)
+            if kind not in ("line", "rect", "circle", "poly", "arc") or not re.search(r'\(layer "[FB]\.CrtYd"\)', g):
+                continue
+            pts = [(float(q.group(1)), float(q.group(2)))
+                   for q in re.finditer(r"\((?:start|mid|end|center|xy) ([-\d.]+) ([-\d.]+)\)", g)]
+            if kind == "circle":      # (center) (end): a point on the circle, not a corner
+                (cx, cy), (ex, ey) = pts
+                rr = math.hypot(ex - cx, ey - cy)
+                pts = [(cx - rr, cy - rr), (cx + rr, cy + rr)]
+            for lx, ly in pts:
                 xs.append(x0 + lx * math.cos(r) + ly * math.sin(r))
                 ys.append(y0 - lx * math.sin(r) + ly * math.cos(r))
         if xs:
             yield ref, name, side, [min(xs), min(ys), max(xs), max(ys)]
+
+
+def board_outline(pcbdir, mirror):
+    """The board's Edge.Cuts outline as one polygon, arcs sampled, in top-view coordinates."""
+    s = open(os.path.join(PCB, pcbdir, f"tune-button-{pcbdir}.kicad_pcb")).read()
+    segs = []
+    for head in ("gr_line", "gr_arc"):
+        for b in blocks(s, head + "\n"):
+            if '(layer "Edge.Cuts")' not in b:
+                continue
+            pt = lambda k: tuple(map(float, re.search(r"\(" + k + r" ([-\d.]+) ([-\d.]+)\)", b).groups()))
+            a, e = pt("start"), pt("end")
+            if head == "gr_arc":
+                m = pt("mid")
+                # circle through a, m, e
+                ax, ay, bx, by, cx, cy = *a, *m, *e
+                d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+                ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) + (cx**2 + cy**2) * (ay - by)) / d
+                uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) + (cx**2 + cy**2) * (bx - ax)) / d
+                rr = math.hypot(ax - ux, ay - uy)
+                t0, tm, t1 = (math.atan2(q[1] - uy, q[0] - ux) for q in (a, m, e))
+                # go from t0 to t1 through tm
+                def norm(x):
+                    return (x - t0) % (2 * math.pi)
+                sweep = norm(t1) if norm(tm) < norm(t1) else norm(t1) - 2 * math.pi
+                pts = [(ux + rr * math.cos(t0 + sweep * i / 12), uy + rr * math.sin(t0 + sweep * i / 12)) for i in range(13)]
+            else:
+                pts = [a, e]
+            segs.append(pts)
+    loop = segs.pop(0)
+    close = lambda p, q: abs(p[0] - q[0]) < 1e-3 and abs(p[1] - q[1]) < 1e-3
+    while segs:
+        for i, g in enumerate(segs):
+            if close(g[0], loop[-1]):
+                loop += g[1:]
+                break
+            if close(g[-1], loop[-1]):
+                loop += g[::-1][1:]
+                break
+        else:
+            sys.exit(f"{pcbdir}: Edge.Cuts outline does not close")
+        segs.pop(i)
+    if not close(loop[0], loop[-1]):
+        sys.exit(f"{pcbdir}: Edge.Cuts outline does not close")
+    if mirror is not None:
+        loop = [(mirror - x, y) for x, y in loop]
+    holes = []
+    for ref, name, side, r in parts(pcbdir):
+        if "MountingHole" in name:
+            cx, cy = (r[0] + r[2]) / 2, (r[1] + r[3]) / 2
+            holes.append((mirror - cx if mirror is not None else cx, cy))
+    return loop[:-1], holes
+
+
+def board_solid(variant):
+    """OpenSCAD for the bare board: its outline, less its mounting holes, 0.02 inside each face."""
+    pcbdir, mirror, fdir, key_z, bot_z = VARIANTS[variant]
+    loop, holes = board_outline(pcbdir, mirror)
+    poly = ", ".join(f"[{x:.4f}, {-y:.4f}]" for x, y in loop)
+    hs = " ".join(f"translate([{x:.3f}, {-y:.3f}]) circle(d = 2.2, $fn = 24);" for x, y in holes)
+    return (f"translate([0, 0, {bot_z + 0.02}]) linear_extrude(height = {1.6 - 0.04}) "
+            f"difference() {{ polygon([{poly}]); {hs} }}")
 
 
 def boxes(variant):
@@ -141,12 +212,33 @@ def boxes(variant):
     return out
 
 
+def cube(b):
+    return (f"translate([{b[1][0]}, {-b[1][3]}, {b[2]}]) "
+            f"cube([{b[1][2] - b[1][0]}, {b[1][3] - b[1][1]}, {b[3] - b[2]}]);")
+
+
+def nonempty(inc, body, defines):
+    """True if the OpenSCAD geometry `body`, after including `inc`, has any volume."""
+    with tempfile.NamedTemporaryFile("w", suffix=".scad", delete=False) as f:
+        f.write(f"include <{os.path.join(HERE, inc)}>\n{body}\n")
+    r = subprocess.run(["openscad", *defines, "-o", f.name[:-5] + ".stl", f.name], capture_output=True, text=True)
+    err = r.stderr.lower()
+    if "top level object is empty" in err:
+        return False
+    if r.returncode != 0:
+        sys.exit(f"openscad failed on {f.name}:\n{r.stderr[-800:]}")
+    return True
+
+
 def main():
     # extra -D overrides for mutation tests, e.g.: python3 check-stack.py mx_hole=12
     extra = [a for kv in sys.argv[1:] for a in ("-D", kv)]
     failed = 0
     for v in VARIANTS:
         bs = boxes(v)
+        board = board_solid(v)
+        obstacles = [(b[0], cube(b), b[2], b[3]) for b in bs] + [("the board", board, VARIANTS[v][4], VARIANTS[v][4] + 1.6)]
+        sd = ["-D", f'variant="{v}"', "-D", 'part="none"', "-D", "kerf=0", *extra]
         subprocess.run(["openscad", "-D", f'variant="{v}"', "-D", 'part="none"', "-o",
                         os.path.join(tempfile.gettempdir(), "l.echo"), "stack.scad"],
                        cwd=HERE, capture_output=True)
@@ -154,52 +246,48 @@ def main():
         layers = re.search(r'ECHO: "LAYERS (.*)"', echo).group(1).split()
         for i, kind in enumerate(layers):
             z0, z1 = 3.0 * i, 3.0 * i + 3.0
-            hits = [b for b in bs if b[3] > z0 + 0.01 and b[2] < z1 - 0.01]
+            hits = [o for o in obstacles if o[3] > z0 + 0.01 and o[2] < z1 - 0.01]
             if not hits:
                 continue
-            body = "\n".join(
-                f"translate([{b[1][0]}, {-b[1][3]}, {b[2]}]) cube([{b[1][2] - b[1][0]}, {b[1][3] - b[1][1]}, {b[3] - b[2]}]);"
-                for b in hits)
-            src = (f'include <{os.path.join(HERE, "stack.scad")}>\n'
-                   f"intersection() {{ translate([0, 0, {z0}]) linear_extrude(height = 3) top_view() layer2d({i});\n"
-                   f"union() {{ {body} }} }}\n")
-            with tempfile.NamedTemporaryFile("w", suffix=".scad", delete=False) as f:
-                f.write(src)
-            stl = f.name[:-5] + ".stl"
-            r = subprocess.run(["openscad", "-D", f'variant="{v}"', "-D", 'part="none"', "-D", "kerf=0", *extra,
-                                "-o", stl, f.name], capture_output=True, text=True)
-            empty = "top level object is empty" in r.stderr.lower()
-            if empty:
+            lay = f"translate([0, 0, {z0}]) linear_extrude(height = 3) top_view() layer2d({i});"
+            if not nonempty("stack.scad", f"intersection() {{ {lay}\nunion() {{ {' '.join(o[1] for o in hits)} }} }}", sd):
                 continue
-            # find which boxes collide, one by one
-            for b in hits:
-                one = (f'include <{os.path.join(HERE, "stack.scad")}>\n'
-                       f"intersection() {{ translate([0, 0, {z0}]) linear_extrude(height = 3) top_view() layer2d({i});\n"
-                       f"translate([{b[1][0]}, {-b[1][3]}, {b[2]}]) cube([{b[1][2] - b[1][0]}, {b[1][3] - b[1][1]}, {b[3] - b[2]}]); }}\n")
-                with open(f.name, "w") as g:
-                    g.write(one)
-                r = subprocess.run(["openscad", "-D", f'variant="{v}"', "-D", 'part="none"', "-D", "kerf=0", *extra,
-                                    "-o", stl, f.name], capture_output=True, text=True)
-                if "top level object is empty" not in r.stderr.lower():
+            for o in hits:   # find which ones collide
+                if nonempty("stack.scad", f"intersection() {{ {lay}\n{o[1]} }}", sd):
                     failed += 1
-                    print(f"COLLISION {v} L{i:02d} {kind}: {b[0]} z {b[2]:.1f}-{b[3]:.1f}")
-        print(f"{v}: {len(bs)} parts checked against {len(layers)} layers")
+                    print(f"COLLISION {v} L{i:02d} {kind}: {o[0]} z {o[2]:.1f}-{o[3]:.1f}")
+        print(f"{v}: {len(obstacles)} parts and the board checked against {len(layers)} layers")
         if v == "c3":
-            # the printed c3 case: base, and the top in its assembled position
-            for label, expr in (("printed base", "base();"), ("printed top", "translate([0, 0, plate_z]) top();")):
-                for b in bs:
-                    one = (f'include <{os.path.join(HERE, "tune-button-c3-printed.scad")}>\n'
-                           f"intersection() {{ {expr}\n"
-                           f"translate([{b[1][0]}, {-b[1][3]}, {b[2]}]) cube([{b[1][2] - b[1][0]}, {b[1][3] - b[1][1]}, {b[3] - b[2]}]); }}\n")
-                    with tempfile.NamedTemporaryFile("w", suffix=".scad", delete=False) as g:
-                        g.write(one)
-                    r = subprocess.run(["openscad", "-D", 'piece="none"', *extra, "-o", g.name[:-5] + ".stl", g.name],
-                                       capture_output=True, text=True)
-                    if "top level object is empty" not in r.stderr.lower():
-                        failed += 1
-                        print(f"COLLISION c3 {label}: {b[0]} z {b[2]:.1f}-{b[3]:.1f}")
-            print(f"c3: {len(bs)} parts checked against the printed base and top")
+            failed += check_printed(obstacles, board, extra)
     sys.exit(1 if failed else 0)
+
+
+def check_printed(obstacles, board, extra):
+    """The printed c3 case: nothing may enter either part, and the clamp must close."""
+    inc, pd, failed = "tune-button-c3-printed.scad", ["-D", 'piece="none"', *extra], 0
+    base, lid = "base();", "translate([0, 0, part_z]) lid();"
+    for label, expr in (("base", base), ("lid", lid)):
+        for o in obstacles:
+            if nonempty(inc, f"intersection() {{ {expr}\n{o[1]} }}", pd):
+                failed += 1
+                print(f"COLLISION c3 printed {label}: {o[0]} z {o[2]:.1f}-{o[3]:.1f}")
+    # raised 0.01: faces that only touch at the parting line give a zero-thickness "intersection"
+    if nonempty(inc, f"intersection() {{ {base}\ntranslate([0, 0, 0.01]) {lid} }}", pd):
+        failed += 1
+        print("COLLISION c3 printed: the base and the lid overlap")
+    # The clamp: grow the board 0.05 mm up and down. Every spacer must then reach it from below
+    # and every post from above, at each mounting hole.
+    pcbdir, mirror, _, key_z, bot_z = VARIANTS["c3"]
+    _, holes = board_outline(pcbdir, mirror)      # from KiCad, not from the case's own list
+    for label, expr, z0 in (("spacer", base, bot_z - 0.05), ("post", lid, key_z)):
+        for k, (hx, hy) in enumerate(holes):
+            probe = (f"intersection() {{ {expr}\ntranslate([{hx:.3f}, {-hy:.3f}, {z0}]) "
+                     f"difference() {{ cylinder(d = spacer_d - 0.2, h = 0.05); cylinder(d = 2.4, h = 1, center = true); }} }}")
+            if not nonempty(inc, probe, pd):
+                failed += 1
+                print(f"NO CONTACT c3 printed: no {label} reaches the board at its hole ({hx:.1f}, {hy:.1f})")
+    print(f"c3: {len(obstacles)} parts and the board checked against the printed base and lid; clamp checked")
+    return failed
 
 
 if __name__ == "__main__":

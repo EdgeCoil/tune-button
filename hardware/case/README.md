@@ -73,26 +73,45 @@ the cavity.
 ## Printed `c3` case
 
 A printed alternative to the `c3` stack, in two parts: `tune-button-c3-base.stl` and
-`tune-button-c3-top.stl`. It's 61 × 79 × 24 mm, slightly smaller than the stack.
+`tune-button-c3-lid.stl`. It's 64 × 82 × 21 mm.
 
 - **Its geometry comes from `stack.scad`:** the same cavity, cell pocket, battery-plug pocket,
   USB-C slot and board height. The same clearance check covers it.
-- **The plate is 1.5 mm, so the MX clips latch,** unlike the 3 mm acrylic. Its holes are 14.1 mm,
-  because FDM prints holes slightly small. If your switches are loose, set `mx_hole` back to
-  14.0.
-- **Base:** floor, walls, four board spacers with pins, and a fence around the cell.
-- **Top:** the plate and bezel in one piece, with windows for the two LEDs.
-- **Three M2 self-tapping screws** (about 12 mm) go down through the top's corners. The
-  fourth corner is next to the antenna, so it has no screw: a printed peg on the top drops into
-  a socket in the base instead.
-- **Printing:** print the base floor down and the top plate side down, bezel up, with no
-  supports. The USB-C slot is a 13 mm bridge. Use 3 or more perimeters, for the screw bosses.
+- **The lid clamps the board.** Four posts under the lid press the board's key face down onto four
+  spacers in the base, at its four mounting holes. The spacers' pins locate the board in the holes.
+  Posts and spacers are sized to meet the board exactly, at the Cherry MX height, so they hold the
+  board rather than the switch joints.
+- **The lid's top face is the MX plate**, 1.5 mm thick, so the switch clips latch. Its holes are
+  14.1 mm because FDM prints holes slightly small. If your switches are loose, set `mx_hole` back
+  to 14.0. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
+  as a separate part or over a 38 mm bridge.
+- **Three M3 × 8 socket head cap screws** go down through counterbores in the lid's corners, into
+  M3 heat-set inserts in the base. The heads sit just below the top face, with 2.8 mm of lid under
+  them, and each screw reaches 5.2 mm into its insert.
+  - The insert holes are 4.0 mm across and 7 mm deep, for the common M3 × 5.7 mm insert (4.6 mm
+    outside diameter). Check your inserts' recommended hole and set `insert_hole` to match. A
+    shorter M3 × 4 insert works too.
+  - The fourth corner is next to the antenna, so it has no screw: a printed peg on the lid drops
+    into a socket in the base instead. A brass insert there would be as bad as a steel screw.
+- **Printing:** no supports for either part, 0.2 mm layers, 3 or more perimeters for the bosses.
+  - The base prints floor down.
+  - The lid STL is already upside down: its top face goes on the bed, and the skirt, bosses and
+    posts grow up from it. Turn on elephant-foot compensation, or the first layer narrows the
+    MX holes at the top face.
+  - The parting line runs through the USB-C opening, so each part has an open notch instead of a
+    bridge.
+
+**Hardware:** 3 × M3 × 8 socket head cap screws (ISO 4762), 3 × M3 heat-set inserts.
 
 **Assembly:**
-1. Solder the LEDs.
-2. Put the switches through the printed top and solder them to the board, as with the stack.
-3. Tape the cell inside its fence and plug in the battery, **checking the polarity first**.
-4. Lower the top and board as one assembly onto the spacers, then screw it down.
+1. **Set the three inserts** into the base's corner bosses with a soldering iron, flush with the
+   top of the boss.
+2. Solder the LEDs.
+3. Put the switches through the lid from above, so their clips latch, and solder them to the
+   board. The lid and board are now one assembly.
+4. Tape the cell inside its fence and plug in the battery, **checking the polarity first**.
+5. Lower the lid and board onto the base. The spacers' pins enter the board's holes, and the peg
+   enters its socket. Screw the lid down.
 
 ## Files
 
@@ -107,7 +126,7 @@ or later, and `xvfb-run` for the preview images when headless.
 | `stack/<board>/spacers.stl` | the four board spacers (`xiao`, `c3`) |
 | `stack/c3-jst/wall.stl` | the printed alternative to layers 5–15 |
 | `stack/<board>/preview.png` | assembly render |
-| `tune-button-c3-base.stl`, `tune-button-c3-top.stl` | the printed `c3` case; `stack/c3/printed-preview.png` |
+| `tune-button-c3-base.stl`, `tune-button-c3-lid.stl` | the printed `c3` case (the lid is upside down, ready to print); `stack/c3/printed-preview.png` |
 
 The SVGs are in millimetres. `kerf` (default 0.10 mm) grows each outline and shrinks each hole
 by half the kerf, so the cut parts come out at nominal size. Set it to your laser's kerf, and
@@ -164,11 +183,13 @@ whose firmware doesn't boot. For that, unbolt the case.
 
 ## Checking
 
-`python3 check-stack.py` checks every layer of the three stacks, and the printed `c3` base and top.
-It reads every footprint from the KiCad files in `../pcb`. It gives each part
+`python3 check-stack.py` checks every layer of the three stacks, and the printed `c3` base and lid.
+It reads every footprint, and each board's outline and mounting holes, from the KiCad files in
+`../pcb`. It gives each part
 a height (listed in the script; connector and keycap heights are estimates), adds the cells,
-plugs, keycaps and arcade buttons, and intersects each one with every layer in OpenSCAD. It exits
-1 on any collision.
+plugs, keycaps and arcade buttons, and intersects each one, and the bare board, with every layer in
+OpenSCAD. For the printed `c3` case it also checks that the base and lid don't overlap, and that a
+spacer and a post meet the board at every mounting hole. It exits 1 on any failure.
 
 Passing extra overrides runs it against a deliberately broken design, which shows it can fail.
 For example, `python3 check-stack.py mx_hole=13.5` and `'usb_slot=[8,8]'` both report collisions.

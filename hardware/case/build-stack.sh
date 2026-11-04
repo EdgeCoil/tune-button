@@ -8,7 +8,7 @@
 #   spacers.stl      printed board spacers (xiao, c3)
 #   wall.stl         c3-jst only: layers 5-15 as one printed part, if you'd rather not cut 11 rings
 #   preview.png      assembly render (needs xvfb-run when headless)
-# and stack/kerf-test.svg, plus the printed c3 case (tune-button-c3-{base,top}.stl). Requires OpenSCAD 2021.01 or later.
+# and stack/kerf-test.svg, plus the printed c3 case (tune-button-c3-{base,lid}.stl). Requires OpenSCAD 2021.01 or later.
 set -eu
 cd "$(dirname "$0")"
 scad=stack.scad
@@ -40,7 +40,7 @@ for v in xiao c3 c3-jst; do
 done
 # The printed c3 case, which takes its geometry from stack.scad.
 openscad -q -D 'piece="base"' -o tune-button-c3-base.stl tune-button-c3-printed.scad
-openscad -q -D 'piece="top"' -o tune-button-c3-top.stl tune-button-c3-printed.scad
+openscad -q -D 'piece="lid"' -o tune-button-c3-lid.stl tune-button-c3-printed.scad
 $run openscad -q -o stack/c3/printed-preview.png --imgsize=1200,900 --viewall --autocenter \
     --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-c3-printed.scad || true
-echo "c3 printed: tune-button-c3-base.stl, tune-button-c3-top.stl"
+echo "c3 printed: tune-button-c3-base.stl, tune-button-c3-lid.stl"
