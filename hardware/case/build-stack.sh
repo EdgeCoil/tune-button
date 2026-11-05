@@ -48,3 +48,6 @@ for v in c3 xiao; do
         --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-printed.scad || true
     echo "$v printed: $(for p in $pieces; do printf 'tune-button-%s-%s.stl ' "$v" "$p"; done)"
 done
+# A test plate for the MX hole size (see tune-button-mx-gauge.scad).
+openscad -q -o tune-button-mx-gauge.stl tune-button-mx-gauge.scad
+echo "MX hole gauge: tune-button-mx-gauge.stl"

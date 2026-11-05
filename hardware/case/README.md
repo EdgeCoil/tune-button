@@ -89,8 +89,11 @@ Printed alternatives to the `c3` and `xiao` stacks, from one file, `tune-button-
   spacers' pins locate the board in the holes. Posts and spacers are sized to meet the board
   exactly, at the Cherry MX height, so they hold the board rather than the switch joints.
 - **The lid's top face is the MX plate**, 1.5 mm thick, so the switch clips latch. Its holes are
-  14.1 mm because FDM prints holes slightly small. If your switches are loose, set `mx_hole` back
-  to 14.0. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
+  14.1 mm with a 1 mm relief at each corner: a printed square hole has rounded corners, and the
+  first layer squashes into the hole on the face the switches go in through. **14.1 was too tight
+  on the first print** (the switches stopped part way in, so the lid stood 3 mm proud of the base).
+  Print `tune-button-mx-gauge.stl` (holes 14.0–14.3, same plate, same orientation) with the lid's
+  filament and settings, and set `mx_hole` to the smallest size a switch clips fully into. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
   as a separate part or over a 38 mm bridge.
 - **M3 × 8 socket head cap screws** go down through counterbores into M3 heat-set inserts in the
   base. Every head has 2.8 mm of plastic under it, and every screw reaches 5.2 mm into its insert.

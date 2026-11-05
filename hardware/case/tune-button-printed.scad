@@ -59,6 +59,8 @@ root_f = 1.0;         // fillet where spacers and posts meet the floor and plate
 lead_c = 0.5;         // lead-ins: insert holes, peg and socket
 pin_c = 0.3;          // pin tips, into the board's holes
 mx_c = 0.3;           // MX holes at the top face (the switch flange is 15.6, so 0.45 still bears)
+mx_relief = 1.0;      // corner reliefs: a printed square hole has rounded corners the switch's
+                      // square body jams on; a circle this wide at each corner clears them
 membrane = 0.2;       // one layer over each screw hole at the head seat, so the seat bridges
                       // cleanly; push it out with a 3 mm drill or a hot awl
 
@@ -135,6 +137,18 @@ module screw_way(seat) {
     translate([0, 0, seat]) cylinder(d = screw_head[0], h = 50);
 }
 
+// One MX switch hole through a plate of height h, top face at z = h: the square, its corner
+// reliefs, and the chamfer on the top face (the bed face as printed, where the first layer squashes).
+module mx_cut(h, hole = mx_hole) {
+    translate([0, 0, -1]) linear_extrude(height = h + 2) {
+        square(hole, center = true);
+        for (x = [-1, 1], y = [-1, 1]) translate([x, y] * hole / 2) circle(d = mx_relief, $fn = 16);
+    }
+    translate([0, 0, h + 0.01]) mirror([0, 0, 1])
+        linear_extrude(height = mx_c + 0.01, scale = hole / (hole + 2 * mx_c))
+        square(hole + 2 * mx_c, center = true);
+}
+
 module base() {
     difference() {
         union() {
@@ -193,12 +207,7 @@ module lid() {
             for (c = hood_screws) translate([c[0], -c[1], -1]) cylinder(d = boss_d + 2 * gapf, h = lid_h + 2);
         }
         translate([0, 0, -part_z]) usb_cut();
-        for (c = keys) translate([c[0], -c[1], 0]) {
-            translate([0, 0, -1]) linear_extrude(height = lid_h + 2) square(mx_hole, center = true);
-            translate([0, 0, lid_h + 0.01]) mirror([0, 0, 1])
-                linear_extrude(height = mx_c + 0.01, scale = mx_hole / (mx_hole + 2 * mx_c))
-                square(mx_hole + 2 * mx_c, center = true);
-        }
+        for (c = keys) translate([c[0], -c[1], 0]) mx_cut(lid_h);
         for (l = leds) translate([l[0], -l[1], -1]) cylinder(d = led_hole, h = lid_h + 2);
         for (c = lid_screws) translate([c[0], -c[1], 0]) screw_way(lid_h - screw_head[1]);
     }
