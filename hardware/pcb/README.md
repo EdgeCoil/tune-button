@@ -25,10 +25,12 @@ under [`xiao/` rev B](#xiao-rev-b).</sub>
 > passes KiCad's electrical and design rules checks, with nothing unconnected and the board
 > matching its schematic.
 >
-> **`xiao/` is now rev B, not yet reviewed or ordered** (rev A is the tag). The XIAO is turned
-> so its USB-C faces the left edge, a spring pin under it meets its BAT+ pad in place of rev A's
-> wired header, and each switch footprint takes a switch on either side of the board. See
-> [`xiao/` rev B](#xiao-rev-b).
+> **`xiao/` is now rev B: reviewed, not yet ordered** (rev A is the tag). Thirteen DFM audit
+> rounds; the last, at d1087fc, was clean. The XIAO is turned so its USB-C faces the left edge, a
+> spring pin under it meets its BAT+ pad in place of rev A's wired header, and each switch
+> footprint takes a switch on either side of the board. **Before ordering, three checks on a rev A
+> XIAO board:** the gap from the board to a plugged-in XIAO's underside (11.0 mm assumed), the BAT+
+> pad's position, and a USB flash with a cell connected (D0). See [`xiao/` rev B](#xiao-rev-b).
 
 ## The three boards at a glance
 
