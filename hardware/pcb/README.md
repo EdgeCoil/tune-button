@@ -103,15 +103,16 @@ upload from `panel/fab/`.
 - Add a remark: *"Customer panel of 3 designs. The modules' antennas and the USB-C sockets overhang
   their board edges by design."*
 - Each part is prefixed with its board (`XIAO_`, `C3_`, `JST_`).
-- **Check the placement preview before paying.** `edgecoil_pcb.jlc` (in `vendor/`) already corrects every
-  rotation where JLC's footprint differs from KiCad's, each checked pad by pad against JLC's own footprint by
-  `edgecoil_pcb.jlc_verify` (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST, the
-  XIAO board's sockets, rev A's header and rev B's spring pin), but a wrong SRV05-4 rotation (U2, and U5 on `c3-jst`) would
-  short the 3V3 rail.
+- **Check the placement preview before paying.** `edgecoil_pcb.jlc` (in `vendor/`) already corrects
+  every rotation where JLC's footprint differs from KiCad's, each checked pad by pad against JLC's
+  own footprint by `edgecoil_pcb.jlc_verify` (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin
+  JST, the XIAO board's sockets, rev A's header and rev B's spring pin), but a wrong SRV05-4
+  rotation (U2, and U5 on `c3-jst`) would short the 3V3 rail.
 
 **What JLC fits and what's left for you**
 - JLC fits everything on the front of each board, including the XIAO board's sockets (and rev A's
-  2-pin header; rev B's spring pin is SMD). Those are through-hole, at a hand-soldering fee of about $3.50 plus a per-joint rate.
+  2-pin header; rev B's spring pin is SMD). Those are through-hole, at a hand-soldering fee of about
+  $3.50 plus a per-joint rate.
 - Left for you: the MX switches, the C3 board's two back LEDs and its UART header, the XIAO itself,
   the batteries and the buttons.
 
@@ -208,9 +209,9 @@ Every key switches to ground and uses the chip's internal pull-up.
 - **Why:** the C3 can only wake from deep sleep on GPIO0–5, and the XIAO brings out just GPIO2–5 of
   those. GPIO2 is taken by the battery reading, which has to be on ADC1 (GPIO0–4).
 - **D0 (GPIO2) is a strapping pin, and the divider holds it at about half the cell's voltage**
-  (1.5–2.1 V for a 3.0–4.2 V cell), between the C3's low and high thresholds. Espressif says GPIO2 doesn't choose the
-  boot mode but recommends pulling it up against glitches, and one Seeed forum user couldn't flash a
-  XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
+  (1.5–2.1 V for a 3.0–4.2 V cell), between the C3's low and high thresholds. Espressif says
+  GPIO2 doesn't choose the boot mode but recommends pulling it up against glitches, and one Seeed
+  forum user couldn't flash a XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
   the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash the XIAO out of its
   sockets), and rev B moves the divider to D2 (and K2 to D0, with a pull-up) before it's ordered.
 - **How it works:** K4 is read on D4, and also pulls K3's line low through a diode. That diode must
@@ -273,7 +274,6 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ### Mounting
 
 - **`xiao/`:** the four M2 holes are all clear of the keycaps.
-
 - **`c3/`:** the four M2 holes are clear of the keycaps. Use nylon washers or standoffs: tracks run
   within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask.
 - **`c3-jst/`**, two M2 holes:
@@ -318,7 +318,6 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   from the front, so with the switches on the back K1 is top right as you look at the keys.
 - **With the switches on the back, the LED (D2) faces into the case,** like everything else on the
   front. It's visible only with front-mounted switches, or through a light path in the case.
-
 
 ## Firmware
 
