@@ -142,10 +142,21 @@ module bosses_at(cs, h, cb, ct) intersection() {
 }
 // A screw's way through a part whose boss bottom is at z = 0: clearance hole, then a membrane,
 // then the head's counterbore from z = seat up.
-module screw_way(seat) {
+// A screw's way through a corner: the clearance hole, and the head's counterbore from `seat` up.
+// The counterbore leaves only ~0.5 mm of wall to the outer corner, less than the bed chamfer, so
+// the slicer drops that sliver on the first layer and flags the next as floating (and a printed
+// one chipped off): the counterbore opens out through the corner instead (`out`, the corner's
+// direction). The head still bears on its whole seat.
+module screw_way(seat, out = [0, 0]) {
     translate([0, 0, -1]) cylinder(d = screw_clear, h = seat - membrane + 1);
-    translate([0, 0, seat]) cylinder(d = screw_head[0], h = 50);
+    translate([0, 0, seat]) hull() {
+        cylinder(d = screw_head[0], h = 50);
+        translate(out * 4) cylinder(d = screw_head[0], h = 50);
+    }
 }
+// The outward direction of a corner, in the scad frame (board y runs down, scad y up).
+function corner_out(c) = let(mx = (pouter[0] + pouter[2]) / 2, my = (pouter[1] + pouter[3]) / 2)
+    [sign(c[0] - mx), -sign(c[1] - my)] / sqrt(2);
 
 // One MX switch hole through a plate of height h, top face at z = h: the square, its corner
 // reliefs, and the chamfer on the top face (the bed face as printed, where the first layer squashes).
@@ -219,7 +230,7 @@ module lid() {
         translate([0, 0, -part_z]) usb_cut();
         for (c = keys) translate([c[0], -c[1], 0]) mx_cut(lid_h);
         for (l = leds) translate([l[0], -l[1], -1]) cylinder(d = led_hole, h = lid_h + 2);
-        for (c = lid_screws) translate([c[0], -c[1], 0]) screw_way(lid_h - screw_head[1]);
+        for (c = lid_screws) translate([c[0], -c[1], 0]) screw_way(lid_h - screw_head[1], corner_out(c));
     }
 }
 

@@ -142,10 +142,14 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
     parting line, so a small step between the parts reads as a groove.
   - 1 mm fillets where the 12 mm spacers meet the floor and the posts meet the plate.
   - Lead-ins on the insert holes, the peg and its socket, and the spacers' pins.
-  - 0.3 mm on the MX holes at the top face. The switch flange still bears on 0.45 mm each side.
+  - 0.3 mm on the MX holes at the top face.
 - **Each screw hole is closed by one 0.2 mm layer at the bottom of its counterbore,** so the
   screw head's seat prints as a clean bridge instead of an overhang. Push the layer out with a
   3 mm drill or a hot awl before fitting the screws.
+- **The lid's counterbores open out through its corners.** Only about 0.5 mm of wall stood between
+  each head and the outer corner, less than the bed chamfer, so the slicer dropped it on the first
+  layer and warned of floating regions, and a printed one chipped off. The head still bears on its
+  whole seat. (The hood's screws sit in bosses and are unchanged.)
 
 **Hardware:** M3 × 8 socket head cap screws (ISO 4762) and M3 heat-set inserts: 3 of each for
 `c3`, 4 for `xiao`.
