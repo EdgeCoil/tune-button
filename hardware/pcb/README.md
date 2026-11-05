@@ -15,7 +15,8 @@ The MX boards put their switches in a 2 × 2 grid at the standard 19.05 mm keybo
 | ![XIAO board](../../docs/renders/xiao.jpg) | ![C3 board, key side](../../docs/renders/c3-back.jpg) | ![C3 board, parts side](../../docs/renders/c3-parts.jpg) | ![c3-jst board](../../docs/renders/c3-jst.jpg) |
 
 <sub>Rendered from the design files with KiCad. The connectors, switches and keycaps are simplified
-stand-ins.</sub>
+stand-ins. The XIAO render is rev A (USB at the top edge, wired BAT header); rev B is described
+under [`xiao/` rev B](#xiao-rev-b).</sub>
 
 > **Status: rev A was ordered on 2026-10-25 (tag `rev-a`, all three boards on one JLC panel) and is
 > not yet built or tested.** Every board passes KiCad's electrical and design rules checks, with
@@ -39,7 +40,7 @@ stand-ins.</sub>
 | Battery | JST-PH socket, right edge; a spring pin up to the XIAO's BAT+ pad (BAT− returns through the socket) | JST-PH socket | JST-PH socket (J2), right edge |
 | Which side is which | Everything on top; the switches on top or the back | Keys, LEDs, logo and name on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name and the J3 pin list on the back |
 | Mounting | 4 × M2 | 4 × M2 | 2 × M2 (see [Mounting](#mounting)) |
-| Soldered by you | The MX switches | The MX switches and 2 LEDs on the back | Nothing (JLC fits every part) |
+| Soldered by you | The MX switches, and the XIAO's header pins unless it came pre-soldered (J4's height assumes a standard 2.5 mm spacer) | The MX switches and 2 LEDs on the back | Nothing (JLC fits every part) |
 
 ### `c3-jst`'s button connector (J3)
 
@@ -211,7 +212,8 @@ Every key switches to ground and uses the chip's internal pull-up.
   - a K4 press wakes the chip on GPIO5 with D4 low;
   - a K3 press wakes it on GPIO5 with D4 high.
 - **The catch:** a very quick tap on K4 could be released before the firmware reads D4, and would
-  then read as K3. A deep-sleep wake stub can read D4 within about a millisecond of waking.
+  then read as K3. The firmware's deep-sleep wake stub reads D4 within microseconds of waking, so
+  this is handled.
 
 The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins there.
 
@@ -274,8 +276,9 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 - **A spring pin, J4,** stands under the XIAO and presses on its BAT+ pad, so there are no wires
   to solder. It is a YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at working height, 100 g.
   The battery's negative returns through the socket: the XIAO's BAT− pad is its GND, which J2 pin 2
-  carries. A first layout had a second pin on BAT−, but the two pads are 1.9 mm apart and the pins'
-  flanges 2.0 mm, which left VBAT and GND metal 0.2 mm apart.
+  carries. A first layout had a second pin on BAT−, but the two pads are 1.905 mm apart, closer than the
+  pins' 2.0 mm flanges, so the second pin had to be staggered, which still left VBAT and GND metal
+  0.2 mm apart.
 - **Unplug the cell before taking the XIAO out:** with it connected, J4 is a bare 12 mm post at the
   cell's voltage.
 - **Check two things on a real XIAO before ordering.** The pad positions come from Seeed's KiCad
