@@ -161,10 +161,10 @@ than snapping them.
 - **Frame:** the boards sit side by side (XIAO, C3, `c3-jst`) in a 6 mm frame. It has rails on the
   left and right and bars across the top and bottom. The bars stay at least 2.5 mm from every board
   edge and 1.5 mm from anything that overhangs one. The frame carries JLC's 1.152 mm tooling holes
-  in its four corners and three fiducials 4.35 mm in from the rails' outer edges. JLC's
-  capabilities page now asks for 5 mm tooling edges, 2 mm tooling holes and 1 mm fiducials 3.85 mm
-  from the edges, and mouse-bite tabs at least 5 mm wide (these are 2.3–3.0 mm); rev A's panel was accepted with this frame, but check the current note before a
-  panel order.
+  in its four corners and three fiducials 4.35 mm in from the rails' outer edges. JLC's capabilities
+  page now asks for 5 mm tooling edges, 2 mm tooling holes and 1 mm fiducials 3.85 mm from the
+  edges, and mouse-bite tabs at least 5 mm wide (these are 2.3–3.0 mm); rev A's panel was accepted
+  with this frame, but check the current note before a panel order.
 - **Where tabs may go:** mouse-bite tabs join the boards to each other and to the frame. They go
   only where:
   - no track, via or pad comes within 1 mm of the edge;
@@ -186,7 +186,8 @@ than snapping them.
   rather than snap.
 - **Building it:** `panel.py` uses [KiKit](https://github.com/yaqwsx/KiKit) 1.8.1 and relies on its
   internals (such as how it spaces the bites). Install it where Python can also see KiCad's
-  `pcbnew`, for example in a venv made with `--system-site-packages`, then `pip install kikit==1.8.1`.
+  `pcbnew`, for example in a venv made with `--system-site-packages`, then `pip install
+  kikit==1.8.1`.
 
 </details>
 
@@ -209,11 +210,12 @@ Every key switches to ground and uses the chip's internal pull-up.
 - **Why:** the C3 can only wake from deep sleep on GPIO0–5, and the XIAO brings out just GPIO2–5 of
   those. GPIO2 is taken by the battery reading, which has to be on ADC1 (GPIO0–4).
 - **D0 (GPIO2) is a strapping pin, and the divider holds it at about half the cell's voltage**
-  (1.5–2.1 V for a 3.0–4.2 V cell), between the C3's low and high thresholds. Espressif says
-  GPIO2 doesn't choose the boot mode but recommends pulling it up against glitches, and one Seeed
-  forum user couldn't flash a XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
-  the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash the XIAO out of its
-  sockets), and rev B moves the divider to D2 (and K2 to D0, with a pull-up) before it's ordered.
+  (1.5–2.1 V for a 3.0–4.2 V cell), between the C3's low and high thresholds. Espressif says GPIO2
+  doesn't choose the boot mode but recommends pulling it up against glitches, and one Seeed forum
+  user couldn't flash a XIAO until a divider like this was removed. **Untested here:** with a cell
+  connected, check that the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash
+  the XIAO out of its sockets), and rev B moves the divider to D2 (and K2 to D0, with a pull-up)
+  before it's ordered.
 - **How it works:** K4 is read on D4, and also pulls K3's line low through a diode. That diode must
   be a 1N4148WS rated at most 0.715 V at 1 mA (C2128 is). A Schottky leaks enough when warm to drag
   D4 low while K3 is held.
@@ -221,8 +223,8 @@ Every key switches to ground and uses the chip's internal pull-up.
   - a K4 press wakes the chip on GPIO5 with D4 low;
   - a K3 press wakes it on GPIO5 with D4 high.
 - **The catch:** a very quick tap on K4 could be released before the firmware reads D4, and would
-  then read as K3. The firmware's deep-sleep wake stub reads D4 within about a millisecond of waking, far
-  shorter than any tap, so this is handled.
+  then read as K3. The firmware's deep-sleep wake stub reads D4 within about a millisecond of
+  waking, far shorter than any tap, so this is handled.
 
 The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins there.
 
@@ -286,31 +288,31 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ### `xiao/` rev B
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
-  switches. On rev B the XIAO's far end (away from its USB-C, where the U.FL antenna plug is, which on
-  rev A pointed at the keys) faces the top right of the board, where only J3, the LED and its
-  resistor, and H2's screw are (no switches). Mount the FPC
-  antenna in the case, off the board: both copper layers are ground pour, which would detune it
-  stuck flat on the board.
+  switches. On rev B the XIAO's far end (away from its USB-C, where the U.FL antenna plug is, which
+  on rev A pointed at the keys) faces the top right of the board, where only J3, the LED and its
+  resistor, and H2's screw are (no switches). Mount the FPC antenna in the case, off the board: both
+  copper layers are ground pour, which would detune it stuck flat on the board.
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
   edge. J1 (D0–D6) is the lower socket and J2 the upper, both reading left to right from the USB
   end. The battery JST (J3) moved to the right edge. The board is 1.5 mm taller.
-- **A spring pin, J4,** stands under the XIAO and presses on its BAT+ pad, so there are no wires
-  to solder. It is a YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at working height, 100 g.
-  The battery's negative returns through the socket: the XIAO's BAT− pad is its GND, which J2 pin 2
-  carries. A first layout had a second pin on BAT−, but the two pads are 1.905 mm apart, closer than the
-  pins' 2.0 mm flanges, so the second pin had to be staggered, which still left VBAT and GND metal
-  0.2 mm apart.
+- **A spring pin, J4,** stands under the XIAO and presses on its BAT+ pad, so there are no wires to
+  solder. It is a YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at working height, 100 g. The
+  battery's negative returns through the socket: the XIAO's BAT− pad is its GND, which J2 pin 2
+  carries. A first layout had a second pin on BAT−, but the two pads are 1.905 mm apart, closer than
+  the pins' 2.0 mm flanges, so the second pin had to be staggered, which still left VBAT and GND
+  metal 0.2 mm apart.
 - **Unplug the cell before taking the XIAO out:** with it connected, J4 is a bare 12 mm post at the
   cell's voltage.
 - **Check two things on a real XIAO before ordering.** The pad positions come from Seeed's KiCad
-  footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: BAT+ about 3.2 mm in
-  from the D0–D6 row and 7.2 mm along it from the D0 pin (level with D3), BAT− nearer the USB end. And the 11 mm working height assumes
-  the 8.5 mm socket plus a 2.5 mm header spacer: measure from the board to the underside of a
-  plugged-in XIAO. Seeed's photo of the XIAO's back shows the BAT+ pad itself as about 1.9 × 0.9 mm
-  (the footprint's land is 2.5 × 1.1), so J4's 0.9 mm tip has roughly ±0.45 mm along the row to
-  stay on it, against the socket's play, JLC's placement and the 12 mm pin's lean (1° moves the tip
-  0.19 mm). A miss is harmless (BAT− is 1.45 mm away), but on arrival check that J4 stands upright,
-  and mark its tip (a dab of marker) to see where it lands on the XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
+  footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: BAT+ about 3.2 mm in from
+  the D0–D6 row and 7.2 mm along it from the D0 pin (level with D3), BAT− nearer the USB end. And
+  the 11 mm working height assumes the 8.5 mm socket plus a 2.5 mm header spacer: measure from the
+  board to the underside of a plugged-in XIAO. Seeed's photo of the XIAO's back shows the BAT+ pad
+  itself as about 1.9 × 0.9 mm (the footprint's land is 2.5 × 1.1), so J4's 0.9 mm tip has roughly
+  ±0.45 mm along the row to stay on it, against the socket's play, JLC's placement and the 12 mm
+  pin's lean (1° moves the tip 0.19 mm). A miss is harmless (BAT− is 1.45 mm away), but on arrival
+  check that J4 stands upright, and mark its tip (a dab of marker) to see where it lands on the
+  XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
 - **Reversible switches.** Each switch footprint (`lib/tune-button.pretty`) has both pin pairs: a
   switch on the front uses one pair, a switch on the back the mirrored pair, and the centre and
   side posts serve both. Pads are 2.0 mm (KiCad's are 2.2), leaving 0.84 mm between a front pin 1
@@ -323,9 +325,9 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 Build `xiao_board` for the XIAO board and `c3_board` for `c3` and `c3-jst` (see the top-level
 README). `c3_board` has run on a rev A C3 board (2026-11-05: all four keys, sleep and wake on USB
-and battery); `xiao_board` is flashed on a rev A XIAO board (without a cell), but its keys aren't confirmed yet. On the XIAO
-board, a deep-sleep wake stub reads D4 within about a millisecond of waking, so even a very quick
-tap on K4 reads as K4.
+and battery); `xiao_board` is flashed on a rev A XIAO board (without a cell), but its keys aren't
+confirmed yet. On the XIAO board, a deep-sleep wake stub reads D4 within about a millisecond of
+waking, so even a very quick tap on K4 reads as K4.
 
 ## Rebuilding
 
@@ -334,7 +336,8 @@ overwrites them.
 
 1. **[`gen.py`](gen.py)** holds the parts, nets and placement for all three boards. It writes the
    schematic, with a label on every pin, and an unrouted board from the same netlist, through the
-   shared pipeline, [EdgeCoil/edgecoil-pcb](https://github.com/EdgeCoil/edgecoil-pcb), vendored in [`vendor/`](vendor/).
+   shared pipeline, [EdgeCoil/edgecoil-pcb](https://github.com/EdgeCoil/edgecoil-pcb), vendored in
+   [`vendor/`](vendor/).
 2. **[`route.py`](route.py)** lays the copper and fills the pours.
    - **Frozen routing:** each board's `routing.json` holds its reviewed tracks and vias, and
      `route.py` replays them. A fix is then a small edit to that file, not a new layout.
@@ -342,8 +345,9 @@ overwrites them.
      vias and retries until KiCad's DRC is clean. Then **`route.py --freeze <board>`** records it.
    - **Fresh review needed:** a reroute changes the whole layout. So does moving a part in
      `gen.py`, since the frozen copper then no longer meets its pads (DRC catches that).
-3. **[`build.sh`](build.sh)** runs both, then ERC and DRC with the schematic parity check. It exports
-   gerbers, drill files, BOM, pick-and-place, a schematic PDF and renders into `<board>/fab/`.
+3. **[`build.sh`](build.sh)** runs both, then ERC and DRC with the schematic parity check. It
+   exports gerbers, drill files, BOM, pick-and-place, a schematic PDF and renders into
+   `<board>/fab/`.
 4. **[`panel.py`](panel.py)** builds the three-board panel into `panel/`.
 
 ```sh
