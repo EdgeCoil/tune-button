@@ -14,7 +14,7 @@ PCB instead, see [`pcb/`](pcb/).
              D5   │●        ●│ D8
              D6   │●        ●│ D7
                   └──────────┘
-         back: BAT+ / BAT− pads, U.FL antenna socket
+         back: BAT+ / BAT− pads (the U.FL antenna socket is on the front, at the D6/D7 end)
 
   BAT+ ──┬── LiPo +  (through the optional slide switch)
          └── 220 kΩ ──┬── 220 kΩ ── GND

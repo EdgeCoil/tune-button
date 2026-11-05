@@ -18,10 +18,11 @@ The MX boards put their switches in a 2 × 2 grid at the standard 19.05 mm keybo
 stand-ins. The XIAO render is rev A (USB at the top edge, wired BAT header); rev B is described
 under [`xiao/` rev B](#xiao-rev-b).</sub>
 
-> **Status: rev A was ordered on 2026-10-25 (tag `rev-a`, all three boards on one JLC panel) and is
-> not yet built or tested.** Every board passes KiCad's electrical and design rules checks, with
-> nothing unconnected and the board matching its schematic. The four-key firmware is written but
-> hasn't run on these boards yet (see [Firmware](#firmware)).
+> **Status: rev A (tag `rev-a`, ordered 2026-10-25 on one JLC panel) has arrived and is being
+> brought up.** The C3 board runs the four-key firmware (2026-11-05: all four keys, sleep and wake);
+> the XIAO board is flashed, its keys not yet confirmed; `c3-jst` is untested. Every board passes
+> KiCad's electrical and design rules checks, with nothing unconnected and the board matching its
+> schematic (see [Firmware](#firmware)).
 >
 > **`xiao/` is now rev B, not yet reviewed or ordered** (rev A is the tag). The XIAO is turned
 > so its USB-C faces the left edge, a spring pin under it meets its BAT+ pad in place of rev A's
@@ -157,7 +158,7 @@ than snapping them.
   edge and 1.5 mm from anything that overhangs one. The frame carries JLC's 1.152 mm tooling holes
   in its four corners and three fiducials 4.35 mm in from the rails' outer edges. JLC's
   capabilities page now asks for 5 mm tooling edges, 2 mm tooling holes and 1 mm fiducials 3.85 mm
-  from the edges; rev A's panel was accepted with this frame, but check the current note before a
+  from the edges, and mouse-bite tabs at least 5 mm wide (these are 2.3–3.0 mm); rev A's panel was accepted with this frame, but check the current note before a
   panel order.
 - **Where tabs may go:** mouse-bite tabs join the boards to each other and to the frame. They go
   only where:
@@ -272,8 +273,8 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ### `xiao/` rev B
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
-  switches. On rev B the XIAO's far end (away from its USB-C, where the antenna's U.FL plug is on
-  rev A's layout, pointing at the keys) faces the empty top right of the board. Mount the FPC
+  switches. On rev B the XIAO's far end (away from its USB-C, where the U.FL antenna plug is, which on
+  rev A pointed at the keys) faces the empty top right of the board. Mount the FPC
   antenna in the case, off the board: both copper layers are ground pour, which would detune it
   stuck flat on the board.
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
@@ -291,7 +292,11 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: BAT+ about 3.2 mm in
   from the D0–D6 row and 7.2 mm along it from the D0 pin (level with D3), BAT− nearer the USB end. And the 11 mm working height assumes
   the 8.5 mm socket plus a 2.5 mm header spacer: measure from the board to the underside of a
-  plugged-in XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
+  plugged-in XIAO. Seeed's photo of the XIAO's back shows the BAT+ pad itself as about 1.9 × 0.9 mm
+  (the footprint's land is 2.5 × 1.1), so J4's 0.9 mm tip has roughly ±0.45 mm along the row to
+  stay on it, against the socket's play, JLC's placement and the 12 mm pin's lean (1° moves the tip
+  0.19 mm). A miss is harmless (BAT− is 1.45 mm away), but on arrival check that J4 stands upright,
+  and mark its tip (a dab of marker) to see where it lands on the XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
 - **Reversible switches.** Each switch footprint (`lib/tune-button.pretty`) has both pin pairs: a
   switch on the front uses one pair, a switch on the back the mirrored pair, and the centre and
   side posts serve both. Pads are 2.0 mm (KiCad's are 2.2), leaving 0.84 mm between a front pin 1

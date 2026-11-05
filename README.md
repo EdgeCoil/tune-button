@@ -9,7 +9,7 @@ signed Bluetooth broadcast. A companion app hears it in the background, even wit
 and does what you set that key to do.
 
 ![The three Tune Button boards](docs/renders/boards.jpg)
-<sub>The three four-key boards (renders; rev A is being made): `c3-jst` with buttons on a cable, the XIAO board, and the C3 board's key side.</sub>
+<sub>The three four-key boards (renders of rev A, which has arrived and is being brought up): `c3-jst` with buttons on a cable, the XIAO board, and the C3 board's key side.</sub>
 
 ```
  button ──wake──► ESP32-C3 ──signed BLE broadcast──► Android app ──HTTPS──► Spotify
@@ -19,8 +19,9 @@ and does what you set that key to do.
 
 > **Status: works end to end.** A one-button unit on a XIAO ESP32-C3 liked the playing song from a
 > locked Samsung phone; the app heard the press in 0.8 s. The four-key firmware and app (holds,
-> double presses, playback control) are written and unit-tested but **not yet tried on hardware**;
-> the four-key boards (rev A) are ordered. Still to do: a longer latency run on each scan mode and a
+> double presses, playback control) are written and unit-tested; on the rev A boards the C3 board's
+> four keys, sleep and wake work (2026-11-05), the XIAO board is flashed, and the app hasn't been
+> paired with a four-key board yet. Still to do: a longer latency run on each scan mode and a
 > battery-life measurement. See [`docs/design.md`](docs/design.md).
 
 ## What you need
@@ -137,9 +138,9 @@ Spotify took, the button's battery level and the result.
 |---|---|---|
 | **Hand-wired XIAO** | A XIAO ESP32-C3 with one or two switches and a LiPo: [`hardware/wiring.md`](hardware/wiring.md) | One-button unit built and working |
 | **3D-printed case** | Parametric OpenSCAD, with ready STLs: [`hardware/case/`](hardware/case/) | Ready to print |
-| **Four-key PCBs** | Three boards: one carrying a XIAO, one with the ESP32-C3 module on board, and a small one that takes buttons on a cable. [`hardware/pcb/`](hardware/pcb/) | Rev A ordered |
+| **Four-key PCBs** | Three boards: one carrying a XIAO, one with the ESP32-C3 module on board, and a small one that takes buttons on a cable. [`hardware/pcb/`](hardware/pcb/) | Rev A in bring-up; XIAO rev B designed |
 
-The firmware supports all four boards, but it hasn't been run on them yet (they're being made).
+The firmware supports all four boards. It runs on the rev A C3 board and is flashed on the rev A XIAO board; `c3-jst` is untested.
 
 ## How it's put together
 
