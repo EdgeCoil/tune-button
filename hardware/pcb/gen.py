@@ -69,45 +69,88 @@ def below_keys(top):
     return y + 3.0, y
 
 
+def keys_reversible(top):
+    """Four MX switches, 2 x 2, on the reversible footprint (origin at the switch centre): each can be
+    soldered on either side of the board. K1 is top left as you look at the front."""
+    parts = []
+    for i, net in enumerate(["K1", "K2", "K3", "K4"]):
+        cx = W / 2 + (-0.5 if i % 2 == 0 else 0.5) * KEY_PITCH
+        cy = top + (i // 2) * KEY_PITCH
+        parts.append(Part(f"SW{i + 1}", "Switch:SW_Push", "tune-button:SW_Cherry_MX_1.00u_PCB_Reversible",
+                          "MX switch", {"1": net, "2": "GND"}, (cx, cy), mpn="Cherry MX (3 or 5 pin)"))
+    return parts
+
+
+# The XIAO ESP32C3's BAT pads, on its underside, in its own frame: from its pin 1 (D0) header pin,
+# x across towards the other row, y along the row towards D6. From Seeed's KiCad footprint
+# (OPL_Kicad_Library, XIAO-ESP32-C3-SMD: pads 21 VBAT and 22 GND, 2.5 x 1.1 mm, long side across the
+# board), with the header pins 1.27 mm in from the board's edge (its DIP footprint). CHECK on a XIAO.
+XIAO_VBAT = (3.175, 7.238)
+XIAO_GND = (3.175, 5.333)
+# Two 2.0 mm pogo flanges can't sit 1.905 mm apart, so the pins are staggered along the pads' 2.5 mm
+# length: +0.8 and -0.3 mm put the pin centres 2.2 mm apart (0.3 mm of board between the 1.9 mm pads,
+# 0.2 mm between the flanges), with each tip 0.45 mm or more inside its pad. GND's flange then clears
+# J1's socket body by 0.6 mm and their courtyards don't meet.
+POGO_STAGGER = {"VBAT": 0.8, "GND": -0.3}
+
+
 def variant_xiao():
-    """XIAO on two 1x7 sockets, USB-C at the top edge. Pin 1 of each socket is at the USB end.
+    """XIAO on two 1x7 sockets, turned so its USB-C faces the left edge (rev B); spring pins under it
+    meet its BAT pads, so no wires. Pin 1 of each socket is at the USB end.
 
     Only GPIO2-5 are both broken out and able to wake the C3 from deep sleep, and the battery needs
     an ADC1 pin (GPIO0-4). So K1-K3 get D1-D3, the battery divider keeps D0, and K4 is read on D4
-    and ORed onto K3's wake line through a diode: a K4 press wakes on GPIO5 with D4 low."""
-    x0, x1 = W / 2 - 7.62, W / 2 + 7.62  # 15.24 mm between rows: CHECK with calipers
-    y1 = 4.4
+    and ORed onto K3's wake line through a diode: a K4 press wakes on GPIO5 with D4 low.
+
+    Rev A had the XIAO upright with USB at the top edge and J4, a header wired to the BAT pads; the
+    antenna lead and the wires got in the way of the switches. Turned 90 degrees anticlockwise (as
+    seen from the front), the XIAO's D0-D6 row (J1) is the lower one and its pins run left to right."""
+    xu = 1.5            # the XIAO's USB end, 1.5 mm in from the left edge (its plug overhangs to 0)
+    px = xu + 2.9       # pin 1 of each socket, 2.9 mm from the XIAO's USB end
+    yc = 15.5           # the XIAO's centre line (J2's courtyard just clears H1's); 15.24 mm between rows: CHECK with calipers
+    y0, y1 = yc - 7.62, yc + 7.62   # J2 (5V GND 3V3 D10-D7) above, J1 (D0-D6) below
+
+    def on_xiao(lx, ly):
+        """A point in the XIAO's own frame (from its pin 1, x towards J2, y along the row) on the board."""
+        return (round(px + ly, 3), round(y1 - lx, 3))
+
+    vbat = on_xiao(XIAO_VBAT[0] + POGO_STAGGER["VBAT"], XIAO_VBAT[1])
+    gnd = on_xiao(XIAO_GND[0] + POGO_STAGGER["GND"], XIAO_GND[1])
     parts = [
         Part("J1", "Connector_Generic:Conn_01x07", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
-             "XIAO left", {"1": "VBAT_SENSE", "2": "K1", "3": "K2", "4": "K3", "5": "K4", "6": "LED", "7": ""},
-             (x0, y1), note="D0-D6, USB end first", mpn="Kinghelm KH-2.54FH-1X7P-H8.5", lcsc="C2932672"),
+             "XIAO D0-D6", {"1": "VBAT_SENSE", "2": "K1", "3": "K2", "4": "K3", "5": "K4", "6": "LED", "7": ""},
+             (px, y1), 90, note="D0-D6, USB end first", mpn="Kinghelm KH-2.54FH-1X7P-H8.5", lcsc="C2932672"),
         Part("J2", "Connector_Generic:Conn_01x07", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
-             "XIAO right", {"1": "", "2": "GND", "3": "", "4": "", "5": "", "6": "", "7": ""},
-             (x1, y1), note="5V GND 3V3 D10 D9 D8 D7", mpn="Kinghelm KH-2.54FH-1X7P-H8.5", lcsc="C2932672"),
+             "XIAO 5V-D7", {"1": "", "2": "GND", "3": "", "4": "", "5": "", "6": "", "7": ""},
+             (px, y0), 90, note="5V GND 3V3 D10 D9 D8 D7", mpn="Kinghelm KH-2.54FH-1X7P-H8.5", lcsc="C2932672"),
         Part("J3", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
-             "LiPo", {"1": "VBAT", "2": "GND"}, (7.0, 13.0), rot=270, mpn="JST S2B-PH-SM4-TB", lcsc="C295747"),
-        Part("J4", "Connector_Generic:Conn_01x02", "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
-             "to XIAO BAT", {"1": "VBAT", "2": "GND"}, (4.0, 20.5), note="wire to the XIAO's BAT+/BAT- pads",
-             mpn="XFCN PZ254V-11-02P", lcsc="C492401"),
-        R("R1", "220k", "VBAT", "VBAT_SENSE", (11.5, 19.4), 90),
-        R("R2", "220k", "VBAT_SENSE", "GND", (11.5, 22.8), 90),
-        C("C1", "100n", "VBAT_SENSE", "GND", (9.0, 22.0), 90),
+             "LiPo", {"1": "VBAT", "2": "GND"}, (W - 7.0, 17.0), 90, mpn="JST S2B-PH-SM4-TB", lcsc="C295747"),
+        # Spring pins up to the XIAO's BAT pads, in place of rev A's J4 and its wires. YTC1P-8535-01:
+        # 12 mm free, 11 mm working height, which is the 8.5 mm socket plus a 2.5 mm header spacer.
+        # CHECK that gap (board to the XIAO's underside) on a plugged-in XIAO before ordering.
+        Part("J4", "Connector_Generic:Conn_01x01", "tune-button:PogoPin_YTC1P_D2.0_SMD", "pogo VBAT",
+             {"1": "VBAT"}, vbat, note="to the XIAO's BAT+ pad", mpn="YIYUAN YTC1P-8535-01", lcsc="C5221289"),
+        Part("J5", "Connector_Generic:Conn_01x01", "tune-button:PogoPin_YTC1P_D2.0_SMD", "pogo GND",
+             {"1": "GND"}, gnd, note="to the XIAO's BAT- pad", mpn="YIYUAN YTC1P-8535-01", lcsc="C5221289"),
+        # Under the XIAO, between its sockets, next to D0.
+        R("R1", "220k", "VBAT", "VBAT_SENSE", (6.0, 16.0), 90),
+        R("R2", "220k", "VBAT_SENSE", "GND", (6.0, 12.0), 90),
+        C("C1", "100n", "VBAT_SENSE", "GND", (3.5, 19.0), 90),
         # 1N4148WS, not a Schottky: with K3 held, a BAT54's reverse leakage drags K4 low when warm
         # (simulated: misread from about 60 C). The press must read below 0.25 x VDD, so the part needs
         # VF <= 0.715 V at 1 mA, as C2128 (Changjing) specifies; hand-soldering pads, as this board is.
         Part("D1", "Diode:1N4148WS", "Diode_SMD:D_SOD-323_HandSoldering", "1N4148WS", {"1": "K4", "2": "K3"},
-             (38.5, 16.0), 90, mpn="1N4148WS", lcsc="C2128"),
-        R("R3", "1k", "LED", "LED_A", (38.5, 6.0), 0),
-        Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (38.5, 9.5), 180, lcsc=LCSC_LED_RED),
+             (16.0, 18.0), 0, mpn="1N4148WS", lcsc="C2128"),
+        R("R3", "1k", "LED", "LED_A", (26.0, 22.5), 0),
+        Part("D2", "Device:LED", LED0603, "LED", {"1": "GND", "2": "LED_A"}, (30.0, 22.5), 180, lcsc=LCSC_LED_RED),
     ]
-    top = 33.5
-    parts += keys(top)
+    top = 35.0
+    parts += keys_reversible(top)
     H, hy = below_keys(top)
     parts += holes([(3.5, 3.5), (W - 3.5, 3.5), (3.5, hy), (W - 3.5, hy)])
-    silk = [("rect", W / 2 - 8.75, y1 - 2.9, W / 2 + 8.75, y1 + 18.1), ("text", W / 2, y1 + 6.5, "XIAO"),
-            ("text", W / 2, y1 + 9.0, "C3"), ("text", W / 2, y1 - 1.2, "USB"),
-            ("text", 12.6, 12.0, "+"), ("text", 6.0, 20.5, "+"), ("text", 6.0, 23.04, "-"),
-            ("text", 1.5, 21.77, "BAT", 90)]
+    xe = xu + 21.0
+    silk = [("rect", xu, yc - 8.75, xe, yc + 8.75), ("text", 17.5, yc - 1.5, "XIAO C3"), ("text", xu + 2.5, yc, "USB", 90),
+            ("text", W - 12.6, 18.0, "+")]  # J3's pin 1
     return parts, H, [], silk, {}
 
 
@@ -339,7 +382,8 @@ CFG = Config(
     hide_ic_values=False, trim_silk=False, title_block=False, off_sheet_ok=True,
     labels_avoid_marks=False, labels_avoid_own_outline=False, replay_checks=False,
     power_nets=("GND", "VBAT", "VBUS", "VSYS", "3V3"),
-    back_text=lambda v, w, h: [(w / 2, h - 6.0, f"tune-button {v}\nedgecoil.dev  rev A", 1.0)],
+    local_libs={"tune-button": ("lib", "tune-button's own footprints: the reversible MX switch, the pogo pin")},
+    back_text=lambda v, w, h: [(w / 2, h - 6.0, f"tune-button {v}\nedgecoil.dev  rev {'B' if v == 'xiao' else 'A'}", 1.0)],
     logo_svg=os.path.join(HERE, "edgecoil-mark.svg"),
     # Built before blocks: the silk and labels break ties in part order, and esd_ground's via goes
     # on U2 by convention. Both kept so the board stays as ordered.

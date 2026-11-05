@@ -21,18 +21,23 @@ stand-ins.</sub>
 > not yet built or tested.** Every board passes KiCad's electrical and design rules checks, with
 > nothing unconnected and the board matching its schematic. The four-key firmware is written but
 > hasn't run on these boards yet (see [Firmware](#firmware)).
+>
+> **`xiao/` is now rev B, not yet reviewed or ordered** (rev A is the tag). The XIAO is turned
+> so its USB-C faces the left edge, two spring pins under it meet its BAT pads in place of rev A's
+> wired header, and each switch footprint takes a switch on either side of the board. See
+> [`xiao/` rev B](#xiao-rev-b).
 
 ## The three boards at a glance
 
 | | `xiao/` | `c3/` | `c3-jst/` |
 |---|---|---|---|
-| Size | 46 × 67 mm | 46 × 69.7 mm | 36 × 50 mm |
+| Size | 46 × 68.5 mm (rev A: 67) | 46 × 69.7 mm | 36 × 50 mm |
 | Brain | XIAO ESP32-C3 on two 1 × 7 sockets | ESP32-C3-WROOM-02 module; its antenna sits over a notch in the top-left corner | The same module; its antenna overhangs the top edge |
-| Keys | 4 MX on the board | 4 MX on the back | A 7-pin JST-PH (J3) for your own buttons |
+| Keys | 4 MX, on either side of the board | 4 MX on the back | A 7-pin JST-PH (J3) for your own buttons |
 | USB-C, charger, 3.3 V | On the XIAO | On the board: TP4054 charger (≈ 200 mA), load sharing, RT9080 regulator (600 mA, about 2 µA when idle) | As `c3/` |
-| USB-C position | On the XIAO, top edge | Centre of the bottom edge | Bottom edge, left |
-| Battery | JST-PH socket, wired to the XIAO's BAT pads | JST-PH socket | JST-PH socket (J2), right edge |
-| Which side is which | Everything on top | Keys, LEDs, logo and name on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name and the J3 pin list on the back |
+| USB-C position | On the XIAO, left edge (rev A: top) | Centre of the bottom edge | Bottom edge, left |
+| Battery | JST-PH socket, right edge; spring pins up to the XIAO's BAT pads | JST-PH socket | JST-PH socket (J2), right edge |
+| Which side is which | Everything on top; the switches on top or the back | Keys, LEDs, logo and name on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name and the J3 pin list on the back |
 | Mounting | 4 × M2 | 4 × M2 | 2 × M2 (see [Mounting](#mounting)) |
 | Soldered by you | The MX switches | The MX switches and 2 LEDs on the back | Nothing (JLC fits every part) |
 
@@ -99,8 +104,8 @@ upload from `panel/fab/`.
   short the 3V3 rail.
 
 **What JLC fits and what's left for you**
-- JLC fits everything on the front of each board, including the XIAO board's sockets and 2-pin
-  header. Those are through-hole, at a hand-soldering fee of about $3.50 plus a per-joint rate.
+- JLC fits everything on the front of each board, including the XIAO board's sockets (and rev A's
+  2-pin header; rev B's spring pins are SMD). Those are through-hole, at a hand-soldering fee of about $3.50 plus a per-joint rate.
 - Left for you: the MX switches, the C3 board's two back LEDs and its UART header, the XIAO itself,
   the batteries and the buttons.
 
@@ -252,6 +257,29 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ### Mounting
 
 - **`xiao/`:** the four M2 holes are all clear of the keycaps.
+
+### `xiao/` rev B
+
+- **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
+  switches.
+- **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
+  edge. J1 (D0–D6) is the lower socket and J2 the upper, both reading left to right from the USB
+  end. The battery JST (J3) moved to the right edge. The board is 1.5 mm taller.
+- **Spring pins J4 (VBAT) and J5 (GND)** stand under the XIAO and press on its BAT+ and BAT− pads,
+  so there are no wires to solder. They are YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at
+  working height, 100 g each. The two pads are 1.9 mm apart and the pins' flanges are 2.0 mm, so the
+  pins are staggered along the pads' 2.5 mm length (+0.8 and −0.3 mm), which leaves each tip 0.45 mm
+  or more inside its pad.
+- **Check two things on a real XIAO before ordering.** The pad positions come from Seeed's KiCad
+  footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: about 3.2 mm in from the
+  D0–D6 row, level with D2 and D3, BAT− nearer the USB end. And the 11 mm working height assumes
+  the 8.5 mm socket plus a 2.5 mm header spacer: measure from the board to the underside of a
+  plugged-in XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
+- **Reversible switches.** Each switch footprint (`lib/tune-button.pretty`) has both pin pairs: a
+  switch on the front uses one pair, a switch on the back the mirrored pair, and the centre and
+  side posts serve both. Pads are 2.0 mm (KiCad's are 2.2), leaving 0.84 mm between a front pin 1
+  and a back pin 2, which are different nets. The firmware is unchanged: K1 is top left as seen
+  from the front, so with the switches on the back K1 is top right as you look at the keys.
 - **`c3/`:** the four M2 holes are clear of the keycaps. Use nylon washers or standoffs: tracks run
   within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask.
 - **`c3-jst/`**, two M2 holes:
