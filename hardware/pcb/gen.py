@@ -86,7 +86,7 @@ def keys_reversible(top):
 # (OPL_Kicad_Library, XIAO-ESP32-C3-SMD: pads 21 VBAT and 22 GND, 2.5 x 1.1 mm, long side across the
 # board), with the header pins 1.27 mm in from the board's edge (its DIP footprint). CHECK on a XIAO.
 XIAO_VBAT = (3.175, 7.238)
-XIAO_GND = (3.175, 5.333)
+XIAO_GND = (3.175, 5.333)  # unused: BAT- is the XIAO's GND; kept to document the pad
 # One pogo pin, J4, on the VBAT pad's centre. The battery's negative returns through the socket:
 # the XIAO's BAT- pad is its GND (Seeed's schematic and symbol), and J2 pin 2 carries GND. Rev B's
 # first layout had a second pin on BAT-, staggered against J4 because two 2.0 mm flanges can't sit
@@ -94,8 +94,8 @@ XIAO_GND = (3.175, 5.333)
 
 
 def variant_xiao():
-    """XIAO on two 1x7 sockets, turned so its USB-C faces the left edge (rev B); spring pins under it
-    meet its BAT pads, so no wires. Pin 1 of each socket is at the USB end.
+    """XIAO on two 1x7 sockets, turned so its USB-C faces the left edge (rev B); a spring pin under it
+    meets its BAT+ pad, so no wires (BAT- is the XIAO's GND, which J2 pin 2 carries). Pin 1 of each socket is at the USB end.
 
     Only GPIO2-5 are both broken out and able to wake the C3 from deep sleep, and the battery needs
     an ADC1 pin (GPIO0-4). So K1-K3 get D1-D3, the battery divider keeps D0, and K4 is read on D4

@@ -23,7 +23,7 @@ stand-ins.</sub>
 > hasn't run on these boards yet (see [Firmware](#firmware)).
 >
 > **`xiao/` is now rev B, not yet reviewed or ordered** (rev A is the tag). The XIAO is turned
-> so its USB-C faces the left edge, two spring pins under it meet its BAT pads in place of rev A's
+> so its USB-C faces the left edge, a spring pin under it meets its BAT+ pad in place of rev A's
 > wired header, and each switch footprint takes a switch on either side of the board. See
 > [`xiao/` rev B](#xiao-rev-b).
 
@@ -36,7 +36,7 @@ stand-ins.</sub>
 | Keys | 4 MX, on either side of the board | 4 MX on the back | A 7-pin JST-PH (J3) for your own buttons |
 | USB-C, charger, 3.3 V | On the XIAO | On the board: TP4054 charger (≈ 200 mA), load sharing, RT9080 regulator (600 mA, about 2 µA when idle) | As `c3/` |
 | USB-C position | On the XIAO, left edge (rev A: top) | Centre of the bottom edge | Bottom edge, left |
-| Battery | JST-PH socket, right edge; spring pins up to the XIAO's BAT pads | JST-PH socket | JST-PH socket (J2), right edge |
+| Battery | JST-PH socket, right edge; a spring pin up to the XIAO's BAT+ pad (BAT− returns through the socket) | JST-PH socket | JST-PH socket (J2), right edge |
 | Which side is which | Everything on top; the switches on top or the back | Keys, LEDs, logo and name on the back (the key side); all the electronics on the front, facing into the case | Every part on the front; logo, name and the J3 pin list on the back |
 | Mounting | 4 × M2 | 4 × M2 | 2 × M2 (see [Mounting](#mounting)) |
 | Soldered by you | The MX switches | The MX switches and 2 LEDs on the back | Nothing (JLC fits every part) |
@@ -105,7 +105,7 @@ upload from `panel/fab/`.
 
 **What JLC fits and what's left for you**
 - JLC fits everything on the front of each board, including the XIAO board's sockets (and rev A's
-  2-pin header; rev B's spring pins are SMD). Those are through-hole, at a hand-soldering fee of about $3.50 plus a per-joint rate.
+  2-pin header; rev B's spring pin is SMD). Those are through-hole, at a hand-soldering fee of about $3.50 plus a per-joint rate.
 - Left for you: the MX switches, the C3 board's two back LEDs and its UART header, the XIAO itself,
   the batteries and the buttons.
 
