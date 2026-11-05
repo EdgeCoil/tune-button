@@ -1,21 +1,25 @@
 // SPDX-FileCopyrightText: 2026 edgecoil
 // SPDX-License-Identifier: CERN-OHL-S-2.0
 //
-// MX hole gauge: four switch holes, 14.0 to 14.3 mm, cut the same way as the printed lid's plate
-// (1.5 mm, corner reliefs, the chamfer on the bed face). Print it with the same filament and
-// settings as the lid, press a switch into each, and set mx_hole in tune-button-printed.scad to
-// the smallest size the switch goes fully into, clips latched.
+// MX hole gauge: four switch holes cut the same way as the printed lid's plate (1.5 mm, corner
+// reliefs, the chamfer on the bed face). Print it with the same filament and settings as the lid.
+//   mx_fit "over" (the default): push a soldered switch's top up through each hole from below and
+//     pick the smallest it passes cleanly, flange and all.
+//   mx_fit "clip": press a switch in from above and pick the smallest it goes fully into, clips
+//     latched. Build with -D 'mx_fit="clip"'.
+// Then set mx_hole in tune-button-printed.scad.
 //
 //   openscad -o tune-button-mx-gauge.stl tune-button-mx-gauge.scad
 include <tune-button-printed.scad>
 piece = "none";
 
-sizes = [14.0, 14.1, 14.2, 14.3];
-labels = ["14.0", "14.1", "14.2", "14.3"];
+sizes = mx_fit == "over" ? [15.8, 16.0, 16.2, 16.4] : [14.0, 14.1, 14.2, 14.3];
+labels = [for (x = sizes) let(s = str(x)) len(s) == 2 ? str(s, ".0") : s];
 pitch = 19.05;
 t = plate_t;
 w = len(sizes) * pitch + 4;
-d = pitch + 6;
+d = pitch + 9;
+assert(sizes[len(sizes) - 1] + 1 < pitch, "holes too big for the pitch");
 
 // Built upright (top face at z = t), then turned over: the top face prints on the bed, as on the lid.
 translate([0, 0, t]) rotate([180, 0, 0]) difference() {

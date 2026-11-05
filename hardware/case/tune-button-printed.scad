@@ -31,7 +31,14 @@ variant = "c3";      // the data in stack.scad is selected by this
 part = "none";       // stack.scad draws nothing of its own
 
 piece = "assembly";  // "base" | "lid" | "hood" | "assembly" | "none"
-mx_hole = 14.1;      // FDM holes print slightly small; 14.0 is the nominal MX plate hole
+// How the switches meet the plate:
+//   "over"  the switches are soldered to the board first and the lid goes down over them, so the
+//           holes clear the switch's widest part (the 15.6 mm top housing). The posts clamp the
+//           board; the plate doesn't hold the switches.
+//   "clip"  the switches are clipped into the plate first and soldered through it (the MX way):
+//           14.0 nominal, 14.1 because FDM prints holes small.
+mx_fit = "over";
+mx_hole = mx_fit == "over" ? 16.0 : 14.1;
 
 /* [Shell] */
 pwall = 5.5;          // walls; thick enough for an insert boss to clear the board's corner

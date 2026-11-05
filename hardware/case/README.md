@@ -88,12 +88,15 @@ Printed alternatives to the `c3` and `xiao` stacks, from one file, `tune-button-
   the board's key face down onto four spacers in the base, at its four mounting holes. The
   spacers' pins locate the board in the holes. Posts and spacers are sized to meet the board
   exactly, at the Cherry MX height, so they hold the board rather than the switch joints.
-- **The lid's top face is the MX plate**, 1.5 mm thick, so the switch clips latch. Its holes are
-  14.1 mm with a 1 mm relief at each corner: a printed square hole has rounded corners, and the
-  first layer squashes into the hole on the face the switches go in through. **14.1 was too tight
-  on the first print** (the switches stopped part way in, so the lid stood 3 mm proud of the base).
-  Print `tune-button-mx-gauge.stl` (holes 14.0–14.3, same plate, same orientation) with the lid's
-  filament and settings, and set `mx_hole` to the smallest size a switch clips fully into. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
+- **The lid's top face is a plate around the switches.** By default (`mx_fit = "over"`) its holes
+  are 16.0 mm, so the lid goes down over switches **already soldered** to the board: they have to
+  clear the switch's widest part, the 15.6 mm top housing. The posts clamp the board, so the plate
+  doesn't need to hold the switches. **The first print used 14.1 mm holes** (the MX clip size) and
+  stood 3 mm proud, riding on the switches' top housings. If you'd rather clip the switches into
+  the plate and solder them through it, the MX way, set `mx_fit = "clip"` (14.1 mm holes). Each
+  hole has a 1 mm relief at its corners, since printed square holes come out with rounded
+  corners. `tune-button-mx-gauge.stl` prints four test holes the same way as the lid (15.8–16.4
+  mm, or 14.0–14.3 with `-D 'mx_fit="clip"'`): use the smallest one the switch passes. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
   as a separate part or over a 38 mm bridge.
 - **M3 × 8 socket head cap screws** go down through counterbores into M3 heat-set inserts in the
   base. Every head has 2.8 mm of plastic under it, and every screw reaches 5.2 mm into its insert.
@@ -148,11 +151,12 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
 1. **Set the inserts** into the base's corner bosses with a soldering iron, flush with the top
    of each boss.
 2. **`c3`:** solder the LEDs. **`xiao`:** plug the XIAO into its sockets.
-3. Put the switches through the lid from above, so their clips latch, and solder them to the
-   board. The lid and board are now one assembly.
+3. Solder the switches to the board.
 4. Tape the cell inside its fence and plug in the battery, **checking the polarity first**.
-5. Lower the lid and board onto the base. The spacers' pins enter the board's holes; on `c3` the
-   peg enters its socket. Screw down the lid's corners.
+5. Set the board on the base's spacers, their pins through its holes. Lower the lid over the
+   switches (on `c3` its peg enters the socket) and screw down its corners; its posts clamp the
+   board. (With `mx_fit = "clip"`, clip the switches into the lid and solder them through it
+   instead, then lower lid and board together.)
 6. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
    over the XIAO, its back corners through the lid's notches, and screw it down.
 
