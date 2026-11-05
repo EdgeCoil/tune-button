@@ -100,7 +100,7 @@ upload from `panel/fab/`.
 - **Check the placement preview before paying.** `edgecoil_pcb.jlc` (in `vendor/`) already corrects every
   rotation where JLC's footprint differs from KiCad's, each checked pad by pad against JLC's own footprint by
   `edgecoil_pcb.jlc_verify` (RT9080, AO3401A, SRV05-4, TP4054, USB-C, the 7-pin JST, the
-  XIAO board's sockets and header), but a wrong SRV05-4 rotation (U2, and U5 on `c3-jst`) would
+  XIAO board's sockets, rev A's header and rev B's spring pin), but a wrong SRV05-4 rotation (U2, and U5 on `c3-jst`) would
   short the 3V3 rail.
 
 **What JLC fits and what's left for you**
@@ -114,7 +114,7 @@ upload from `panel/fab/`.
   switches, the TP4054 charger and the SRV05-4 ESD part.
 - **Extended, one fee per type:** seven types, namely the ESP32-C3 module, the USB-C socket, the
   battery JST, the RT9080 regulator, `c3-jst`'s 7-pin JST, and the XIAO board's sockets (C2932672,
-  8.5 mm tall) and header (C492401).
+  8.5 mm tall) and, on rev A, its header (C492401); rev B has the spring pin (C5221289) instead.
 
 Catalogue status changes, and the build doesn't check it.
 
@@ -198,6 +198,12 @@ Every key switches to ground and uses the chip's internal pull-up.
 **The XIAO board's K4 is a compromise.**
 - **Why:** the C3 can only wake from deep sleep on GPIO0–5, and the XIAO brings out just GPIO2–5 of
   those. GPIO2 is taken by the battery reading, which has to be on ADC1 (GPIO0–4).
+- **D0 (GPIO2) is a strapping pin, and the divider holds it at about half the cell's voltage**
+  (1.85–2.1 V), between the C3's low and high thresholds. Espressif says GPIO2 doesn't choose the
+  boot mode but recommends pulling it up against glitches, and one Seeed forum user couldn't flash a
+  XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
+  the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash the XIAO out of its
+  sockets); the fix in a later revision is the divider on D2 and K2 on D0 with a pull-up.
 - **How it works:** K4 is read on D4, and also pulls K3's line low through a diode. That diode must
   be a 1N4148WS rated at most 0.715 V at 1 mA (C2128 is). A Schottky leaks enough when warm to drag
   D4 low while K3 is held.
@@ -282,6 +288,8 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   side posts serve both. Pads are 2.0 mm (KiCad's are 2.2), leaving 0.84 mm between a front pin 1
   and a back pin 2, which are different nets. The firmware is unchanged: K1 is top left as seen
   from the front, so with the switches on the back K1 is top right as you look at the keys.
+- **With the switches on the back, the LED (D2) faces into the case,** like everything else on the
+  front. It's visible only with front-mounted switches, or through a light path in the case.
 - **`c3/`:** the four M2 holes are clear of the keycaps. Use nylon washers or standoffs: tracks run
   within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask.
 - **`c3-jst/`**, two M2 holes:
