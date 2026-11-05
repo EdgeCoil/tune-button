@@ -9,7 +9,7 @@ import re
 
 import pcbnew
 
-from .geom import mm
+from .geom import is_key_switch, mm
 from .parts import MIN_DRILL
 from .silk import logo, place_labels, trim_silk
 from .symbols import lib_symbol
@@ -359,7 +359,7 @@ def write_board(cfg, name, parts, h, keepouts, silk, extras, path, root):
     # No via under a part label or front text (BOOT, the JLC mark...) either: a via cap breaks up
     # 1 mm text.
     boxes = [fp.Reference().GetBoundingBox() for fp in board.Footprints()
-             if fp.Reference().IsVisible() and not fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")]
+             if fp.Reference().IsVisible() and not is_key_switch(fp)]
     boxes += [d.GetBoundingBox() for d in board.Drawings()
               if isinstance(d, pcbnew.PCB_TEXT) and d.GetLayer() == pcbnew.F_SilkS]
     for b in boxes:

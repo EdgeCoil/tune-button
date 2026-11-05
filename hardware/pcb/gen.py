@@ -87,11 +87,10 @@ def keys_reversible(top):
 # board), with the header pins 1.27 mm in from the board's edge (its DIP footprint). CHECK on a XIAO.
 XIAO_VBAT = (3.175, 7.238)
 XIAO_GND = (3.175, 5.333)
-# Two 2.0 mm pogo flanges can't sit 1.905 mm apart, so the pins are staggered along the pads' 2.5 mm
-# length: +0.8 and -0.3 mm put the pin centres 2.2 mm apart (0.3 mm of board between the 1.9 mm pads,
-# 0.2 mm between the flanges), with each tip 0.45 mm or more inside its pad. GND's flange then clears
-# J1's socket body by 0.6 mm and their courtyards don't meet.
-POGO_STAGGER = {"VBAT": 0.8, "GND": -0.3}
+# One pogo pin, J4, on the VBAT pad's centre. The battery's negative returns through the socket:
+# the XIAO's BAT- pad is its GND (Seeed's schematic and symbol), and J2 pin 2 carries GND. Rev B's
+# first layout had a second pin on BAT-, staggered against J4 because two 2.0 mm flanges can't sit
+# 1.905 mm apart: that put VBAT and GND metal 0.2 mm apart, 12 mm tall (audit round 1).
 
 
 def variant_xiao():
@@ -114,8 +113,7 @@ def variant_xiao():
         """A point in the XIAO's own frame (from its pin 1, x towards J2, y along the row) on the board."""
         return (round(px + ly, 3), round(y1 - lx, 3))
 
-    vbat = on_xiao(XIAO_VBAT[0] + POGO_STAGGER["VBAT"], XIAO_VBAT[1])
-    gnd = on_xiao(XIAO_GND[0] + POGO_STAGGER["GND"], XIAO_GND[1])
+    vbat = on_xiao(*XIAO_VBAT)
     parts = [
         Part("J1", "Connector_Generic:Conn_01x07", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
              "XIAO D0-D6", {"1": "VBAT_SENSE", "2": "K1", "3": "K2", "4": "K3", "5": "K4", "6": "LED", "7": ""},
@@ -125,13 +123,11 @@ def variant_xiao():
              (px, y0), 90, note="5V GND 3V3 D10 D9 D8 D7", mpn="Kinghelm KH-2.54FH-1X7P-H8.5", lcsc="C2932672"),
         Part("J3", "Connector_Generic:Conn_01x02", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
              "LiPo", {"1": "VBAT", "2": "GND"}, (W - 7.0, 17.0), 90, mpn="JST S2B-PH-SM4-TB", lcsc="C295747"),
-        # Spring pins up to the XIAO's BAT pads, in place of rev A's J4 and its wires. YTC1P-8535-01:
+        # A spring pin up to the XIAO's BAT+ pad, in place of rev A's J4 and its wires. YTC1P-8535-01:
         # 12 mm free, 11 mm working height, which is the 8.5 mm socket plus a 2.5 mm header spacer.
         # CHECK that gap (board to the XIAO's underside) on a plugged-in XIAO before ordering.
         Part("J4", "Connector_Generic:Conn_01x01", "tune-button:PogoPin_YTC1P_D2.0_SMD", "pogo VBAT",
              {"1": "VBAT"}, vbat, note="to the XIAO's BAT+ pad", mpn="YIYUAN YTC1P-8535-01", lcsc="C5221289"),
-        Part("J5", "Connector_Generic:Conn_01x01", "tune-button:PogoPin_YTC1P_D2.0_SMD", "pogo GND",
-             {"1": "GND"}, gnd, note="to the XIAO's BAT- pad", mpn="YIYUAN YTC1P-8535-01", lcsc="C5221289"),
         # Under the XIAO, between its sockets, next to D0.
         R("R1", "220k", "VBAT", "VBAT_SENSE", (6.0, 16.0), 90),
         R("R2", "220k", "VBAT_SENSE", "GND", (6.0, 12.0), 90),
@@ -383,7 +379,9 @@ CFG = Config(
     labels_avoid_marks=False, labels_avoid_own_outline=False, replay_checks=False,
     power_nets=("GND", "VBAT", "VBUS", "VSYS", "3V3"),
     local_libs={"tune-button": ("lib", "tune-button's own footprints: the reversible MX switch, the pogo pin")},
-    back_text=lambda v, w, h: [(w / 2, h - 6.0, f"tune-button {v}\nedgecoil.dev  rev {'B' if v == 'xiao' else 'A'}", 1.0)],
+    # xiao rev B: lower, clear of the back-mounted switches' outlines and keycaps (audit round 1).
+    back_text=lambda v, w, h: [(w / 2, h - (3.7 if v == "xiao" else 6.0),
+                                f"tune-button {v}\nedgecoil.dev  rev {'B' if v == 'xiao' else 'A'}", 1.0)],
     logo_svg=os.path.join(HERE, "edgecoil-mark.svg"),
     # Built before blocks: the silk and labels break ties in part order, and esd_ground's via goes
     # on U2 by convention. Both kept so the board stays as ordered.

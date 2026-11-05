@@ -8,7 +8,7 @@ import sys
 
 import pcbnew
 
-from .geom import mm
+from .geom import is_key_switch, is_reversible_switch, mm
 
 
 def _natkey(ref):
@@ -360,12 +360,17 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
                 box.Merge(item.GetBoundingBox())
         bodies[silk][fp.GetReference()] = box
         side_of[fp.GetReference()] = silk
-    # Keycaps on front-mounted switches cover an 18 mm square round the centre post.
+    # Keycaps on front-mounted switches cover an 18 mm square round the centre post. A reversible
+    # footprint can carry its switch, and so its keycap, on either side: both are covered.
     for fp in _fps(board, cfg.order_free_silk):
-        if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:") and fp.GetLayer() == pcbnew.F_Cu:
-            post = max(fp.Pads(), key=lambda p: p.GetDrillSize().x).GetPosition()
-            half = pcbnew.FromMM(cfg.keycap / 2)
-            bodies[pcbnew.F_SilkS][f"cap-{fp.GetReference()}"] = pcbnew.BOX2I(
+        if not is_key_switch(fp):
+            continue
+        sides = [pcbnew.F_SilkS, pcbnew.B_SilkS] if is_reversible_switch(fp) else (
+            [pcbnew.F_SilkS] if fp.GetLayer() == pcbnew.F_Cu else [])
+        post = max(fp.Pads(), key=lambda p: p.GetDrillSize().x).GetPosition()
+        half = pcbnew.FromMM(cfg.keycap / 2)
+        for silk in sides:
+            bodies[silk][f"cap-{fp.GetReference()}"] = pcbnew.BOX2I(
                 pcbnew.VECTOR2I(post.x - half, post.y - half), pcbnew.VECTOR2I(2 * half, 2 * half))
     # A silkscreen outline marks something that sits over the board (the XIAO): nothing goes under it.
     for d in board.Drawings():
@@ -404,7 +409,7 @@ def place_labels(cfg, board, w, h, notch=None, margin=0.25, vias=()):
     for fp in order:
         ref = fp.Reference()
         layer = side_of[fp.GetReference()]
-        if fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:"):
+        if is_key_switch(fp):
             texts[layer].append(grow(ref.GetBoundingBox(), 0.1))
             continue
         ref.SetTextSize(mm(1.0, 1.0)); ref.SetTextThickness(pcbnew.FromMM(0.15))

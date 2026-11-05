@@ -1702,62 +1702,8 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector_Generic:Conn_01x01")
-		(at 40.64 172.72 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "c3a0ed6c-9120-5c3c-b017-40d5deb66499")
-		(property "Reference" "J5"
-			(at 40.64 170.18 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Value" "pogo GND"
-			(at 40.64 175.26 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Footprint" "tune-button:PogoPin_YTC1P_D2.0_SMD"
-			(at 40.64 177.8 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "Datasheet" ""
-			(at 40.64 172.72 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "MPN" "YIYUAN YTC1P-8535-01"
-			(at 40.64 180.34 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "LCSC" "C5221289"
-			(at 40.64 182.88 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(pin "1" (uuid "de76af58-39dc-5ab3-8465-0bd1d01b0387"))
-		(instances
-			(project "tune-button-xiao"
-				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "J5")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(global_label "GND"
-		(shape passive)
-		(at 35.56 172.72 180)
-		(fields_autoplaced yes)
-		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "6e0318af-f1a0-5c28-a2fd-7aa4c5ea9ab3")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 35.56 172.72 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-	)
-	(symbol
 		(lib_id "Device:C")
-		(at 40.64 203.2 0)
+		(at 40.64 177.8 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1765,23 +1711,23 @@
 		(dnp no)
 		(uuid "adbc3db4-ce73-568c-a39f-d1e6ddcedb54")
 		(property "Reference" "C1"
-			(at 40.64 200.66 0)
+			(at 40.64 175.26 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Value" "100n"
-			(at 40.64 205.74 0)
+			(at 40.64 180.34 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
-			(at 40.64 208.28 0)
+			(at 40.64 182.88 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" ""
-			(at 40.64 203.2 0)
+			(at 40.64 177.8 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "LCSC" "C14663"
-			(at 40.64 213.36 0)
+			(at 40.64 187.96 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "73de92f8-d070-5cb8-9d20-3b76820dc175"))
@@ -1797,29 +1743,29 @@
 	)
 	(global_label "VBAT_SENSE"
 		(shape passive)
-		(at 40.64 199.39 90)
+		(at 40.64 173.99 90)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "ded4d763-6393-54a8-8aa5-c9ad266d80ff")
+		(uuid "3732d9ad-83ae-5b25-9fe2-22897b9540ed")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 40.64 199.39 0)
+			(at 40.64 173.99 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(global_label "GND"
 		(shape passive)
-		(at 40.64 207.01 270)
+		(at 40.64 181.61 270)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "9c0065fa-51f9-578e-bcba-830fa9f09422")
+		(uuid "bfbf368e-4e66-5d88-8c14-67a9bc471c22")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 40.64 207.01 0)
+			(at 40.64 181.61 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(symbol
 		(lib_id "Diode:1N4148WS")
-		(at 40.64 223.52 0)
+		(at 40.64 198.12 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1827,27 +1773,27 @@
 		(dnp no)
 		(uuid "8a692666-cb06-5508-a625-fb303f19c8d9")
 		(property "Reference" "D1"
-			(at 40.64 220.98 0)
+			(at 40.64 195.58 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Value" "1N4148WS"
-			(at 40.64 226.06 0)
+			(at 40.64 200.66 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Footprint" "Diode_SMD:D_SOD-323_HandSoldering"
-			(at 40.64 228.6 0)
+			(at 40.64 203.2 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" ""
-			(at 40.64 223.52 0)
+			(at 40.64 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "MPN" "1N4148WS"
-			(at 40.64 231.14 0)
+			(at 40.64 205.74 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "LCSC" "C2128"
-			(at 40.64 233.68 0)
+			(at 40.64 208.28 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "f5923207-2572-56ad-ad36-2d4f8a83acd6"))
@@ -1863,29 +1809,29 @@
 	)
 	(global_label "K4"
 		(shape passive)
-		(at 36.83 223.52 180)
+		(at 36.83 198.12 180)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "e3822b3c-7d95-5633-be77-c7b019c887a8")
+		(uuid "3bc1ea70-3387-57b6-976a-6248d0716bfc")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 36.83 223.52 0)
+			(at 36.83 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(global_label "K3"
 		(shape passive)
-		(at 44.45 223.52 0)
+		(at 44.45 198.12 0)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "7efef349-e3f0-5447-915a-9597709c9c97")
+		(uuid "4390daed-01b3-55e0-af83-226058524efe")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 44.45 223.52 0)
+			(at 44.45 198.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(symbol
 		(lib_id "Device:LED")
-		(at 40.64 248.92 0)
+		(at 40.64 223.52 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -1893,23 +1839,23 @@
 		(dnp no)
 		(uuid "2c2249cf-34b8-55ea-bbb7-66e25c754d5a")
 		(property "Reference" "D2"
-			(at 40.64 246.38 0)
+			(at 40.64 220.98 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Value" "LED"
-			(at 40.64 251.46 0)
+			(at 40.64 226.06 0)
 			(effects (font (size 1.27 1.27)))
 		)
 		(property "Footprint" "LED_SMD:LED_0603_1608Metric"
-			(at 40.64 254 0)
+			(at 40.64 228.6 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "Datasheet" ""
-			(at 40.64 248.92 0)
+			(at 40.64 223.52 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(property "LCSC" "C2286"
-			(at 40.64 259.08 0)
+			(at 40.64 233.68 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "65efbd72-2efa-528d-bac4-a8994b0e7e0e"))
@@ -1925,23 +1871,85 @@
 	)
 	(global_label "GND"
 		(shape passive)
-		(at 36.83 248.92 180)
+		(at 36.83 223.52 180)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "a8ab7520-19dc-5e8c-8832-36715134de6c")
+		(uuid "e3822b3c-7d95-5633-be77-c7b019c887a8")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 36.83 248.92 0)
+			(at 36.83 223.52 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(global_label "LED_A"
 		(shape passive)
-		(at 44.45 248.92 0)
+		(at 44.45 223.52 0)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "c791f72f-ee11-5995-99be-a379d8340633")
+		(uuid "7efef349-e3f0-5447-915a-9597709c9c97")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 44.45 248.92 0)
+			(at 44.45 223.52 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 40.64 254 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "686970de-d672-59ed-9b87-fb3067d61eb8")
+		(property "Reference" "R1"
+			(at 40.64 251.46 0)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "220k"
+			(at 40.64 256.54 0)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 40.64 259.08 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "Datasheet" ""
+			(at 40.64 254 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "LCSC" "C22961"
+			(at 40.64 264.16 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(pin "1" (uuid "d6babe6a-3e48-566c-a0d2-42b9a937d930"))
+		(pin "2" (uuid "41297623-6313-5636-8d27-8a3339e9dffc"))
+		(instances
+			(project "tune-button-xiao"
+				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
+					(reference "R1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "VBAT"
+		(shape passive)
+		(at 40.64 250.19 90)
+		(fields_autoplaced yes)
+		(effects (font (size 1.27 1.27)) (justify left))
+		(uuid "f1943b8e-98b4-50ce-8ab7-957ab536354d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 40.64 250.19 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+	)
+	(global_label "VBAT_SENSE"
+		(shape passive)
+		(at 40.64 257.81 270)
+		(fields_autoplaced yes)
+		(effects (font (size 1.27 1.27)) (justify right))
+		(uuid "16a89b5b-7df5-55eb-822a-54f813c2facf")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 40.64 257.81 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
@@ -1953,8 +1961,8 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "686970de-d672-59ed-9b87-fb3067d61eb8")
-		(property "Reference" "R1"
+		(uuid "d3fb6508-70f7-5b01-bc62-823fbecdbeb9")
+		(property "Reference" "R2"
 			(at 116.84 58.42 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -1974,18 +1982,18 @@
 			(at 116.84 71.12 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(pin "1" (uuid "d6babe6a-3e48-566c-a0d2-42b9a937d930"))
-		(pin "2" (uuid "41297623-6313-5636-8d27-8a3339e9dffc"))
+		(pin "1" (uuid "6dcb26fa-7070-592f-b9d8-2830c74b17f7"))
+		(pin "2" (uuid "df2f7ba9-f75b-5b93-bc7f-285726f12a9d"))
 		(instances
 			(project "tune-button-xiao"
 				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "R1")
+					(reference "R2")
 					(unit 1)
 				)
 			)
 		)
 	)
-	(global_label "VBAT"
+	(global_label "VBAT_SENSE"
 		(shape passive)
 		(at 116.84 57.15 90)
 		(fields_autoplaced yes)
@@ -1996,7 +2004,7 @@
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
-	(global_label "VBAT_SENSE"
+	(global_label "GND"
 		(shape passive)
 		(at 116.84 64.77 270)
 		(fields_autoplaced yes)
@@ -2015,12 +2023,12 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "d3fb6508-70f7-5b01-bc62-823fbecdbeb9")
-		(property "Reference" "R2"
+		(uuid "6456bd37-e844-558c-81fb-650931c31eb7")
+		(property "Reference" "R3"
 			(at 116.84 83.82 0)
 			(effects (font (size 1.27 1.27)))
 		)
-		(property "Value" "220k"
+		(property "Value" "1k"
 			(at 116.84 88.9 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -2032,70 +2040,8 @@
 			(at 116.84 86.36 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(property "LCSC" "C22961"
-			(at 116.84 96.52 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(pin "1" (uuid "6dcb26fa-7070-592f-b9d8-2830c74b17f7"))
-		(pin "2" (uuid "df2f7ba9-f75b-5b93-bc7f-285726f12a9d"))
-		(instances
-			(project "tune-button-xiao"
-				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "R2")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(global_label "VBAT_SENSE"
-		(shape passive)
-		(at 116.84 82.55 90)
-		(fields_autoplaced yes)
-		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "dbb2d371-a05e-5c0f-b18a-14e160488862")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 116.84 82.55 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-	)
-	(global_label "GND"
-		(shape passive)
-		(at 116.84 90.17 270)
-		(fields_autoplaced yes)
-		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "c4e7dcbe-9841-5a12-be91-9aaa6e64c0e5")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 116.84 90.17 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-	)
-	(symbol
-		(lib_id "Device:R")
-		(at 116.84 111.76 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "6456bd37-e844-558c-81fb-650931c31eb7")
-		(property "Reference" "R3"
-			(at 116.84 109.22 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Value" "1k"
-			(at 116.84 114.3 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
-			(at 116.84 116.84 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "Datasheet" ""
-			(at 116.84 111.76 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
 		(property "LCSC" "C21190"
-			(at 116.84 121.92 0)
+			(at 116.84 96.52 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 		(pin "1" (uuid "c1c88d1b-ae49-517f-b582-37048298df1d"))
@@ -2111,23 +2057,85 @@
 	)
 	(global_label "LED"
 		(shape passive)
-		(at 116.84 107.95 90)
+		(at 116.84 82.55 90)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "6135cc4a-97cb-5b95-90d8-87190ecac9fd")
+		(uuid "dbb2d371-a05e-5c0f-b18a-14e160488862")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 116.84 107.95 0)
+			(at 116.84 82.55 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
 	(global_label "LED_A"
 		(shape passive)
-		(at 116.84 115.57 270)
+		(at 116.84 90.17 270)
 		(fields_autoplaced yes)
 		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "4ebc817e-23c7-5f00-a18c-50d907f8073a")
+		(uuid "c4e7dcbe-9841-5a12-be91-9aaa6e64c0e5")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 116.84 115.57 0)
+			(at 116.84 90.17 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+	)
+	(symbol
+		(lib_id "Switch:SW_Push")
+		(at 116.84 106.68 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f861fa38-b2a8-5a8d-ae87-93dfde662358")
+		(property "Reference" "SW1"
+			(at 116.84 104.14 0)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "MX switch"
+			(at 116.84 109.22 0)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "tune-button:SW_Cherry_MX_1.00u_PCB_Reversible"
+			(at 116.84 111.76 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "Datasheet" ""
+			(at 116.84 106.68 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(property "MPN" "Cherry MX (3 or 5 pin)"
+			(at 116.84 114.3 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+		(pin "1" (uuid "ef6360f7-0057-5131-9b66-437082bd302d"))
+		(pin "2" (uuid "a737e1c3-190a-55fe-9a30-2787e6345957"))
+		(instances
+			(project "tune-button-xiao"
+				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
+					(reference "SW1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(global_label "K1"
+		(shape passive)
+		(at 111.76 106.68 180)
+		(fields_autoplaced yes)
+		(effects (font (size 1.27 1.27)) (justify right))
+		(uuid "cd8ee93d-da3c-55fc-bea0-de6116930b3f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 111.76 106.68 0)
+			(effects (font (size 1.27 1.27)) (hide yes))
+		)
+	)
+	(global_label "GND"
+		(shape passive)
+		(at 121.92 106.68 0)
+		(fields_autoplaced yes)
+		(effects (font (size 1.27 1.27)) (justify left))
+		(uuid "84cec6ee-e0fe-5f85-ad54-0d05ad7937d0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 121.92 106.68 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)
@@ -2139,8 +2147,8 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "f861fa38-b2a8-5a8d-ae87-93dfde662358")
-		(property "Reference" "SW1"
+		(uuid "3b21c9ce-b0bf-5752-8096-9c9701c0678d")
+		(property "Reference" "SW2"
 			(at 116.84 129.54 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -2160,18 +2168,18 @@
 			(at 116.84 139.7 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(pin "1" (uuid "ef6360f7-0057-5131-9b66-437082bd302d"))
-		(pin "2" (uuid "a737e1c3-190a-55fe-9a30-2787e6345957"))
+		(pin "1" (uuid "66913cc7-09e1-5769-bf10-c2b4500a66f6"))
+		(pin "2" (uuid "34359517-2999-5fb1-bfc7-8766cbf8f085"))
 		(instances
 			(project "tune-button-xiao"
 				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "SW1")
+					(reference "SW2")
 					(unit 1)
 				)
 			)
 		)
 	)
-	(global_label "K1"
+	(global_label "K2"
 		(shape passive)
 		(at 111.76 132.08 180)
 		(fields_autoplaced yes)
@@ -2201,8 +2209,8 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "3b21c9ce-b0bf-5752-8096-9c9701c0678d")
-		(property "Reference" "SW2"
+		(uuid "50164892-fadb-5b79-817e-ee0fbfb7230f")
+		(property "Reference" "SW3"
 			(at 116.84 154.94 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -2222,18 +2230,18 @@
 			(at 116.84 165.1 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(pin "1" (uuid "66913cc7-09e1-5769-bf10-c2b4500a66f6"))
-		(pin "2" (uuid "34359517-2999-5fb1-bfc7-8766cbf8f085"))
+		(pin "1" (uuid "c8737d82-00f1-5568-b468-71f499ce85f9"))
+		(pin "2" (uuid "707911c2-927c-5252-94f4-431682bb8453"))
 		(instances
 			(project "tune-button-xiao"
 				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "SW2")
+					(reference "SW3")
 					(unit 1)
 				)
 			)
 		)
 	)
-	(global_label "K2"
+	(global_label "K3"
 		(shape passive)
 		(at 111.76 157.48 180)
 		(fields_autoplaced yes)
@@ -2263,8 +2271,8 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "50164892-fadb-5b79-817e-ee0fbfb7230f")
-		(property "Reference" "SW3"
+		(uuid "13af3511-5dab-57b0-ad4f-b991478325c3")
+		(property "Reference" "SW4"
 			(at 116.84 180.34 0)
 			(effects (font (size 1.27 1.27)))
 		)
@@ -2284,18 +2292,18 @@
 			(at 116.84 190.5 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
-		(pin "1" (uuid "c8737d82-00f1-5568-b468-71f499ce85f9"))
-		(pin "2" (uuid "707911c2-927c-5252-94f4-431682bb8453"))
+		(pin "1" (uuid "350a1777-83e1-523b-96f1-e2c3c9a153b1"))
+		(pin "2" (uuid "7aaa45ad-a379-54d0-86c2-1776270c46d7"))
 		(instances
 			(project "tune-button-xiao"
 				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "SW3")
+					(reference "SW4")
 					(unit 1)
 				)
 			)
 		)
 	)
-	(global_label "K3"
+	(global_label "K4"
 		(shape passive)
 		(at 111.76 182.88 180)
 		(fields_autoplaced yes)
@@ -2314,68 +2322,6 @@
 		(uuid "aa448acc-13fe-5e5e-919f-da821d746387")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 121.92 182.88 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-	)
-	(symbol
-		(lib_id "Switch:SW_Push")
-		(at 116.84 208.28 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "13af3511-5dab-57b0-ad4f-b991478325c3")
-		(property "Reference" "SW4"
-			(at 116.84 205.74 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Value" "MX switch"
-			(at 116.84 210.82 0)
-			(effects (font (size 1.27 1.27)))
-		)
-		(property "Footprint" "tune-button:SW_Cherry_MX_1.00u_PCB_Reversible"
-			(at 116.84 213.36 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "Datasheet" ""
-			(at 116.84 208.28 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(property "MPN" "Cherry MX (3 or 5 pin)"
-			(at 116.84 215.9 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-		(pin "1" (uuid "350a1777-83e1-523b-96f1-e2c3c9a153b1"))
-		(pin "2" (uuid "7aaa45ad-a379-54d0-86c2-1776270c46d7"))
-		(instances
-			(project "tune-button-xiao"
-				(path "/5d1bc444-3bb9-59a4-8b8b-471a290b2ef7"
-					(reference "SW4")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(global_label "K4"
-		(shape passive)
-		(at 111.76 208.28 180)
-		(fields_autoplaced yes)
-		(effects (font (size 1.27 1.27)) (justify right))
-		(uuid "24cb73ba-f492-50db-ab50-0251ba2a6787")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 111.76 208.28 0)
-			(effects (font (size 1.27 1.27)) (hide yes))
-		)
-	)
-	(global_label "GND"
-		(shape passive)
-		(at 121.92 208.28 0)
-		(fields_autoplaced yes)
-		(effects (font (size 1.27 1.27)) (justify left))
-		(uuid "1f9b2c19-28be-529c-a8c4-2694f75f28d8")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 121.92 208.28 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)
 	)

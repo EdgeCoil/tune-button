@@ -25,6 +25,8 @@ from collections import Counter
 
 import pcbnew
 
+from .geom import is_key_switch
+
 JAR = os.environ.get("FREEROUTING", os.path.expanduser("~/.local/opt/freerouting/freerouting-2.1.0.jar"))
 JAVA = os.environ.get("JAVA", "java")
 ROUTE_TIMEOUT = int(os.environ.get("ROUTE_TIMEOUT", "600"))
@@ -259,7 +261,7 @@ def crowded_pins(board):
         if (not pins or any(p.IsOnLayer(pcbnew.F_Paste) for p in pins)
                 or any(p.GetAttribute() == pcbnew.PAD_ATTRIB_SMD for p in fp.Pads())):
             continue
-        switch = fp.GetFPIDAsString().startswith("Button_Switch_Keyboard:")
+        switch = is_key_switch(fp)
         layers = (pcbnew.F_Cu, pcbnew.B_Cu) if switch else (pcbnew.B_Cu if fp.GetLayer() == pcbnew.F_Cu else pcbnew.F_Cu,)
         pitch = pcbnew.FromMM(2.6)
         for pad in pins:

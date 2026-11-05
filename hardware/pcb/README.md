@@ -265,14 +265,16 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
   edge. J1 (D0–D6) is the lower socket and J2 the upper, both reading left to right from the USB
   end. The battery JST (J3) moved to the right edge. The board is 1.5 mm taller.
-- **Spring pins J4 (VBAT) and J5 (GND)** stand under the XIAO and press on its BAT+ and BAT− pads,
-  so there are no wires to solder. They are YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at
-  working height, 100 g each. The two pads are 1.9 mm apart and the pins' flanges are 2.0 mm, so the
-  pins are staggered along the pads' 2.5 mm length (+0.8 and −0.3 mm), which leaves each tip 0.45 mm
-  or more inside its pad.
+- **A spring pin, J4,** stands under the XIAO and presses on its BAT+ pad, so there are no wires
+  to solder. It is a YIYUAN YTC1P-8535-01 (C5221289): 12 mm free, 11 mm at working height, 100 g.
+  The battery's negative returns through the socket: the XIAO's BAT− pad is its GND, which J2 pin 2
+  carries. A first layout had a second pin on BAT−, but the two pads are 1.9 mm apart and the pins'
+  flanges 2.0 mm, which left VBAT and GND metal 0.2 mm apart.
+- **Unplug the cell before taking the XIAO out:** with it connected, J4 is a bare 12 mm post at the
+  cell's voltage, beside the sockets' GND pins.
 - **Check two things on a real XIAO before ordering.** The pad positions come from Seeed's KiCad
-  footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: about 3.2 mm in from the
-  D0–D6 row, level with D2 and D3, BAT− nearer the USB end. And the 11 mm working height assumes
+  footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: BAT+ about 3.2 mm in
+  from the D0–D6 row and 7.2 mm along it from the D0 pin (level with D3), BAT− nearer the USB end. And the 11 mm working height assumes
   the 8.5 mm socket plus a 2.5 mm header spacer: measure from the board to the underside of a
   plugged-in XIAO. The same series comes in 10.5 mm (YTC1P-8530, C5221283) and 11.5 mm.
 - **Reversible switches.** Each switch footprint (`lib/tune-button.pretty`) has both pin pairs: a
