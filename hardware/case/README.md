@@ -89,13 +89,16 @@ Printed alternatives to the `c3` and `xiao` stacks, from one file, `tune-button-
   spacers' pins locate the board in the holes. Posts and spacers are sized to meet the board
   exactly, at the Cherry MX height, so they hold the board rather than the switch joints.
 - **The lid's top face is a plate around the switches.** By default (`mx_fit = "over"`) its holes
-  are 16.0 mm, so the lid goes down over switches **already soldered** to the board: they have to
-  clear the switch's widest part, the 15.6 mm top housing. The posts clamp the board, so the plate
-  doesn't need to hold the switches. **The first print used 14.1 mm holes** (the MX clip size) and
-  stood 3 mm proud, riding on the switches' top housings. If you'd rather clip the switches into
+  are 16.6 mm, so the lid goes down over switches **already soldered** to the board: they have to
+  clear the switch's widest part, which measures 16.3 mm on these switches (the MX spec's top
+  housing is 15.6). The posts clamp the board, so the plate doesn't need to hold the switches.
+  **The first print used 14.1 mm holes** (the MX clip size) and stood 3 mm proud, riding on the
+  switches' top housings. **So did the lids committed as "16.0 mm"**: `stack.scad` sets `mx_hole`
+  first, and OpenSCAD evaluates a reassigned variable at its first assignment, so the override
+  never took. The printed case now uses its own `pmx_hole`. If you'd rather clip the switches into
   the plate and solder them through it, the MX way, set `mx_fit = "clip"` (14.1 mm holes). Each
   hole has a 1 mm relief at its corners, since printed square holes come out with rounded
-  corners. `tune-button-mx-gauge.stl` prints four test holes the same way as the lid (15.8–16.4
+  corners. `tune-button-mx-gauge.stl` prints four test holes the same way as the lid (16.4–17.0
   mm, or 14.0–14.3 with `-D 'mx_fit="clip"'`): use the smallest one the switch passes. There is no bezel: the keycaps stand clear of a flat top. A bezel would have to print
   as a separate part or over a 38 mm bridge.
 - **M3 × 8 socket head cap screws** go down through counterbores into M3 heat-set inserts in the
