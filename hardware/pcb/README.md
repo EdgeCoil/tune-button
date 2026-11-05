@@ -212,7 +212,7 @@ Every key switches to ground and uses the chip's internal pull-up.
   boot mode but recommends pulling it up against glitches, and one Seeed forum user couldn't flash a
   XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
   the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash the XIAO out of its
-  sockets); the fix in a later revision is the divider on D2 and K2 on D0 with a pull-up.
+  sockets), and rev B moves the divider to D2 (and K2 to D0, with a pull-up) before it's ordered.
 - **How it works:** K4 is read on D4, and also pulls K3's line low through a diode. That diode must
   be a 1N4148WS rated at most 0.715 V at 1 mA (C2128 is). A Schottky leaks enough when warm to drag
   D4 low while K3 is held.
@@ -278,7 +278,8 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
   switches. On rev B the XIAO's far end (away from its USB-C, where the U.FL antenna plug is, which on
-  rev A pointed at the keys) faces the top right of the board, where only J3 and the LED are (no switches). Mount the FPC
+  rev A pointed at the keys) faces the top right of the board, where only J3, the LED and its
+  resistor, and H2's screw are (no switches). Mount the FPC
   antenna in the case, off the board: both copper layers are ground pour, which would detune it
   stuck flat on the board.
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
@@ -321,7 +322,7 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 Build `xiao_board` for the XIAO board and `c3_board` for `c3` and `c3-jst` (see the top-level
 README). `c3_board` has run on a rev A C3 board (2026-11-05: all four keys, sleep and wake on USB
-and battery); `xiao_board` is flashed on a rev A XIAO board, but its keys aren't confirmed yet. On the XIAO
+and battery); `xiao_board` is flashed on a rev A XIAO board (without a cell), but its keys aren't confirmed yet. On the XIAO
 board, a deep-sleep wake stub reads D4 within about a millisecond of waking, so even a very quick
 tap on K4 reads as K4.
 

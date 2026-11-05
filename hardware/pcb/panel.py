@@ -332,14 +332,24 @@ def main():
     # the rest is dropped as an island (c3-jst: 2.0 mm2 of front pour by its top tab;
     # no pad on it), so the copper can change a little past the keepouts too.
     board = pcbnew.LoadBoard(path)
-    # Zone outlines to a 1 um grid. gen.py writes each board's items in a different order on every
-    # run, and KiKit's merge then leaves a vertex at 1.999999 mm one time and 2.0 the next (audit
-    # round 8): snapped, a rebuild compares equal to the committed panel every time.
+    # Zone outlines and the board outline to a 1 um grid. gen.py writes each board's items in a
+    # different order on every run, and KiKit's merge then leaves a few-nanometre difference that
+    # changes from run to run: a zone vertex at 1.999999 mm or 2.0 (audit round 8), c3's antenna-notch
+    # edge (round 9). Snapped: 16 of 16 fresh rebuilds compared equal (unsnapped, about 1 in 7
+    # differed), so an unseen rare case can't be ruled out; the differences were all under 10 nm.
+    def snap(p):
+        return pcbnew.VECTOR2I(round(p.x / 1000) * 1000, round(p.y / 1000) * 1000)
     for z in board.Zones():
         o = z.Outline()
         for i in range(o.TotalVertices()):
-            v = o.CVertex(i)
-            o.SetVertex(i, pcbnew.VECTOR2I(round(v.x / 1000) * 1000, round(v.y / 1000) * 1000))
+            o.SetVertex(i, snap(o.CVertex(i)))
+    for d in board.Drawings():
+        if d.GetLayer() != pcbnew.Edge_Cuts or not isinstance(d, pcbnew.PCB_SHAPE):
+            continue
+        if d.GetShape() == pcbnew.SHAPE_T_ARC:
+            d.SetArcGeometry(snap(d.GetStart()), snap(d.GetArcMid()), snap(d.GetEnd()))
+        elif d.GetShape() == pcbnew.SHAPE_T_SEGMENT:
+            d.SetStart(snap(d.GetStart())); d.SetEnd(snap(d.GetEnd()))
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(path)
     set_stackup(path)
@@ -358,6 +368,9 @@ def export(path, placed):
     shutil.rmtree(fab, ignore_errors=True)  # nothing stale gets zipped
     os.makedirs(gerber)
     cli = ["kicad-cli", "pcb"]
+    # As build.sh: gerber and drill files stamp the local time with its offset; in UTC they carry no
+    # timezone.
+    os.environ["TZ"] = "UTC"
     subprocess.run(cli + ["export", "gerbers", "--layers", "F.Cu,B.Cu,F.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts",
                           "--subtract-soldermask", "-o", gerber + "/", path], check=True, capture_output=True)
     subprocess.run(cli + ["export", "drill", "--format", "excellon", "--excellon-separate-th", "-o", gerber + "/", path],

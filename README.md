@@ -20,7 +20,7 @@ and does what you set that key to do.
 > **Status: works end to end.** A one-button unit on a XIAO ESP32-C3 liked the playing song from a
 > locked Samsung phone; the app heard the press in 0.8 s. The four-key firmware and app (holds,
 > double presses, playback control) are written and unit-tested; on the rev A boards the C3 board's
-> four keys, sleep and wake work (2026-11-05), the XIAO board is flashed, and the app hasn't been
+> four keys, sleep and wake work (2026-11-05), the XIAO board is flashed (without a cell so far), and the app hasn't been
 > paired with a four-key board yet. Still to do: a longer latency run on each scan mode and a
 > battery-life measurement. See [`docs/design.md`](docs/design.md).
 
