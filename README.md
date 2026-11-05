@@ -68,9 +68,15 @@ Or make one image (table above) and flash it at offset `0x0`, either in Chrome w
 **Only have one button?** Wire it to D1. A press acts when you let go; holding it for 5 seconds pairs.
 
 Things worth knowing:
-- **The USB port vanishes while the button sleeps**, which is almost all the time. To flash it again,
-  hold **BOOT** (the small button next to USB-C) while plugging it in. A button press also wakes it
-  for 10 seconds, enough for an upload that's already waiting.
+- **On a computer's USB it stays awake**, so the serial port stays up: `pio device monitor` shows a
+  line per wake and per key sent, and `pio run -t upload` works as is. It notices within a few ms
+  when the computer goes away, and sleeps. A plain USB charger sends no USB frames, so on one it
+  sleeps as usual. Build with `-DTB_USB_HEARTBEAT` to also print the raw key state once a second.
+- **Otherwise the USB port vanishes while the button sleeps**, which is almost all the time. To
+  flash it, plug it into a computer and press a key (it stays up once the press is sent), or hold
+  **BOOT** while plugging it in.
+- **If it sits in `waiting for download` after an upload**, the reset after flashing kept it in
+  the bootloader: unplug and replug it. `--after watchdog_reset` (esptool) avoids this.
 - **Flashing the merged image at `0x0` erases the pairing**, so pair again afterwards.
   `pio run -t upload` keeps it.
 - Build options in `platformio.ini`: `TB_BURST_MS` (how long each press is broadcast) and `TB_LED_PIN`.

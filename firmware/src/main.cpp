@@ -135,10 +135,14 @@ uint32_t next_counter() {
   return ident.counter;
 }
 
-uint8_t battery_percent() {
+uint32_t battery_mv() {
   uint32_t sum = 0;
   for (int i = 0; i < 8; i++) sum += analogReadMilliVolts(PIN_VBAT);
-  uint32_t mv = sum / 8 * 2;
+  return sum / 8 * 2;
+}
+
+uint8_t battery_percent() {
+  uint32_t mv = battery_mv();
   if (mv < 2500) return tb::BATTERY_UNKNOWN;  // divider not fitted
   return tb::lipo_percent(mv);
 }
@@ -357,35 +361,23 @@ uint8_t wake_key() {
   return 0;
 }
 
-}  // namespace
 
-#if defined(TB_BOARD_XIAO)
-// Runs from RTC memory straight out of deep sleep, long before setup(). Pads come out of sleep
-// with input and pull-up off, so turn them on for GPIO6 before reading it.
-extern "C" void RTC_IRAM_ATTR esp_wake_deep_sleep(void) {
-  esp_default_wake_deep_sleep();
-  PIN_INPUT_ENABLE(IO_MUX_GPIO6_REG);
-  PIN_PULLUP_EN(IO_MUX_GPIO6_REG);
-  for (volatile int i = 0; i < 200; i++) {}  // a few microseconds for the pull-up
-  wake_gpio_in = REG_READ(GPIO_IN_REG);
-}
-#endif
+uint8_t last_keys = 0;  // keys down at the last look, so a held key is not a new press
 
-void setup() {
-  for (int i = 0; i < KEYS; i++) pinMode(KEY_PIN[i], INPUT_PULLUP);
-  if (LED_PIN >= 0) pinMode(LED_PIN, OUTPUT);
-  led(false);
-  load_identity();
-  uint8_t woke_by = wake_key();
+// One wake: send what the keys do until they settle, the burst ends and nothing is held.
+void session(uint8_t woke_by) {
   delay(DEBOUNCE_MS);
-
   // The one-button build always waits for release, since a press and the start of a pairing hold
   // look the same.
   tb::Gestures gestures(SINGLE ? (settings | 0b1) : settings, HOLD_MS, DOUBLE_MS, SINGLE);
   tb::Event events[tb::MAX_KEYS * 2];
   Burst burst;
   auto send = [&](int n) {
-    for (int i = 0; i < n; i++) burst.send(tb::button_code(events[i].key, events[i].gesture));
+    for (int i = 0; i < n; i++) {
+      uint8_t code = tb::button_code(events[i].key, events[i].gesture);
+      Serial.printf("tune-button: send 0x%02x\n", (unsigned)code);
+      burst.send(code);
+    }
   };
 
   uint8_t stable = read_keys(), raw = stable;
@@ -414,7 +406,7 @@ void setup() {
       if (now - chord_since >= PAIR_HOLD_MS) {
         burst.stop();
         pairing();
-        sleep_now();
+        return;
       }
     } else {
       chord_since = 0;
@@ -428,6 +420,75 @@ void setup() {
     delay(5);
   }
   burst.stop();
+}
+
+// On a computer's USB (it sends a frame every 1 ms; a plain charger sends none), stay awake
+// instead of sleeping, so the serial port stays up for logs and uploads. Returns the key pressed
+// next, or 0 once the computer goes away.
+uint8_t wait_on_usb() {
+  // The plugged-in flag needs the host's frames, and after a reset or power-on the host takes a
+  // few hundred ms to enumerate us again. A key wake is past this already (the burst is 10 s).
+  while (millis() < 1500) delay(5);
+#ifdef TB_USB_HEARTBEAT  // bench builds: show the raw key state once a second
+  uint32_t beat = 0;
+#endif
+  while (HWCDC::isPlugged()) {
+    uint8_t k = read_keys();
+#ifdef TB_USB_HEARTBEAT
+    if (millis() - beat >= 1000) {
+      beat = millis();
+      Serial.printf("tune-button: waiting on usb, keys 0x%x, gpio 0x%08x\n", (unsigned)k,
+                    (unsigned)REG_READ(GPIO_IN_REG));
+    }
+#endif
+    if (k & ~last_keys) {  // a key newly down, even with another still held
+      delay(DEBOUNCE_MS);
+      uint8_t fresh = read_keys() & ~last_keys;
+      for (int i = 0; i < KEYS; i++)
+        if (fresh >> i & 1) {
+          last_keys = read_keys();
+          return i + 1;
+        }
+    }
+    last_keys = k;
+    delay(5);
+  }
+  return 0;
+}
+
+}  // namespace
+
+#if defined(TB_BOARD_XIAO)
+// Runs from RTC memory straight out of deep sleep, long before setup(). Pads come out of sleep
+// with input and pull-up off, so turn them on for GPIO6 before reading it.
+extern "C" void RTC_IRAM_ATTR esp_wake_deep_sleep(void) {
+  esp_default_wake_deep_sleep();
+  PIN_INPUT_ENABLE(IO_MUX_GPIO6_REG);
+  PIN_PULLUP_EN(IO_MUX_GPIO6_REG);
+  for (volatile int i = 0; i < 200; i++) {}  // a few microseconds for the pull-up
+  wake_gpio_in = REG_READ(GPIO_IN_REG);
+}
+#endif
+
+void setup() {
+  // The core starts the USB serial only in the other USB mode (ARDUINO_USB_MODE=0); without this
+  // every print is dropped.
+  Serial.begin(115200);
+  for (int i = 0; i < KEYS; i++) pinMode(KEY_PIN[i], INPUT_PULLUP);
+  if (LED_PIN >= 0) pinMode(LED_PIN, OUTPUT);
+  led(false);
+  load_identity();
+
+  uint8_t woke_by = wake_key();
+  for (;;) {
+    Serial.printf("tune-button: awake, key %u, battery %u mV, usb %d\n", (unsigned)woke_by, (unsigned)battery_mv(),
+                  HWCDC::isPlugged());
+    session(woke_by);
+    last_keys = read_keys();  // a key still held after the session doesn't count as a new press
+    if (!(woke_by = wait_on_usb())) break;
+  }
+  Serial.println("tune-button: sleeping");
+  Serial.flush();
   sleep_now();
 }
 

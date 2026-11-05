@@ -106,7 +106,7 @@ None of these has been done yet.
 
 | # | Test | Pass |
 |---|---|---|
-| 1 | Boots and flashes with the battery divider fitted (GPIO2 strapping) | Enumerates, and the log shows a wake |
+| 1 | Boots and flashes with the battery divider fitted (GPIO2 strapping) | Enumerates, and the log shows a wake (`c3`: done 2026-11-05) |
 | 2 | Deep-sleep current from the battery (meter in series with BAT+) | ≤ 60 µA |
 | 3 | Each key wakes it and sends the right button byte (nRF Connect shows the payload, byte 11) | 01–04 |
 | 3a | Give key 3 a hold and key 4 a double press in the app, send the settings, then hold key 3 and double-press key 4 | 13, then 24; key 1 still sends at once |
