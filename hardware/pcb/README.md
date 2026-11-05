@@ -155,7 +155,10 @@ than snapping them.
 - **Frame:** the boards sit side by side (XIAO, C3, `c3-jst`) in a 6 mm frame. It has rails on the
   left and right and bars across the top and bottom. The bars stay at least 2.5 mm from every board
   edge and 1.5 mm from anything that overhangs one. The frame carries JLC's 1.152 mm tooling holes
-  in its four corners and three fiducials 4.35 mm in from the rails' outer edges.
+  in its four corners and three fiducials 4.35 mm in from the rails' outer edges. JLC's
+  capabilities page now asks for 5 mm tooling edges, 2 mm tooling holes and 1 mm fiducials 3.85 mm
+  from the edges; rev A's panel was accepted with this frame, but check the current note before a
+  panel order.
 - **Where tabs may go:** mouse-bite tabs join the boards to each other and to the frame. They go
   only where:
   - no track, via or pad comes within 1 mm of the edge;
@@ -212,8 +215,8 @@ Every key switches to ground and uses the chip's internal pull-up.
   - a K4 press wakes the chip on GPIO5 with D4 low;
   - a K3 press wakes it on GPIO5 with D4 high.
 - **The catch:** a very quick tap on K4 could be released before the firmware reads D4, and would
-  then read as K3. The firmware's deep-sleep wake stub reads D4 within microseconds of waking, so
-  this is handled.
+  then read as K3. The firmware's deep-sleep wake stub reads D4 within about a millisecond of waking, far
+  shorter than any tap, so this is handled.
 
 The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins there.
 
@@ -269,7 +272,10 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ### `xiao/` rev B
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
-  switches.
+  switches. On rev B the XIAO's far end (away from its USB-C, where the antenna's U.FL plug is on
+  rev A's layout, pointing at the keys) faces the empty top right of the board. Mount the FPC
+  antenna in the case, off the board: both copper layers are ground pour, which would detune it
+  stuck flat on the board.
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left
   edge. J1 (D0–D6) is the lower socket and J2 the upper, both reading left to right from the USB
   end. The battery JST (J3) moved to the right edge. The board is 1.5 mm taller.
@@ -305,8 +311,10 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 ## Firmware
 
 Build `xiao_board` for the XIAO board and `c3_board` for `c3` and `c3-jst` (see the top-level
-README). Neither has run on a real board yet. On the XIAO board, a deep-sleep wake stub reads D4
-within microseconds of waking, so even a very quick tap on K4 reads as K4.
+README). `c3_board` has run on a rev A C3 board (2026-11-05: all four keys, sleep and wake on USB
+and battery); `xiao_board` is flashed on a rev A XIAO board, but its keys aren't confirmed yet. On the XIAO
+board, a deep-sleep wake stub reads D4 within about a millisecond of waking, so even a very quick
+tap on K4 reads as K4.
 
 ## Rebuilding
 
