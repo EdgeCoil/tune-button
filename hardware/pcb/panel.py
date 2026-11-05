@@ -332,6 +332,14 @@ def main():
     # the rest is dropped as an island (c3-jst: 2.0 mm2 of front pour by its top tab;
     # no pad on it), so the copper can change a little past the keepouts too.
     board = pcbnew.LoadBoard(path)
+    # Zone outlines to a 1 um grid. gen.py writes each board's items in a different order on every
+    # run, and KiKit's merge then leaves a vertex at 1.999999 mm one time and 2.0 the next (audit
+    # round 8): snapped, a rebuild compares equal to the committed panel every time.
+    for z in board.Zones():
+        o = z.Outline()
+        for i in range(o.TotalVertices()):
+            v = o.CVertex(i)
+            o.SetVertex(i, pcbnew.VECTOR2I(round(v.x / 1000) * 1000, round(v.y / 1000) * 1000))
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(path)
     set_stackup(path)

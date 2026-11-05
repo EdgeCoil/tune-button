@@ -19,10 +19,11 @@ stand-ins. The XIAO render is rev A (USB at the top edge, wired BAT header); rev
 under [`xiao/` rev B](#xiao-rev-b).</sub>
 
 > **Status: rev A (tag `rev-a`, ordered 2026-10-25 on one JLC panel) has arrived and is being
-> brought up.** The C3 board runs the four-key firmware (2026-11-05: all four keys, sleep and wake);
-> the XIAO board is flashed, its keys not yet confirmed; `c3-jst` is untested. Every board passes
-> KiCad's electrical and design rules checks, with nothing unconnected and the board matching its
-> schematic (see [Firmware](#firmware)).
+> brought up.** The C3 board runs the four-key firmware (2026-11-05: all four keys, sleep and wake;
+> see [Firmware](#firmware)); the XIAO board is flashed without a cell, its keys not yet confirmed,
+> and the with-cell flash check (below, D0) is still to do; `c3-jst` is untested. Every board
+> passes KiCad's electrical and design rules checks, with nothing unconnected and the board
+> matching its schematic.
 >
 > **`xiao/` is now rev B, not yet reviewed or ordered** (rev A is the tag). The XIAO is turned
 > so its USB-C faces the left edge, a spring pin under it meets its BAT+ pad in place of rev A's
@@ -59,6 +60,9 @@ JST-PH, 2 mm pitch. Each button goes between its K pin and GND.
 
 ## When the boards arrive
 
+- **On the XIAO board, connect a cell and check the XIAO still flashes over USB.** D0 is a
+  strapping pin and the battery divider holds it mid-rail (see the pin map); rev A was only flashed
+  without a cell. If it fails, rev B moves the divider before it's ordered.
 - **On `c3-jst`, check R16 and C8 are fitted** (top right, beside the regulator). They damp the
   ringing when USB is plugged in: without them a long cable can push the regulator's input to
   about 6.6 V, past its 6.5 V limit.
@@ -255,9 +259,9 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   nothing on its back, so it can sit either way up.
 - **`c3-jst` debug UART.** TP1 (TX) and TP2 (RX) are bare pads; take ground from J3 pin 1 or the
   USB-C shell.
-- **XIAO header spacing.** The two rows are 15.24 mm (0.6″) apart, centre to centre. That figure
-  comes from the common XIAO footprints and a Seeed forum answer, not Seeed's own drawing, so
-  measure your XIAO across its two rows of pins.
+- **XIAO header spacing.** The two rows are 15.24 mm (0.6″) apart, centre to centre, as in Seeed's
+  own KiCad footprints (OPL_Kicad_Library, `XIAO-ESP32-C3-DIP`). Still, measure your XIAO across
+  its two rows of pins.
 - **Rev B.** With C1 at the low end of Samsung's DC-bias data (3.74 µF at 5–5.5 V), the C3 board's
   regulator input reaches 6.28 V when plugged in, against its 6.5 V limit. That's the worst case: a
   stiff 5.5 V source, a thick 2 m cable and a full cell, simulated with the routed copper.
@@ -274,7 +278,7 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
   switches. On rev B the XIAO's far end (away from its USB-C, where the U.FL antenna plug is, which on
-  rev A pointed at the keys) faces the empty top right of the board. Mount the FPC
+  rev A pointed at the keys) faces the top right of the board, where only J3 and the LED are (no switches). Mount the FPC
   antenna in the case, off the board: both copper layers are ground pour, which would detune it
   stuck flat on the board.
 - **The XIAO** is turned 90° anticlockwise (as you look at the front), so its USB-C faces the left

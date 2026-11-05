@@ -140,7 +140,7 @@ Spotify took, the button's battery level and the result.
 | **3D-printed case** | Parametric OpenSCAD, with ready STLs: [`hardware/case/`](hardware/case/) | Ready to print |
 | **Four-key PCBs** | Three boards: one carrying a XIAO, one with the ESP32-C3 module on board, and a small one that takes buttons on a cable. [`hardware/pcb/`](hardware/pcb/) | Rev A in bring-up; XIAO rev B designed |
 
-The firmware supports all four boards. It runs on the rev A C3 board and is flashed on the rev A XIAO board; `c3-jst` is untested.
+The firmware supports all four boards. It runs on the rev A C3 board and is flashed on the rev A XIAO board (without a cell so far); `c3-jst` is untested.
 
 ## How it's put together
 
