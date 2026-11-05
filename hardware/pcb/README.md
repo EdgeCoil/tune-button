@@ -271,7 +271,7 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   carries. A first layout had a second pin on BAT−, but the two pads are 1.9 mm apart and the pins'
   flanges 2.0 mm, which left VBAT and GND metal 0.2 mm apart.
 - **Unplug the cell before taking the XIAO out:** with it connected, J4 is a bare 12 mm post at the
-  cell's voltage, beside the sockets' GND pins.
+  cell's voltage.
 - **Check two things on a real XIAO before ordering.** The pad positions come from Seeed's KiCad
   footprint (OPL_Kicad_Library, `XIAO-ESP32-C3-SMD`), not a measured part: BAT+ about 3.2 mm in
   from the D0–D6 row and 7.2 mm along it from the D0 pin (level with D3), BAT− nearer the USB end. And the 11 mm working height assumes
