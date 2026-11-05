@@ -208,7 +208,7 @@ Every key switches to ground and uses the chip's internal pull-up.
 - **Why:** the C3 can only wake from deep sleep on GPIO0–5, and the XIAO brings out just GPIO2–5 of
   those. GPIO2 is taken by the battery reading, which has to be on ADC1 (GPIO0–4).
 - **D0 (GPIO2) is a strapping pin, and the divider holds it at about half the cell's voltage**
-  (1.85–2.1 V), between the C3's low and high thresholds. Espressif says GPIO2 doesn't choose the
+  (1.5–2.1 V for a 3.0–4.2 V cell), between the C3's low and high thresholds. Espressif says GPIO2 doesn't choose the
   boot mode but recommends pulling it up against glitches, and one Seeed forum user couldn't flash a
   XIAO until a divider like this was removed. **Untested here:** with a cell connected, check that
   the XIAO still flashes over USB. If it doesn't, unplug the cell (or flash the XIAO out of its
@@ -274,6 +274,15 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
 
 - **`xiao/`:** the four M2 holes are all clear of the keycaps.
 
+- **`c3/`:** the four M2 holes are clear of the keycaps. Use nylon washers or standoffs: tracks run
+  within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask.
+- **`c3-jst/`**, two M2 holes:
+  - **H2:** use a nylon screw, or nylon washers on both faces. K1 (front) and K3 (back) run within
+    1.7 mm of its centre, and VBUS (back) at 2.4 mm, under any metal head or nut.
+  - **H1:** only the ground pour is under its head; the nearest track or via is 2.5 mm out.
+  - **Support:** support the board behind J2 and J3 in the case, since the holes are 10–15 mm from
+    where the plugs push.
+
 ### `xiao/` rev B
 
 - **Why:** on rev A the XIAO's antenna lead and the wires from J4 to its BAT pads crossed the
@@ -309,14 +318,7 @@ The C3 boards have GPIO0 and GPIO1 free, so all four keys are direct wake pins t
   from the front, so with the switches on the back K1 is top right as you look at the keys.
 - **With the switches on the back, the LED (D2) faces into the case,** like everything else on the
   front. It's visible only with front-mounted switches, or through a light path in the case.
-- **`c3/`:** the four M2 holes are clear of the keycaps. Use nylon washers or standoffs: tracks run
-  within 2 mm of H3 (left edge, 23 mm down), where a metal screw head could wear through the mask.
-- **`c3-jst/`**, two M2 holes:
-  - **H2:** use a nylon screw, or nylon washers on both faces. K1 (front) and K3 (back) run within
-    1.7 mm of its centre, and VBUS (back) at 2.4 mm, under any metal head or nut.
-  - **H1:** only the ground pour is under its head; the nearest track or via is 2.5 mm out.
-  - **Support:** support the board behind J2 and J3 in the case, since the holes are 10–15 mm from
-    where the plugs push.
+
 
 ## Firmware
 

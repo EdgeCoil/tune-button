@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import math
 import sys
+import time
 
 import pcbnew
 from kikit.annotations import TabAnnotation
@@ -371,6 +372,7 @@ def export(path, placed):
     # As build.sh: gerber and drill files stamp the local time with its offset; in UTC they carry no
     # timezone.
     os.environ["TZ"] = "UTC"
+    time.tzset()  # and for Python's own clock, which stamps the zip's entries (audit round 10)
     subprocess.run(cli + ["export", "gerbers", "--layers", "F.Cu,B.Cu,F.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts",
                           "--subtract-soldermask", "-o", gerber + "/", path], check=True, capture_output=True)
     subprocess.run(cli + ["export", "drill", "--format", "excellon", "--excellon-separate-th", "-o", gerber + "/", path],
