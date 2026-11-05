@@ -34,14 +34,14 @@ piece = "assembly";  // "base" | "lid" | "hood" | "assembly" | "none"
 // How the switches meet the plate:
 //   "over"  the switches are soldered to the board first and the lid goes down over them, so the
 //           holes clear the switch's widest part (16.3 mm, measured on the board's switches; 15.6 is the
-//           spec top housing, but these measure wider), plus 0.15 a side. The posts clamp the
+//           spec top housing, but these measure wider). 16.8 is the size the gauge print passed them easily. The posts clamp the
 //           board; the plate doesn't hold the switches.
 //   "clip"  the switches are clipped into the plate first and soldered through it (the MX way):
 //           14.0 nominal, 14.1 because FDM prints holes small.
 mx_fit = "over";
 // Not mx_hole: stack.scad (included above) already sets that, and OpenSCAD evaluates a reassigned
 // variable at its FIRST assignment, before mx_fit exists, so the "over" size was silently 14.1.
-pmx_hole = mx_fit == "over" ? 16.6 : 14.1;
+pmx_hole = mx_fit == "over" ? 16.8 : 14.1;
 
 /* [Shell] */
 pwall = 5.5;          // walls; thick enough for an insert boss to clear the board's corner

@@ -89,9 +89,9 @@ Printed alternatives to the `c3` and `xiao` stacks, from one file, `tune-button-
   spacers' pins locate the board in the holes. Posts and spacers are sized to meet the board
   exactly, at the Cherry MX height, so they hold the board rather than the switch joints.
 - **The lid's top face is a plate around the switches.** By default (`mx_fit = "over"`) its holes
-  are 16.6 mm, so the lid goes down over switches **already soldered** to the board: they have to
+  are 16.8 mm, so the lid goes down over switches **already soldered** to the board: they have to
   clear the switch's widest part, which measures 16.3 mm on these switches (the MX spec's top
-  housing is 15.6). The posts clamp the board, so the plate doesn't need to hold the switches.
+  housing is 15.6), and 16.8 is the gauge hole they drop through easily. The posts clamp the board, so the plate doesn't need to hold the switches.
   **The first print used 14.1 mm holes** (the MX clip size) and stood 3 mm proud, riding on the
   switches' top housings. **So did the lids committed as "16.0 mm"**: `stack.scad` sets `mx_hole`
   first, and OpenSCAD evaluates a reassigned variable at its first assignment, so the override
