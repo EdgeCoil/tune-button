@@ -220,8 +220,14 @@ def boxes(variant):
         add("cell 502535", tv([c0 + 0.5, c1 + 0.5, c2 - 0.5, c3 - 0.5]), 2.05, 7.0)
         add("J2 plug", [44.0, 39.5, 50.5, 47.5], bot_z - 0.05, bot_z - 4.6)
         roof = top - panel
-        add("button body", tv([cx - body / 2, cy - body / 2, cx + body / 2, cy + body / 2]), top - depth, roof - 0.05)
-        add("button nut", tv([cx - nut / 2, cy - nut / 2, cx + nut / 2, cy + nut / 2]), roof - 4, roof - 0.05)
+        # Round parts, at any rotation (the nut is a hex, its 28.5 across the corners), as two
+        # crossed boxes: together they cover the circle, and leave out most of a square's corners.
+        def round_part(name, d, z0, z1):
+            r, k = d / 2, d / 2 * 0.7072
+            add(name, tv([cx - r, cy - k, cx + r, cy + k]), z0, z1)
+            add(name, tv([cx - k, cy - r, cx + k, cy + r]), z0, z1)
+        round_part("button body", body, top - depth, roof - 0.05)
+        round_part("button nut", nut, roof - 4, roof - 0.05)
     if variant == "c3":
         add("cell 503040", [8, 22.5, 38, 62.5], 3.5, 9.0)   # symmetric about x = 23
         add("J2 plug", [44.0, 39.5, 50.5, 47.5], bot_z - 0.05, bot_z - 4.6)

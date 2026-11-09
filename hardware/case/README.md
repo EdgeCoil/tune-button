@@ -137,22 +137,28 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
 | | |
 |---|---|
 | Parts | base, lid, tower |
-| Outside size | 96 × 82 mm; 14.6 mm tall over the keys, 31 mm at the tower |
-| Screws | 5 × M3 × 8, plus the printed peg at the antenna corner |
-| Cell | 502535 (25 × 35 × 5 mm), on the floor under the tower's far end |
+| Outside size | 96 × 82 mm; 14.6 mm tall over the keys and the cell, 31 mm at the tower |
+| Screws | 6 × M3 × 8, plus the printed peg at the antenna corner |
+| Cell | 502535 (25 × 35 × 5 mm), on the floor beside the tower, under the lid |
 | STLs | `tune-button-c3-btn-base.stl`, `-lid.stl`, `-tower.stl` |
 
 - **The board section is thin** because the cell no longer sits under the board. The board sits
   6.4 mm lower than on `c3`, with 1.2 mm under the battery socket J2, its tallest part below.
   **Don't fit the TP1 header**: it would hang 8.5 mm below the board. Solder wires to its pads.
-- **The tower is the third part.** Its roof takes the button: a 22.4 mm hole (22 mm, plus what FDM
-  takes off a hole) in a 2.5 mm panel. The roof stands 31 mm above the bed: 26 mm of button below
-  the panel's top face, 3 mm under its terminals for the wires, and the 2 mm floor. A riser at its
-  right side stands on the lid's left edge and clamps it. Four screws hold the tower: two in its
-  far corners and two at the step.
-- **The button sits level with the middle of the four keys,** with its body 4 mm clear of the
-  battery plug's end, since the plug's lead leaves to the left. The cell lies along the far wall
-  inside a fence, clear of the button's body, and about 23 mm from the module's antenna.
+- **The tower is the third part, and covers only the button's corner** (about 38 × 47 mm). Its
+  roof takes the button: a 22.4 mm hole (22 mm, plus what FDM takes off a hole) in a 2.5 mm panel.
+  The roof stands 31 mm above the bed: 26 mm of button below the panel's top face, 3 mm under its
+  terminals for the wires, and the 2 mm floor. Its two inner walls are a riser that stands on the
+  lid and clamps it. Three screws hold the tower: its front-left corner, its front-right corner at
+  the step, and one in its left wall just inside the back, clear of the cell's fence and about
+  5.6 mm clear of the nut.
+- **The lid runs on over the cell,** flush with the top over the keys, so the case is 14.6 mm
+  tall everywhere but the tower. The lid takes three screws: the far-left corner, mid-way along
+  the far wall, and the near-right corner.
+- **The button sits centred front to back on the tower's top,** with its body 4 mm clear of the
+  battery plug's end, since the plug's lead leaves to the left, and its nut 4 mm from the front
+  wall. The cell lies along the far wall
+  inside a fence, behind the tower, and about 23 mm from the module's antenna.
 - **The button's sizes:** measured, a 28.5 mm nut (`btn_nut_d`) and a 30 mm head, which sits on
   the roof with about 5 mm of roof around it. The 26 mm depth, terminals included, is also
   measured. One ESTIMATE: nothing below the nut is wider than 26 mm (`btn_body_d`). If the
@@ -166,12 +172,12 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
   - the button hole and the riser's top edge chamfered on the bed face;
   - 1 mm 45° fillets where the tower's roof meets its walls and riser, the most the nut
     leaves room for;
-  - a 0.2 mm gap where the lid's left end meets the tower's walls, its top edge chamfered for
-    elephant foot, and a V-groove down the joint on each side, as at the parting line.
-- **The tower's far corner screws sit 5.0 mm in from the edges,** not 3.6 mm. Their counterbores
-  are 20 mm shafts down the tower, and at 3.6 mm each shaft left about 0.5 mm at the corner, which
-  the slicer drops on the roof's first layer. A slot out through the corner, as on the lid, would
-  run the tower's full height.
+  - a 0.2 mm gap where the lid's cut-out meets the tower's walls, its top edges chamfered for
+    elephant foot, and a V-groove down each of the two outside joints, as at the parting line.
+- **The left-hand screws sit 5.0 mm in from the left edge,** not 3.6 mm. In the tower their
+  counterbores are 20 mm shafts, and at 3.6 mm a shaft left about 0.5 mm at the corner, which the
+  slicer drops on the roof's first layer. A slot out through the corner, as on the lid, would run
+  the tower's full height.
 
 ### Printing
 
@@ -198,7 +204,7 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
   whole seat. (The hood's screws sit in bosses and are unchanged.)
 
 **Hardware:** M3 × 8 socket head cap screws (ISO 4762) and M3 heat-set inserts: 3 of each for
-`c3`, 4 for `xiao`, 5 for the big-button `c3`.
+`c3`, 4 for `xiao`, 6 for the big-button `c3`.
 
 **Assembly:**
 1. **Set the inserts** into the base's corner bosses with a soldering iron, flush with the top
@@ -211,8 +217,8 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
    board. (With `mx_fit = "clip"`, clip the switches into the lid and solder them through it
    instead, then lower lid and board together.)
 6. **Big-button `c3`:** fit the button in the tower's roof and tighten its nut, solder its wires,
-   and run them under the riser to the board. Lower the tower on, its riser onto the lid's left
-   edge, and screw down its four screws.
+   and run them along the floor under the lid to the board. Lower the tower into the lid's
+   corner cut-out, its riser onto the lid, and screw down its three screws.
 7. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
    over the XIAO, its back corners through the lid's notches, and screw it down.
 

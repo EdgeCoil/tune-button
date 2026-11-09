@@ -47,8 +47,9 @@ pmx_hole = mx_fit == "over" ? 16.8 : 14.1;
 
 // c3 only: big_button = true makes the big-button variant. The case grows to the left (seen from
 // above, USB-C at the bottom) into a tower that takes a 22 mm panel-mount push button beside the
-// keys, with a 502535 cell on the floor under the tower's far end. The cell no longer sits under the
-// board, so the board drops 6.4 mm and the case is thin over the keys, stepping up to the tower.
+// keys, with a 502535 cell on the floor beside it, under the lid. The cell no longer sits under the
+// board, so the board drops 6.4 mm and the case is thin over the keys and the cell, stepping up
+// only round the button.
 // Fit no header at TP1 on this variant: it would hang 8.5 mm below the board. Solder wires to its
 // pads instead.
 big_button = false;
@@ -70,12 +71,16 @@ tower_top = 2.0 + btn_wire + btn_depth;   // 31: floor, wire room, button
 step_x = -8.0;        // the tower's inner right face; the riser wall stands on the lid from here
 riser_t = 2.0;
 joint_gap = 0.2;      // between the lid's left end and the tower's walls
-// Level with the middle of the four keys, and clear of the battery plug at the board's left edge
-// (it reaches x = -6.5, and its lead leaves to the left): the body's right side is 4 mm past it.
-btn_c = [-6.5 - 4 - btn_body_d / 2, (keys[0][1] + keys[2][1]) / 2];
-tower_x0 = btn_c[0] - btn_nut_d / 2 - 1;
+// Clear of the battery plug at the board's left edge (it reaches x = -6.5, and its lead leaves to
+// the left): the body's right side is 4 mm past it. Its y (btn_c, below) centres it front to back
+// on the tower's top face.
+btn_x = -6.5 - 4 - btn_body_d / 2;
+tower_x0 = btn_x - btn_nut_d / 2 - 1;
 // 502535 (25 x 35 x 5, plus slack), lying along the far wall, past the button's body.
 pcell = bigb ? [tower_x0, 3.0, tower_x0 + 35 + cell_slack, 3.0 + 25 + cell_slack] : cell;
+// The tower covers only the button's corner: its inner back face is just past the cell's fence,
+// and behind that the lid runs on over the cell. The riser stands on the lid along both inner edges.
+step_y = 30.3;        // board y
 
 /* [Shell] */
 pwall = 5.5;          // walls; thick enough for an insert boss to clear the board's corner
@@ -112,6 +117,8 @@ pinner_s = bbox(cavity);                                  // same cavity as the 
 pinner = bigb ? [tower_x0, pinner_s[1], pinner_s[2], pinner_s[3]] : pinner_s;
 pouter = [pinner[0] - pwall, pinner[1] - pwall, pinner[2] + pwall, pinner[3] + pwall];
 pr = 3.0;
+// the button, centred front to back on the tower's top face (riser's back edge to the front wall)
+btn_c = [btn_x, (step_y - riser_t + pouter[3]) / 2];
 ci = 3.6;             // corner centres, inset from the outer edges
 // big_button: the tower's far corners sit further in. Their counterbores are 20 mm shafts down
 // the tower, and at 3.6 the shaft leaves ~0.5 mm to the corner, which the slicer drops on the
@@ -122,10 +129,12 @@ TL = [pouter[0] + cif, pouter[1] + cif]; TR = [pouter[2] - ci, pouter[1] + ci];
 BL = [pouter[0] + cif, pouter[3] - cif]; BR = [pouter[2] - ci, pouter[3] - ci];
 // c3: the top-right corner is ~5 mm from the module's antenna: no steel screw or brass insert
 // there, but a printed peg. xiao: the FPC antenna under the hood's roof is ~9 mm from TL and TR.
-// big_button: two more at the step, at the tower's inner right corners, so the tower clamps the
-// lid's left edge under its riser.
+// big_button: TM, mid back wall, holds the lid's long back edge. The tower has three: BL, BM at its
+// inner right corner, and LM on the left wall just inside its back face, clear of the cell's fence
+// and 5.6 mm clear of the nut (as a circle across its corners).
 TM = [step_x - boss_d / 2 - 0.3, pouter[1] + ci]; BM = [TM[0], pouter[3] - ci];
-pscrews = bigb ? [TL, BL, TM, BM, BR] : variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
+LM = [pouter[0] + cif, step_y + boss_d / 2 + 0.3];
+pscrews = bigb ? [TL, LM, BL, TM, BM, BR] : variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
 has_peg = variant == "c3";
 ppeg = TR;
 peg_d = 3.0;
@@ -139,8 +148,8 @@ hood_top = N * t;                     // 33, the stack's visor height
 cap_t = 3.0;
 cap_z = hood_top - cap_t;             // roof underside, 1 mm over the XIAO's USB-C
 hood_screws = xiao ? [TL, TR] : [];   // through the hood, down through notches in the lid
-lid_screws = xiao ? [BL, BR] : bigb ? [BR] : pscrews;
-tower_screws = bigb ? [TL, BL, TM, BM] : [];
+lid_screws = xiao ? [BL, BR] : bigb ? [TL, TM, BR] : pscrews;
+tower_screws = bigb ? [LM, BL, BM] : [];
 // The XIAO ESP32C3's FPC antenna: 40 x 20 mm (ESTIMATE, from a supplier's spec sheet; measure
 // yours), on an 80 mm lead. Its pocket is centred under the roof, away from the screws.
 antenna = [40.5, 20.5, 0.4];          // pocket: x, y, depth
@@ -271,18 +280,27 @@ module lid() {
             // notches for the hood's corner bosses
             for (c = hood_screws) translate([c[0], -c[1], -1]) cylinder(d = boss_d + 2 * gapf, h = lid_h + 2);
         }
-        // big_button: left of the step the tower takes over, walls and all
+        // big_button: the button's corner is the tower's, walls and all
         if (bigb) {
             translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
-                rect([pouter[0] - 1, pouter[1] - 1, step_x + joint_gap, pouter[3] + 1]);
-            // the cut edge on the top face is on the bed when printing: chamfer it, for elephant foot
-            yrun(step_x + joint_gap) polygon([[-0.01, lid_h + 0.01], [bed_c, lid_h + 0.01], [-0.01, lid_h - bed_c]]);
+                rect([pouter[0] - 1, step_y - joint_gap, step_x + joint_gap, pouter[3] + 1]);
+            // the cut edges on the top face are on the bed when printing: chamfer them, for elephant foot
+            intersection() {
+                yrun(step_x + joint_gap) polygon([[-0.01, lid_h + 0.01], [bed_c, lid_h + 0.01], [-0.01, lid_h - bed_c]]);
+                translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
+                    rect([pouter[0] - 1, step_y - joint_gap, pouter[2] + 1, pouter[3] + 1]);
+            }
+            intersection() {
+                xrun(step_y - joint_gap) polygon([[0.01, lid_h + 0.01], [-bed_c, lid_h + 0.01], [0.01, lid_h - bed_c]]);
+                translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
+                    rect([pouter[0] - 1, pouter[1] - 1, step_x + joint_gap, pouter[3] + 1]);
+            }
             joint_vees(0, plate_top_z - part_z);
         }
         translate([0, 0, -part_z]) usb_cut();
         for (c = keys) translate([c[0], -c[1], 0]) mx_cut(lid_h);
         for (l = leds) translate([l[0], -l[1], -1]) cylinder(d = led_hole, h = lid_h + 2);
-        for (c = lid_screws) translate([c[0], -c[1], 0]) screw_way(lid_h - screw_head[1], corner_out(c));
+        for (c = lid_screws) translate([c[0], -c[1], 0]) screw_way(lid_h - screw_head[1], c == TM ? [0, 1] : corner_out(c));
     }
 }
 
@@ -337,11 +355,21 @@ module xband3d(x0, x1, z0, z1) translate([0, 0, z0]) linear_extrude(height = z1 
 // A 2D profile in (x, z), placed at x and run the full length of the case in y.
 module yrun(x) translate([x, -pouter[1] + 1, 0]) rotate([90, 0, 0])
     linear_extrude(height = pouter[3] - pouter[1] + 2) children();
-// V-grooves where the lid's end meets the tower's walls, on the two outer faces, between z0 and z1
-// (the part's own frame): as at the parting line, a small step between the parts reads as a groove.
-module joint_vees(z0, z1) for (y = [pouter[1], pouter[3]])
-    translate([step_x + joint_gap / 2, -y, (z0 + z1) / 2]) rotate([0, 0, 45])
+// The same in (board y, z), placed at board y and run the full width of the case in x. Profile x
+// is board y: positive runs toward the USB end.
+module xrun(y) translate([pouter[0] - 1, -y, 0]) rotate([90, 0, 90]) mirror([1, 0, 0])
+    linear_extrude(height = pouter[2] - pouter[0] + 2) children();
+// V-grooves where the lid meets the tower's walls, on the two outer faces (the front face at the
+// step, the left face at the back of the tower), between z0 and z1 (the part's own frame): as at
+// the parting line, a small step between the parts reads as a groove.
+module joint_vees(z0, z1) for (p = [[step_x + joint_gap / 2, pouter[3]], [pouter[0], step_y - joint_gap / 2]])
+    translate([p[0], -p[1], (z0 + z1) / 2]) rotate([0, 0, 45])
         cube([(2 * seam_c + joint_gap) / sqrt(2), (2 * seam_c + joint_gap) / sqrt(2), z1 - z0 + 0.02], center = true);
+// The tower's footprint in board coordinates: its walls (to the base) and its riser (on the lid).
+twall = [pouter[0] - 1, step_y, step_x, pouter[3] + 1];
+triser = [pouter[0] - 1, step_y - riser_t, step_x + riser_t, pouter[3] + 1];
+tin = [pinner[0], step_y, step_x, pinner[3]];
+module tband3d(r, z0, z1) translate([0, 0, z0]) linear_extrude(height = z1 - z0) top_view() rect(r);
 module tower() {
     roof_z = tower_top - panel_t;
     difference() {
@@ -350,26 +378,26 @@ module tower() {
                 intersection() {
                     translate([0, 0, part_z]) outer3d(tower_top - part_z, seam_c, bed_c);
                     union() {
-                        xband3d(pouter[0] - 1, step_x, part_z, tower_top);
-                        xband3d(step_x - 0.01, step_x + riser_t, plate_top_z, tower_top);
+                        tband3d(twall, part_z, tower_top);
+                        tband3d(triser, plate_top_z, tower_top);
                     }
                 }
                 translate([0, 0, part_z - 1]) linear_extrude(height = roof_z - part_z + 1) top_view()
-                    rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+                    rect(tin, 0.5);
             }
             intersection() { translate([0, 0, part_z]) bosses_at(tower_screws, tower_top - part_z, seam_c, bed_c);
-                             xband3d(pouter[0] - 1, step_x, part_z, tower_top); }
+                             tband3d(twall, part_z, tower_top); }
             // 45-degree fillets inside, where the roof meets the walls and the riser: the button's
             // presses go through the roof into them. root_f (1.0) is all the room the nut leaves
-            // at the left wall (1.0) and the riser (1.25).
+            // at the left wall (1.0), the riser (1.25) and the back (1.0).
             difference() {
                 translate([0, 0, roof_z - root_f]) linear_extrude(height = root_f + 0.01) top_view()
-                    rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+                    rect(tin, 0.5);
                 hull() {
                     translate([0, 0, roof_z - root_f - 0.01]) linear_extrude(height = 0.01) top_view()
-                        rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+                        rect(tin, 0.5);
                     translate([0, 0, roof_z]) linear_extrude(height = 0.02) top_view()
-                        rect([pinner[0] + root_f, pinner[1] + root_f, step_x - root_f, pinner[3] - root_f], 0.5);
+                        rect([tin[0] + root_f, tin[1] + root_f, tin[2] - root_f, tin[3] - root_f], 0.5);
                 }
             }
         }
@@ -379,8 +407,9 @@ module tower() {
             translate([0, 0, tower_top - mx_c]) cylinder(d1 = btn_hole, d2 = btn_hole + 2 * mx_c + 0.02, h = mx_c + 0.01, $fn = 128);
         }
         for (c = tower_screws) translate([c[0], -c[1], part_z]) screw_way(lid_h - screw_head[1]);
-        // the riser's top outer edge is on the bed when printing: chamfer it as the others are
+        // the riser's top outer edges are on the bed when printing: chamfer them as the others are
         yrun(step_x + riser_t) polygon([[0.01, tower_top + 0.01], [-bed_c, tower_top + 0.01], [0.01, tower_top - bed_c]]);
+        xrun(step_y - riser_t) polygon([[-0.01, tower_top + 0.01], [bed_c, tower_top + 0.01], [-0.01, tower_top - bed_c]]);
         joint_vees(part_z, plate_top_z);
     }
 }
