@@ -161,6 +161,13 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
 - **Wiring the button:** in parallel with one of the MX switches, soldered to that switch's two
   pins on the parts side, so it acts as that key and the firmware is unchanged. (The board has no
   spare key input; TP1's RXD pad, GPIO20, could be a fifth one with a firmware change.)
+- **For printing:** the same chamfers as the other parts (bed edges, parting line, lead-ins,
+  the screw seats' one-layer bridges, which are the only overhangs), and:
+  - the button hole and the riser's top edge chamfered on the bed face;
+  - 1 mm 45° fillets where the tower's roof meets its walls and riser, the most the nut
+    leaves room for;
+  - a 0.2 mm gap where the lid's left end meets the tower's walls, its top edge chamfered for
+    elephant foot, and a V-groove down the joint on each side, as at the parting line.
 - **The tower's far corner screws sit 5.0 mm in from the edges,** not 3.6 mm. Their counterbores
   are 20 mm shafts down the tower, and at 3.6 mm each shaft left about 0.5 mm at the corner, which
   the slicer drops on the roof's first layer. A slot out through the corner, as on the lid, would

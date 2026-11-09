@@ -69,6 +69,7 @@ panel_t = 2.5;        // the tower roof the button clamps on; check your button'
 tower_top = 2.0 + btn_wire + btn_depth;   // 31: floor, wire room, button
 step_x = -8.0;        // the tower's inner right face; the riser wall stands on the lid from here
 riser_t = 2.0;
+joint_gap = 0.2;      // between the lid's left end and the tower's walls
 // Level with the middle of the four keys, and clear of the battery plug at the board's left edge
 // (it reaches x = -6.5, and its lead leaves to the left): the body's right side is 4 mm past it.
 btn_c = [-6.5 - 4 - btn_body_d / 2, (keys[0][1] + keys[2][1]) / 2];
@@ -271,8 +272,13 @@ module lid() {
             for (c = hood_screws) translate([c[0], -c[1], -1]) cylinder(d = boss_d + 2 * gapf, h = lid_h + 2);
         }
         // big_button: left of the step the tower takes over, walls and all
-        if (bigb) translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
-            rect([pouter[0] - 1, pouter[1] - 1, step_x, pouter[3] + 1]);
+        if (bigb) {
+            translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
+                rect([pouter[0] - 1, pouter[1] - 1, step_x + joint_gap, pouter[3] + 1]);
+            // the cut edge on the top face is on the bed when printing: chamfer it, for elephant foot
+            yrun(step_x + joint_gap) polygon([[-0.01, lid_h + 0.01], [bed_c, lid_h + 0.01], [-0.01, lid_h - bed_c]]);
+            joint_vees(0, plate_top_z - part_z);
+        }
         translate([0, 0, -part_z]) usb_cut();
         for (c = keys) translate([c[0], -c[1], 0]) mx_cut(lid_h);
         for (l = leds) translate([l[0], -l[1], -1]) cylinder(d = led_hole, h = lid_h + 2);
@@ -328,6 +334,14 @@ module hood() {
 // M3 screws, down deep shafts, clamp it to the base. Printed roof down.
 module xband3d(x0, x1, z0, z1) translate([0, 0, z0]) linear_extrude(height = z1 - z0) top_view()
     rect([x0, pouter[1] - 1, x1, pouter[3] + 1]);
+// A 2D profile in (x, z), placed at x and run the full length of the case in y.
+module yrun(x) translate([x, -pouter[1] + 1, 0]) rotate([90, 0, 0])
+    linear_extrude(height = pouter[3] - pouter[1] + 2) children();
+// V-grooves where the lid's end meets the tower's walls, on the two outer faces, between z0 and z1
+// (the part's own frame): as at the parting line, a small step between the parts reads as a groove.
+module joint_vees(z0, z1) for (y = [pouter[1], pouter[3]])
+    translate([step_x + joint_gap / 2, -y, (z0 + z1) / 2]) rotate([0, 0, 45])
+        cube([(2 * seam_c + joint_gap) / sqrt(2), (2 * seam_c + joint_gap) / sqrt(2), z1 - z0 + 0.02], center = true);
 module tower() {
     roof_z = tower_top - panel_t;
     difference() {
@@ -345,6 +359,19 @@ module tower() {
             }
             intersection() { translate([0, 0, part_z]) bosses_at(tower_screws, tower_top - part_z, seam_c, bed_c);
                              xband3d(pouter[0] - 1, step_x, part_z, tower_top); }
+            // 45-degree fillets inside, where the roof meets the walls and the riser: the button's
+            // presses go through the roof into them. root_f (1.0) is all the room the nut leaves
+            // at the left wall (1.0) and the riser (1.25).
+            difference() {
+                translate([0, 0, roof_z - root_f]) linear_extrude(height = root_f + 0.01) top_view()
+                    rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+                hull() {
+                    translate([0, 0, roof_z - root_f - 0.01]) linear_extrude(height = 0.01) top_view()
+                        rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+                    translate([0, 0, roof_z]) linear_extrude(height = 0.02) top_view()
+                        rect([pinner[0] + root_f, pinner[1] + root_f, step_x - root_f, pinner[3] - root_f], 0.5);
+                }
+            }
         }
         // the button's hole, its top edge chamfered (the bed face as printed)
         translate([btn_c[0], -btn_c[1], 0]) {
@@ -353,8 +380,8 @@ module tower() {
         }
         for (c = tower_screws) translate([c[0], -c[1], part_z]) screw_way(lid_h - screw_head[1]);
         // the riser's top outer edge is on the bed when printing: chamfer it as the others are
-        translate([step_x + riser_t, pouter[3] + 1, 0]) rotate([90, 0, 0]) linear_extrude(height = pouter[3] - pouter[1] + 2)
-            polygon([[0.01, tower_top + 0.01], [-bed_c, tower_top + 0.01], [0.01, tower_top - bed_c]]);
+        yrun(step_x + riser_t) polygon([[0.01, tower_top + 0.01], [-bed_c, tower_top + 0.01], [0.01, tower_top - bed_c]]);
+        joint_vees(part_z, plate_top_z);
     }
 }
 
