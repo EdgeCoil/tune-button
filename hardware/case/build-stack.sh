@@ -8,7 +8,8 @@
 #   spacers.stl      printed board spacers (xiao, c3)
 #   wall.stl         c3-jst only: layers 5-15 as one printed part, if you'd rather not cut 11 rings
 #   preview.png      assembly render (needs xvfb-run when headless)
-# and stack/kerf-test.svg, plus the printed c3 and xiao cases (tune-button-<v>-{base,lid,hood}.stl). Requires OpenSCAD 2021.01 or later.
+# and stack/kerf-test.svg, plus the printed c3 and xiao cases (tune-button-<v>-{base,lid,hood}.stl) and the
+# c3 big-button case (tune-button-c3-btn-{base,lid,tower}.stl). Requires OpenSCAD 2021.01 or later.
 set -eu
 cd "$(dirname "$0")"
 scad=stack.scad
@@ -48,6 +49,14 @@ for v in c3 xiao; do
         --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-printed.scad || true
     echo "$v printed: $(for p in $pieces; do printf 'tune-button-%s-%s.stl ' "$v" "$p"; done)"
 done
+# c3 with the big button: a printed-only variant (tune-button-printed.scad, big_button = true).
+for p in base lid tower; do
+    openscad -q -D 'variant="c3"' -D big_button=true -D "piece=\"$p\"" -o "tune-button-c3-btn-$p.stl" tune-button-printed.scad
+done
+mkdir -p stack/c3-btn
+$run openscad -q -D 'variant="c3"' -D big_button=true -o stack/c3-btn/printed-preview.png --imgsize=1200,900 --viewall \
+    --autocenter --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-printed.scad || true
+echo "c3 big button printed: tune-button-c3-btn-base.stl tune-button-c3-btn-lid.stl tune-button-c3-btn-tower.stl"
 # A test plate for the MX hole size (see tune-button-mx-gauge.scad).
 openscad -q -o tune-button-mx-gauge.stl tune-button-mx-gauge.scad
 echo "MX hole gauge: tune-button-mx-gauge.stl"

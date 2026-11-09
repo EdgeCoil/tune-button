@@ -17,6 +17,8 @@
 //
 //   openscad -D 'variant="c3"' -D 'piece="base"' -o tune-button-c3-base.stl tune-button-printed.scad
 //   (pieces: base, lid, hood; no piece: the assembly preview)
+//   openscad -D 'variant="c3"' -D big_button=true -D 'piece="tower"' -o tune-button-c3-btn-tower.stl tune-button-printed.scad
+//   (big_button pieces: base, lid, tower)
 //
 // The lid and hood STLs come out upside down, ready to print: the lid's top face and the hood's
 // roof go on the bed. The base prints floor down. None needs supports. Use 0.2 mm layers and 3+
@@ -43,13 +45,44 @@ mx_fit = "over";
 // variable at its FIRST assignment, before mx_fit exists, so the "over" size was silently 14.1.
 pmx_hole = mx_fit == "over" ? 16.8 : 14.1;
 
+// c3 only: big_button = true makes the big-button variant. The case grows to the left (seen from
+// above, USB-C at the bottom) into a tower that takes a 22 mm panel-mount push button beside the
+// keys, with a 502535 cell on the floor under the tower's far end. The cell no longer sits under the
+// board, so the board drops 6.4 mm and the case is thin over the keys, stepping up to the tower.
+// Fit no header at TP1 on this variant: it would hang 8.5 mm below the board. Solder wires to its
+// pads instead.
+big_button = false;
+bigb = big_button && variant == "c3";
+// New names, not reassignments of stack.scad's (see pmx_hole above).
+pboard_bottom_z = bigb ? 8.0 : board_bottom_z;   // floor 2.0 + the battery socket J2, 4.8, + 1.2
+pkey_face_z = pboard_bottom_z + 1.6;
+pusb_z = bigb ? pboard_bottom_z - 1.63 : usb[3]; // J1 hangs 3.26 below the board
+
+/* [big_button: the button and the tower] */
+btn_hole = 22.4;      // the 22 mm cut-out; FDM prints holes small
+btn_depth = 26.0;     // the button below the panel's top face, terminals included
+btn_nut_d = 28.5;     // measured: the nut at its widest
+btn_head_d = 30.0;    // measured: the head, above the roof
+btn_body_d = 26.0;    // ESTIMATE: anything below the nut, switch block and terminals
+btn_wire = 3.0;       // under the terminals, for the wires
+panel_t = 2.5;        // the tower roof the button clamps on; check your button's panel range
+tower_top = 2.0 + btn_wire + btn_depth;   // 31: floor, wire room, button
+step_x = -8.0;        // the tower's inner right face; the riser wall stands on the lid from here
+riser_t = 2.0;
+// Level with the middle of the four keys, and clear of the battery plug at the board's left edge
+// (it reaches x = -6.5, and its lead leaves to the left): the body's right side is 4 mm past it.
+btn_c = [-6.5 - 4 - btn_body_d / 2, (keys[0][1] + keys[2][1]) / 2];
+tower_x0 = btn_c[0] - btn_nut_d / 2 - 1;
+// 502535 (25 x 35 x 5, plus slack), lying along the far wall, past the button's body.
+pcell = bigb ? [tower_x0, 3.0, tower_x0 + 35 + cell_slack, 3.0 + 25 + cell_slack] : cell;
+
 /* [Shell] */
 pwall = 5.5;          // walls; thick enough for an insert boss to clear the board's corner
 floor_t = 2.0;
 plate_t = 1.5;        // MX plate
-plate_top_z = key_face_z + 5.0;           // 21.0: the case's top face
+plate_top_z = pkey_face_z + 5.0;          // 21.0 (big_button 14.6): the top face over the keys
 plate_z = plate_top_z - plate_t;          // plate underside: 19.5
-part_z = 15.0;        // where lid meets base; the lid's corners are 6 mm thick
+part_z = plate_top_z - 6.0;   // where lid meets base (15.0); the lid's corners are 6 mm thick
 fence_h = 3.0;
 fence_t = 1.2;
 gapf = 0.3;           // print clearance
@@ -74,15 +107,24 @@ mx_relief = 1.0;      // corner reliefs: a printed square hole has rounded corne
 membrane = 0.2;       // one layer over each screw hole at the head seat, so the seat bridges
                       // cleanly; push it out with a 3 mm drill or a hot awl
 
-pinner = bbox(cavity);                                    // same cavity as the acrylic rings
+pinner_s = bbox(cavity);                                  // same cavity as the acrylic rings
+pinner = bigb ? [tower_x0, pinner_s[1], pinner_s[2], pinner_s[3]] : pinner_s;
 pouter = [pinner[0] - pwall, pinner[1] - pwall, pinner[2] + pwall, pinner[3] + pwall];
 pr = 3.0;
 ci = 3.6;             // corner centres, inset from the outer edges
-TL = [pouter[0] + ci, pouter[1] + ci]; TR = [pouter[2] - ci, pouter[1] + ci];
-BL = [pouter[0] + ci, pouter[3] - ci]; BR = [pouter[2] - ci, pouter[3] - ci];
+// big_button: the tower's far corners sit further in. Their counterbores are 20 mm shafts down
+// the tower, and at 3.6 the shaft leaves ~0.5 mm to the corner, which the slicer drops on the
+// roof's first layer (as it did on the lid's corners); a slot out through the corner would run the
+// tower's full height.
+cif = bigb ? 5.0 : ci;
+TL = [pouter[0] + cif, pouter[1] + cif]; TR = [pouter[2] - ci, pouter[1] + ci];
+BL = [pouter[0] + cif, pouter[3] - cif]; BR = [pouter[2] - ci, pouter[3] - ci];
 // c3: the top-right corner is ~5 mm from the module's antenna: no steel screw or brass insert
 // there, but a printed peg. xiao: the FPC antenna under the hood's roof is ~9 mm from TL and TR.
-pscrews = variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
+// big_button: two more at the step, at the tower's inner right corners, so the tower clamps the
+// lid's left edge under its riser.
+TM = [step_x - boss_d / 2 - 0.3, pouter[1] + ci]; BM = [TM[0], pouter[3] - ci];
+pscrews = bigb ? [TL, BL, TM, BM, BR] : variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
 has_peg = variant == "c3";
 ppeg = TR;
 peg_d = 3.0;
@@ -96,7 +138,8 @@ hood_top = N * t;                     // 33, the stack's visor height
 cap_t = 3.0;
 cap_z = hood_top - cap_t;             // roof underside, 1 mm over the XIAO's USB-C
 hood_screws = xiao ? [TL, TR] : [];   // through the hood, down through notches in the lid
-lid_screws = xiao ? [BL, BR] : pscrews;
+lid_screws = xiao ? [BL, BR] : bigb ? [BR] : pscrews;
+tower_screws = bigb ? [TL, BL, TM, BM] : [];
 // The XIAO ESP32C3's FPC antenna: 40 x 20 mm (ESTIMATE, from a supplier's spec sheet; measure
 // yours), on an 80 mm lead. Its pocket is centred under the roof, away from the screws.
 antenna = [40.5, 20.5, 0.4];          // pocket: x, y, depth
@@ -133,7 +176,7 @@ module tipped(d, h, c, fn = 64) {
 module lead_in(d, c) translate([0, 0, -c]) cylinder(d1 = d, d2 = d + 2 * c + 0.02, h = c + 0.01);
 // USB-C opening, the same as the stack's; the parting line runs through it, so each part takes
 // a notch open at its edge, and neither has to bridge.
-module usb_cut() translate([0, 0, usb[3] - usb_slot[1] / 2]) linear_extrude(height = usb_slot[1])
+module usb_cut() translate([0, 0, pusb_z - usb_slot[1] / 2]) linear_extrude(height = usb_slot[1])
     top_view() rect([usb[0] - usb_slot[0] / 2, usb[1] > 0 ? usb[2] : pouter[1] - 1,
                      usb[0] + usb_slot[0] / 2, usb[1] > 0 ? pouter[3] + 1 : usb[2]]);
 module bosses_at(cs, h, cb, ct) intersection() {
@@ -180,13 +223,13 @@ module base() {
             corner_bosses(part_z, bed_c, seam_c);
             // board spacers, from the floor to the board's underside, with pins for its holes
             for (s = spacers) translate([s[0], -s[1], floor_t]) {
-                cylinder(d = spacer_d, h = board_bottom_z - floor_t);
+                cylinder(d = spacer_d, h = pboard_bottom_z - floor_t);
                 root_fillet(spacer_d / 2, root_f);
-                translate([0, 0, board_bottom_z - floor_t - 0.01]) tipped(pin_d, pin_h + 0.01, pin_c, 24);
+                translate([0, 0, pboard_bottom_z - floor_t - 0.01]) tipped(pin_d, pin_h + 0.01, pin_c, 24);
             }
             translate([0, 0, floor_t]) linear_extrude(height = fence_h) top_view() difference() {
-                rect([cell[0] - fence_t, cell[1] - fence_t, cell[2] + fence_t, cell[3] + fence_t], 1);
-                rect(cell, 0.5);
+                rect([pcell[0] - fence_t, pcell[1] - fence_t, pcell[2] + fence_t, pcell[3] + fence_t], 1);
+                rect(pcell, 0.5);
             }
         }
         usb_cut();
@@ -212,7 +255,7 @@ module lid() {
             bosses_at(has_peg ? concat(lid_screws, [ppeg]) : lid_screws, plate_z - part_z + 0.01, seam_c, 0);
             // posts down to the board's key face, over the spacers: they clamp the board
             for (s = spacers) if (!xiao || s[1] > hood_y) translate([s[0], -s[1], 0]) {
-                translate([0, 0, key_face_z - part_z]) cylinder(d = spacer_d, h = plate_z - key_face_z + 0.01);
+                translate([0, 0, pkey_face_z - part_z]) cylinder(d = spacer_d, h = plate_z - pkey_face_z + 0.01);
                 translate([0, 0, plate_z - part_z + 0.01]) mirror([0, 0, 1]) root_fillet(spacer_d / 2, root_f);
             }
             if (has_peg) translate([ppeg[0], -ppeg[1], 0.01]) mirror([0, 0, 1]) tipped(peg_d, peg_h + 0.01, lead_c);
@@ -227,6 +270,9 @@ module lid() {
             // notches for the hood's corner bosses
             for (c = hood_screws) translate([c[0], -c[1], -1]) cylinder(d = boss_d + 2 * gapf, h = lid_h + 2);
         }
+        // big_button: left of the step the tower takes over, walls and all
+        if (bigb) translate([0, 0, -1]) linear_extrude(height = lid_h + 2) top_view()
+            rect([pouter[0] - 1, pouter[1] - 1, step_x, pouter[3] + 1]);
         translate([0, 0, -part_z]) usb_cut();
         for (c = keys) translate([c[0], -c[1], 0]) mx_cut(lid_h);
         for (l = leds) translate([l[0], -l[1], -1]) cylinder(d = led_hole, h = lid_h + 2);
@@ -258,7 +304,7 @@ module hood() {
             }
             // brackets down to the board's key face, over the two spacers under the hood
             for (sp = spacers) if (sp[1] < hood_y) top_view() hull() {
-                translate([0, 0, key_face_z]) linear_extrude(height = plate_top_z - key_face_z) hull() {
+                translate([0, 0, pkey_face_z]) linear_extrude(height = plate_top_z - pkey_face_z) hull() {
                     translate(sp) circle(d = bracket_d);
                     rect([sp[0] - bracket_d / 2, pinner[1] - 1.5, sp[0] + bracket_d / 2, pinner[1]]);
                 }
@@ -277,16 +323,71 @@ module hood() {
     }
 }
 
-top_z = xiao ? hood_top : plate_top_z;
-echo(str("PRINTED ", variant, ": outside ", pouter[2] - pouter[0], " x ", pouter[3] - pouter[1], " x ", top_z,
+// big_button: the tower, in assembled coordinates. Its outer walls stand on the base's, left of
+// the step; its riser stands on the lid's left edge and clamps it; the roof takes the button. Four
+// M3 screws, down deep shafts, clamp it to the base. Printed roof down.
+module xband3d(x0, x1, z0, z1) translate([0, 0, z0]) linear_extrude(height = z1 - z0) top_view()
+    rect([x0, pouter[1] - 1, x1, pouter[3] + 1]);
+module tower() {
+    roof_z = tower_top - panel_t;
+    difference() {
+        union() {
+            difference() {
+                intersection() {
+                    translate([0, 0, part_z]) outer3d(tower_top - part_z, seam_c, bed_c);
+                    union() {
+                        xband3d(pouter[0] - 1, step_x, part_z, tower_top);
+                        xband3d(step_x - 0.01, step_x + riser_t, plate_top_z, tower_top);
+                    }
+                }
+                translate([0, 0, part_z - 1]) linear_extrude(height = roof_z - part_z + 1) top_view()
+                    rect([pinner[0], pinner[1], step_x, pinner[3]], 0.5);
+            }
+            intersection() { translate([0, 0, part_z]) bosses_at(tower_screws, tower_top - part_z, seam_c, bed_c);
+                             xband3d(pouter[0] - 1, step_x, part_z, tower_top); }
+        }
+        // the button's hole, its top edge chamfered (the bed face as printed)
+        translate([btn_c[0], -btn_c[1], 0]) {
+            translate([0, 0, roof_z - 1]) cylinder(d = btn_hole, h = panel_t + 2, $fn = 128);
+            translate([0, 0, tower_top - mx_c]) cylinder(d1 = btn_hole, d2 = btn_hole + 2 * mx_c + 0.02, h = mx_c + 0.01, $fn = 128);
+        }
+        for (c = tower_screws) translate([c[0], -c[1], part_z]) screw_way(lid_h - screw_head[1]);
+        // the riser's top outer edge is on the bed when printing: chamfer it as the others are
+        translate([step_x + riser_t, pouter[3] + 1, 0]) rotate([90, 0, 0]) linear_extrude(height = pouter[3] - pouter[1] + 2)
+            polygon([[0.01, tower_top + 0.01], [-bed_c, tower_top + 0.01], [0.01, tower_top - bed_c]]);
+    }
+}
+
+top_z = xiao ? hood_top : bigb ? tower_top : plate_top_z;
+// for check-stack.py
+if (bigb) echo(str("BIGBUTTON ", btn_c[0], " ", btn_c[1], " ", tower_top, " ", btn_depth, " ", btn_nut_d, " ",
+                   btn_body_d, " ", panel_t, " ", pcell[0], " ", pcell[1], " ", pcell[2], " ", pcell[3]));
+echo(str("PRINTED ", variant, bigb ? " big_button" : "", ": outside ", pouter[2] - pouter[0], " x ", pouter[3] - pouter[1], " x ", top_z,
          " mm; ", len(pscrews), " x M3 x ", screw_len, " SHCS, ", engage, " mm into the inserts"));
 
 if (piece == "base") base();
 else if (piece == "lid") translate([0, 0, lid_h]) rotate([180, 0, 0]) lid();   // top face on the bed
 else if (piece == "hood" && xiao) translate([0, 0, hood_top]) rotate([180, 0, 0]) hood();   // roof on the bed
+else if (piece == "tower" && bigb) translate([0, 0, tower_top]) rotate([180, 0, 0]) tower();  // roof on the bed
 else if (piece == "assembly") {
     color("#d0d4dc") base();
     color("#4a4f58", 0.85) translate([0, 0, part_z]) lid();
     if (xiao) color("#6a7080", 0.85) hood();
-    board3d();
+    if (bigb) {
+        color("#6a7080", 0.85) tower();
+        color("#b8b8c8", 0.9) translate([pcell[0] + 0.5, -pcell[3] + 0.5, floor_t]) cube([pcell[2] - pcell[0] - 1, pcell[3] - pcell[1] - 1, 5]);
+        translate([btn_c[0], -btn_c[1], 0]) {
+            color("#c0392b") translate([0, 0, tower_top]) cylinder(d = btn_head_d, h = 6);
+            color("#555") translate([0, 0, tower_top - panel_t - 4]) cylinder(d = btn_nut_d, h = 4, $fn = 6);
+            color("#555") translate([0, 0, tower_top - btn_depth]) cylinder(d = 22, h = btn_depth);
+        }
+    }
+    if (!bigb) board3d();
+    else {   // stack.scad's board3d draws the stack's cell and spacers, at the stack's heights
+        color("#1a1a1a") translate([board[0], -board[3], pboard_bottom_z]) cube([board[2] - board[0], board[3] - board[1], 1.6]);
+        for (k = keys) translate([k[0], -k[1], pkey_face_z]) {
+            color("#e8e8e8") translate([-7, -7, 0]) cube([14, 14, 11.6]);
+            color("#4a6fa5") translate([-9, -9, 11.6]) cube([18, 18, 7.5]);
+        }
+    }
 }

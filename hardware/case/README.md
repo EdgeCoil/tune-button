@@ -127,6 +127,45 @@ It is open at the front, toward the keys, and the XIAO's USB-C comes out through
     above the XIAO, as the stack's visor does, and the XIAO is the nearest metal. If range is
     poor, raising `hood_top` gives the antenna more room above it.
 
+### `c3` with a big button
+
+`-D big_button=true` (with `variant="c3"`) adds a 22 mm panel-mount push button to the left of the
+keys, seen from above with the USB-C at the bottom. It is printed only; there is no stack for it.
+
+![c3 with the big button](stack/c3-btn/printed-preview.png)
+
+| | |
+|---|---|
+| Parts | base, lid, tower |
+| Outside size | 96 × 82 mm; 14.6 mm tall over the keys, 31 mm at the tower |
+| Screws | 5 × M3 × 8, plus the printed peg at the antenna corner |
+| Cell | 502535 (25 × 35 × 5 mm), on the floor under the tower's far end |
+| STLs | `tune-button-c3-btn-base.stl`, `-lid.stl`, `-tower.stl` |
+
+- **The board section is thin** because the cell no longer sits under the board. The board sits
+  6.4 mm lower than on `c3`, with 1.2 mm under the battery socket J2, its tallest part below.
+  **Don't fit the TP1 header**: it would hang 8.5 mm below the board. Solder wires to its pads.
+- **The tower is the third part.** Its roof takes the button: a 22.4 mm hole (22 mm, plus what FDM
+  takes off a hole) in a 2.5 mm panel. The roof stands 31 mm above the bed: 26 mm of button below
+  the panel's top face, 3 mm under its terminals for the wires, and the 2 mm floor. A riser at its
+  right side stands on the lid's left edge and clamps it. Four screws hold the tower: two in its
+  far corners and two at the step.
+- **The button sits level with the middle of the four keys,** with its body 4 mm clear of the
+  battery plug's end, since the plug's lead leaves to the left. The cell lies along the far wall
+  inside a fence, clear of the button's body, and about 23 mm from the module's antenna.
+- **The button's sizes:** measured, a 28.5 mm nut (`btn_nut_d`) and a 30 mm head, which sits on
+  the roof with about 5 mm of roof around it. The 26 mm depth, terminals included, is also
+  measured. One ESTIMATE: nothing below the nut is wider than 26 mm (`btn_body_d`). If the
+  button's thread can't clamp a 2.5 mm panel, set `panel_t`. If it has an anti-rotation key, file
+  a notch in the hole.
+- **Wiring the button:** in parallel with one of the MX switches, soldered to that switch's two
+  pins on the parts side, so it acts as that key and the firmware is unchanged. (The board has no
+  spare key input; TP1's RXD pad, GPIO20, could be a fifth one with a firmware change.)
+- **The tower's far corner screws sit 5.0 mm in from the edges,** not 3.6 mm. Their counterbores
+  are 20 mm shafts down the tower, and at 3.6 mm each shaft left about 0.5 mm at the corner, which
+  the slicer drops on the roof's first layer. A slot out through the corner, as on the lid, would
+  run the tower's full height.
+
 ### Printing
 
 No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
@@ -134,7 +173,7 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
 - The lid STL is already upside down: its top face goes on the bed, and the skirt, bosses and
   posts grow up from it. Turn on elephant-foot compensation, or the first layer narrows the MX
   holes at the top face.
-- The `xiao` hood STL is upside down too, roof on the bed.
+- The `xiao` hood STL is upside down too, roof on the bed, and so is the big-button tower.
 - On `c3` the parting line runs through the USB-C opening, so each part has an open notch instead
   of a bridge. On `xiao` the USB-C window is in the hood's back wall, a 13 mm bridge.
 - **Chamfers and fillets, for printing** (the sizes are parameters at the top of the file):
@@ -152,7 +191,7 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
   whole seat. (The hood's screws sit in bosses and are unchanged.)
 
 **Hardware:** M3 × 8 socket head cap screws (ISO 4762) and M3 heat-set inserts: 3 of each for
-`c3`, 4 for `xiao`.
+`c3`, 4 for `xiao`, 5 for the big-button `c3`.
 
 **Assembly:**
 1. **Set the inserts** into the base's corner bosses with a soldering iron, flush with the top
@@ -164,7 +203,10 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
    switches (on `c3` its peg enters the socket) and screw down its corners; its posts clamp the
    board. (With `mx_fit = "clip"`, clip the switches into the lid and solder them through it
    instead, then lower lid and board together.)
-6. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
+6. **Big-button `c3`:** fit the button in the tower's roof and tighten its nut, solder its wires,
+   and run them under the riser to the board. Lower the tower on, its riser onto the lid's left
+   edge, and screw down its four screws.
+7. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
    over the XIAO, its back corners through the lid's notches, and screw it down.
 
 ## Files
@@ -181,6 +223,7 @@ or later, and `xvfb-run` for the preview images when headless.
 | `stack/c3-jst/wall.stl` | the printed alternative to layers 5–15 |
 | `stack/<board>/preview.png` | assembly render |
 | `tune-button-<board>-base.stl`, `-lid.stl`, `-hood.stl` | the printed `c3` and `xiao` cases (the lid and hood are upside down, ready to print); `stack/<board>/printed-preview.png` |
+| `tune-button-c3-btn-base.stl`, `-lid.stl`, `-tower.stl` | `c3` with the big button (lid and tower upside down); `stack/c3-btn/printed-preview.png` |
 
 The SVGs are in millimetres. `kerf` (default 0.10 mm) grows each outline and shrinks each hole
 by half the kerf, so the cut parts come out at nominal size. Set it to your laser's kerf, and
@@ -237,7 +280,8 @@ whose firmware doesn't boot. For that, unbolt the case.
 
 ## Checking
 
-`python3 check-stack.py` checks every layer of the three stacks, and every part of the printed `c3` and `xiao` cases.
+`python3 check-stack.py` checks every layer of the three stacks, and every part of the printed `c3`, `xiao`
+and big-button `c3` cases.
 It reads every footprint, and each board's outline and mounting holes, from the KiCad files in
 `../pcb`. It gives each part
 a height (listed in the script; connector and keycap heights are estimates), adds the cells,

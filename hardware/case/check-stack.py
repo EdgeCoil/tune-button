@@ -31,6 +31,7 @@ HEIGHT = [
     ("ESP32-C3-WROOM-02", 3.2),        # Espressif datasheet
     ("PinSocket_1x07", 8.5),           # C2932672, 8.5 mm socket (the XIAO stands on it)
     ("PinHeader_1x02", 8.5),           # 2.5 mm body + 6 mm pins
+    ("PogoPin_YTC1P", 11.0),           # YTC1P-8535 at its working height (12 free); xiao rev B
     ("SW_Push_1P1T_XKB_TS-1187A", 1.6),
     ("SOT-23", 1.2), ("SOD-323", 1.2), ("LED_0", 1.1), ("R_0", 0.6), ("R_1", 0.6), ("C_0", 1.0), ("C_1", 1.6), ("TestPoint", 0.1),
     ("MountingHole", 0.0),
@@ -44,7 +45,19 @@ VARIANTS = {
     "xiao": ("xiao", None, +1, 16.0, 14.4),
     "c3": ("c3", 46.0, -1, 16.0, 14.4),
     "c3-jst": ("c3-jst", None, +1, 7.6, 6.0),
+    "c3-btn": ("c3", 46.0, -1, 9.6, 8.0),     # printed only: tune-button-printed.scad big_button
 }
+STACKED = ("xiao", "c3", "c3-jst")            # the variants stack.scad builds
+# openscad -D arguments that select each printed variant in tune-button-printed.scad
+PRINTED_DEFINES = {"c3-btn": ["-D", 'variant="c3"', "-D", "big_button=true"]}
+
+
+def printed_echo(v, key):
+    """Numbers the printed case echoes for the checker (ECHO: "<key> a b c ...")."""
+    out = os.path.join(tempfile.gettempdir(), "p.echo")
+    subprocess.run(["openscad", *PRINTED_DEFINES.get(v, ["-D", f'variant="{v}"']), "-D", 'piece="none"',
+                    "-o", out, "tune-button-printed.scad"], cwd=HERE, capture_output=True)
+    return [float(x) for x in re.search(r'ECHO: "' + key + r' ([^"]*)"', open(out).read()).group(1).split()]
 
 
 def blocks(s, head):
@@ -169,6 +182,8 @@ def boxes(variant):
         out.append((label, [x0, y0, x1, y1], min(z0, z1), max(z0, z1)))
 
     for ref, name, side, r in parts(pcbdir):
+        if variant == "c3-btn" and ref == "TP1":
+            continue   # not fitted on this variant: wires go straight to its pads
         up = (fdir if side == "F" else -fdir) > 0
         face, far = (top_z, bot_z) if up else (bot_z, top_z)
         sgn = 1 if up else -1
@@ -198,6 +213,15 @@ def boxes(variant):
     if variant == "xiao":
         add("cell 503040", [8, 13.5, 38, 53.5], 3.5, 9.0)
         add("J3 plug", [-5.5, 9.5, 1.9, 16.5], top_z + 0.05, top_z + 4.6)
+    if variant == "c3-btn":
+        # the case's own figures, in the top view: mirror them back so add() can mirror them again
+        cx, cy, top, depth, nut, body, panel, c0, c1, c2, c3 = printed_echo(variant, "BIGBUTTON")
+        tv = lambda r: [mirror - r[2], r[1], mirror - r[0], r[3]]
+        add("cell 502535", tv([c0 + 0.5, c1 + 0.5, c2 - 0.5, c3 - 0.5]), 2.05, 7.0)
+        add("J2 plug", [44.0, 39.5, 50.5, 47.5], bot_z - 0.05, bot_z - 4.6)
+        roof = top - panel
+        add("button body", tv([cx - body / 2, cy - body / 2, cx + body / 2, cy + body / 2]), top - depth, roof - 0.05)
+        add("button nut", tv([cx - nut / 2, cy - nut / 2, cx + nut / 2, cy + nut / 2]), roof - 4, roof - 0.05)
     if variant == "c3":
         add("cell 503040", [8, 22.5, 38, 62.5], 3.5, 9.0)   # symmetric about x = 23
         add("J2 plug", [44.0, 39.5, 50.5, 47.5], bot_z - 0.05, bot_z - 4.6)
@@ -234,10 +258,17 @@ def main():
     # extra -D overrides for mutation tests, e.g.: python3 check-stack.py mx_hole=12
     extra = [a for kv in sys.argv[1:] for a in ("-D", kv)]
     failed = 0
+    only = os.environ.get("CHECK_ONLY")   # e.g. CHECK_ONLY=c3-btn: one variant
     for v in VARIANTS:
+        if only and v != only:
+            continue
         bs = boxes(v)
         board = board_solid(v)
         obstacles = [(b[0], cube(b), b[2], b[3]) for b in bs] + [("the board", board, VARIANTS[v][4], VARIANTS[v][4] + 1.6)]
+        if v not in STACKED:
+            print(f"{v}: printed only")
+            failed += check_printed(v, obstacles, extra)
+            continue
         sd = ["-D", f'variant="{v}"', "-D", 'part="none"', "-D", "kerf=0", *extra]
         subprocess.run(["openscad", "-D", f'variant="{v}"', "-D", 'part="none"', "-o",
                         os.path.join(tempfile.gettempdir(), "l.echo"), "stack.scad"],
@@ -284,6 +315,7 @@ def volume(inc, body, defines):
 PRINTED = {   # variant: its printed parts, each in its assembled position
     "c3": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();")],
     "xiao": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("hood", "hood();")],
+    "c3-btn": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("tower", "tower();")],
 }
 
 
@@ -291,7 +323,7 @@ def check_printed(v, obstacles, extra):
     """A printed case: nothing may enter any part, no two parts may overlap, and the clamp must
     close: a spacer from below and a post or bracket from above at every mounting hole."""
     inc, failed = "tune-button-printed.scad", 0
-    pd = ["-D", f'variant="{v}"', "-D", 'piece="none"', *extra]
+    pd = [*PRINTED_DEFINES.get(v, ["-D", f'variant="{v}"']), "-D", 'piece="none"', *extra]
     parts_ = PRINTED[v]
     for label, expr in parts_:
         for o in obstacles:
