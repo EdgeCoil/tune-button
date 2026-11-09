@@ -138,7 +138,7 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
 |---|---|
 | Parts | base, lid, tower |
 | Outside size | 96 × 82 mm; 14.6 mm tall over the keys and the cell, 31 mm at the tower |
-| Screws | 6 × M3 × 8, plus the printed peg at the antenna corner |
+| Screws | 7 × M3 × 8, plus the printed peg at the antenna corner |
 | Cell | 502535 (25 × 35 × 5 mm), on the floor beside the tower, under the lid |
 | STLs | `tune-button-c3-btn-base.stl`, `-lid.stl`, `-tower.stl` |
 
@@ -149,9 +149,11 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
   roof takes the button: a 22.4 mm hole (22 mm, plus what FDM takes off a hole) in a 2.5 mm panel.
   The roof stands 31 mm above the bed: 26 mm of button below the panel's top face, 3 mm under its
   terminals for the wires, and the 2 mm floor. Its two inner walls are a riser that stands on the
-  lid and clamps it. Three screws hold the tower: its front-left corner, its front-right corner at
-  the step, and one in its left wall just inside the back, clear of the cell's fence and about
-  5.6 mm clear of the nut.
+  lid and clamps it. Four screws hold the tower, one near each of its corners: front-left,
+  front-right at the step, one in its left wall just inside the back (clear of the cell's fence
+  and about 5.6 mm clear of the nut), and one in the inner back corner, its boss filling the
+  corner of the riser. In the base that last boss is joined to the cell's fence by a short web,
+  since it stands only 0.1 mm off it.
 - **The lid runs on over the cell,** flush with the top over the keys, so the case is 14.6 mm
   tall everywhere but the tower. The lid takes three screws: the far-left corner, mid-way along
   the far wall, and the near-right corner.
@@ -204,7 +206,7 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
   whole seat. (The hood's screws sit in bosses and are unchanged.)
 
 **Hardware:** M3 × 8 socket head cap screws (ISO 4762) and M3 heat-set inserts: 3 of each for
-`c3`, 4 for `xiao`, 6 for the big-button `c3`.
+`c3`, 4 for `xiao`, 7 for the big-button `c3`.
 
 **Assembly:**
 1. **Set the inserts** into the base's corner bosses with a soldering iron, flush with the top
@@ -218,7 +220,7 @@ No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
    instead, then lower lid and board together.)
 6. **Big-button `c3`:** fit the button in the tower's roof and tighten its nut, solder its wires,
    and run them along the floor under the lid to the board. Lower the tower into the lid's
-   corner cut-out, its riser onto the lid, and screw down its three screws.
+   corner cut-out, its riser onto the lid, and screw down its four screws.
 7. **`xiao`:** stick the antenna in the hood's pocket and plug it into the XIAO. Lower the hood
    over the XIAO, its back corners through the lid's notches, and screw it down.
 

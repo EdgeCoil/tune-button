@@ -129,12 +129,15 @@ TL = [pouter[0] + cif, pouter[1] + cif]; TR = [pouter[2] - ci, pouter[1] + ci];
 BL = [pouter[0] + cif, pouter[3] - cif]; BR = [pouter[2] - ci, pouter[3] - ci];
 // c3: the top-right corner is ~5 mm from the module's antenna: no steel screw or brass insert
 // there, but a printed peg. xiao: the FPC antenna under the hood's roof is ~9 mm from TL and TR.
-// big_button: TM, mid back wall, holds the lid's long back edge. The tower has three: BL, BM at its
-// inner right corner, and LM on the left wall just inside its back face, clear of the cell's fence
-// and 5.6 mm clear of the nut (as a circle across its corners).
+// big_button: TM, mid back wall, holds the lid's long back edge. The tower has four: BL, BM at its
+// front right corner, LM on the left wall just inside its back face, clear of the cell's fence and
+// 5.6 mm clear of the nut (as a circle across its corners), and RM in its inner back corner.
 TM = [step_x - boss_d / 2 - 0.3, pouter[1] + ci]; BM = [TM[0], pouter[3] - ci];
 LM = [pouter[0] + cif, step_y + boss_d / 2 + 0.3];
-pscrews = bigb ? [TL, LM, BL, TM, BM, BR] : variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
+// RM: the tower's inner back corner, its boss tangent to both riser faces (and 0.2 clear of the
+// lid's cut edges below them). In the base it is joined to the cell's fence by a web.
+RM = [step_x - boss_d / 2, step_y + boss_d / 2];
+pscrews = bigb ? [TL, LM, BL, TM, BM, RM, BR] : variant == "c3" ? [TL, BL, BR] : [TL, TR, BL, BR];
 has_peg = variant == "c3";
 ppeg = TR;
 peg_d = 3.0;
@@ -149,7 +152,7 @@ cap_t = 3.0;
 cap_z = hood_top - cap_t;             // roof underside, 1 mm over the XIAO's USB-C
 hood_screws = xiao ? [TL, TR] : [];   // through the hood, down through notches in the lid
 lid_screws = xiao ? [BL, BR] : bigb ? [TL, TM, BR] : pscrews;
-tower_screws = bigb ? [LM, BL, BM] : [];
+tower_screws = bigb ? [LM, BL, BM, RM] : [];
 // The XIAO ESP32C3's FPC antenna: 40 x 20 mm (ESTIMATE, from a supplier's spec sheet; measure
 // yours), on an 80 mm lead. Its pocket is centred under the roof, away from the screws.
 antenna = [40.5, 20.5, 0.4];          // pocket: x, y, depth
@@ -231,6 +234,9 @@ module base() {
                 translate([0, 0, floor_t]) linear_extrude(height = part_z) top_view() pin2d();
             }
             corner_bosses(part_z, bed_c, seam_c);
+            // big_button: RM's boss stands 0.1 mm off the cell's fence; a web joins them
+            if (bigb) translate([0, 0, floor_t - 0.01]) linear_extrude(height = part_z - floor_t + 0.01) top_view()
+                rect([RM[0] - boss_d / 2, pcell[3], RM[0] + boss_d / 2, RM[1]]);
             // board spacers, from the floor to the board's underside, with pins for its holes
             for (s = spacers) translate([s[0], -s[1], floor_t]) {
                 cylinder(d = spacer_d, h = pboard_bottom_z - floor_t);
@@ -387,6 +393,8 @@ module tower() {
             }
             intersection() { translate([0, 0, part_z]) bosses_at(tower_screws, tower_top - part_z, seam_c, bed_c);
                              tband3d(twall, part_z, tower_top); }
+            // RM's boss fills the inner back corner, so it joins the riser along both faces
+            tband3d([RM[0], step_y, step_x, RM[1]], part_z, tower_top - 0.01);
             // 45-degree fillets inside, where the roof meets the walls and the riser: the button's
             // presses go through the roof into them. root_f (1.0) is all the room the nut leaves
             // at the left wall (1.0), the riser (1.25) and the back (1.0).
