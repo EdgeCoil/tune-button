@@ -181,6 +181,35 @@ keys, seen from above with the USB-C at the bottom. It is printed only; there is
   slicer drops on the roof's first layer. A slot out through the corner, as on the lid, would run
   the tower's full height.
 
+### The raven
+
+`-D raven=true` (with `big_button=true`) turns the big-button tower into a raven's head, with the
+button as its eye. Print `tune-button-c3-raven-base.stl` and `tune-button-c3-raven-tower.stl` with
+the big button's lid, `tune-button-c3-btn-lid.stl`.
+
+![the raven](stack/c3-raven/printed-preview.png)
+
+- **The head** rises from the tower's footprint and rounds inward to an egg-shaped crown round
+  the eye. It prints roof down, so its sides may lean in no more than 45°: it starts nearly upright
+  at the lid and leans most just under the crown (`head_prof`, `head_in`, `head_r`). The walls are
+  2 mm thick (`head_wall`) and follow the curve inside; the roof stays 2.5 mm where the button
+  clamps.
+- **No screw holes on the head.** The tower's four M3 × 8 screws come up through the base, heads
+  in counterbores underneath, into heat-set inserts in the feet of four columns inside the tower.
+  The columns run up to the roof, so they print from the roof without floating. The lid keeps its
+  three screws from the top. Seven inserts in all: three in the base, four in the tower.
+- **The bill** grows out of the head's front-right curve and runs 30 mm along the front of the
+  lid, past the keys, hooking down at the tip. It rests on the lid and clears the keycaps' travel by
+  1.5 mm. It is narrow with a sharp ridge, like a raven's, so its sides stay steep enough to print
+  without supports even where the ridge slopes gently.
+- **The eye:** a 0.6 mm groove round the button's head (`eye_ring`). Fill it with paint, or print
+  the first layers in a second colour.
+- **Suggested colours:** matte black, with a red or amber button for the eye.
+- The bill's stations (`beak`) and centre line (`beak_y`) are parameters. Keep each station's
+  height about its full width or more, or the sides get too shallow to print.
+- **Assembly:** as for the big button, but fit the tower's four inserts into its column feet from
+  below, set the tower on, turn the case over and screw it on from underneath.
+
 ### Printing
 
 No supports for any part, 0.2 mm layers, 3 or more perimeters for the bosses.
@@ -239,6 +268,7 @@ or later, and `xvfb-run` for the preview images when headless.
 | `stack/<board>/preview.png` | assembly render |
 | `tune-button-<board>-base.stl`, `-lid.stl`, `-hood.stl` | the printed `c3` and `xiao` cases (the lid and hood are upside down, ready to print); `stack/<board>/printed-preview.png` |
 | `tune-button-c3-btn-base.stl`, `-lid.stl`, `-tower.stl` | `c3` with the big button (lid and tower upside down); `stack/c3-btn/printed-preview.png` |
+| `tune-button-c3-raven-base.stl`, `-tower.stl` | the raven: its base and head, with `tune-button-c3-btn-lid.stl`; `stack/c3-raven/printed-preview.png` |
 
 The SVGs are in millimetres. `kerf` (default 0.10 mm) grows each outline and shrinks each hole
 by half the kerf, so the cut parts come out at nominal size. Set it to your laser's kerf, and

@@ -82,6 +82,35 @@ pcell = bigb ? [tower_x0, 3.0, tower_x0 + 35 + cell_slack, 3.0 + 25 + cell_slack
 // and behind that the lid runs on over the cell. The riser stands on the lid along both inner edges.
 step_y = 30.3;        // board y
 
+/* [raven: the tower as a raven's head] */
+// raven = true (with big_button): the tower is the head and the button its eye. A beak runs off the
+// tower's right face along the front of the lid, past the keys. It is part of the tower and sits on
+// the lid. Printed roof down, the beak's top is an underside, so its sides stay steep (a raven's
+// bill is narrow with a sharp ridge on top): every face is 45 degrees or steeper, so no supports.
+raven = false;
+rvn = bigb && raven;
+beak_y = 69.5;        // board y of the beak's centre line: past the keys it clears the keycaps'
+                      // travel (to y 64.05) by 1.5 mm
+// stations along the beak, from the tower's right face: [x out, ridge height above the lid,
+// half width at the lid]; the first is inside the riser, joining the two. The ridge drops faster at the end, into the bill's hooked tip.
+beak = [[-14, 12.0, 5.6], [-6, 11.0, 5.5], [0, 10.2, 5.0], [10, 8.0, 4.0], [19, 5.6, 2.9], [25, 3.4, 1.8],
+        [28.5, 1.4, 0.8], [30, 0.4, 0.3]];
+// The head rises from the tower's footprint on the lid and rounds inward to its crown. Printed roof
+// down, its sides may lean in at most 45 degrees, so it is near upright at the bottom and leans most
+// just under the crown. head_prof: [height above the lid, blend 0..1 from footprint to crown];
+// head_in: how far each side comes in at blend 1 (left, back, right, front); head_r: the crown's
+// corner radius at blend 1. The steepest corner comes in 11.6 mm at blend 1, so the blend's rate
+// times 11.6 is its lean: here it goes from 0.25 at the lid to 0.95 at the crown (under 45 deg).
+// One slice sits at the roof's underside (13.9), so the button's panel stays panel_t thick.
+function head_t(z) = (0.25 * z + 0.35 * z * z / 16.4) / 11.6;
+head_prof = [for (z = concat([for (i = [0 : 11]) 13.9 * i / 11], [15.15, 16.4])) [z, head_t(z)]];
+head_in = [2.75, 5.2, 0, 5.2];
+head_r = 14;
+head_wall = 2.0;
+// The tower's screws come up from under the base into inserts in the tower, so the head has no
+// holes in it. tseat: the heads' seat in the base, for the same 5.2 mm engagement as the others.
+eye_ring = [15.4, 16.0, 0.6];         // a groove round the button's head: inner, outer radius, depth
+
 /* [Shell] */
 pwall = 5.5;          // walls; thick enough for an insert boss to clear the board's corner
 floor_t = 2.0;
@@ -132,7 +161,7 @@ BL = [pouter[0] + cif, pouter[3] - cif]; BR = [pouter[2] - ci, pouter[3] - ci];
 // big_button: TM, mid back wall, holds the lid's long back edge. The tower has four: BL, BM at its
 // front right corner, LM on the left wall just inside its back face, clear of the cell's fence and
 // 5.6 mm clear of the nut (as a circle across its corners), and RM in its inner back corner.
-TM = [step_x - boss_d / 2 - 0.3, pouter[1] + ci]; BM = [TM[0], pouter[3] - ci];
+TM = [step_x - boss_d / 2 - 0.3, pouter[1] + ci]; BM = [TM[0], pouter[3] - (rvn ? cif : ci)];
 LM = [pouter[0] + cif, step_y + boss_d / 2 + 0.3];
 // RM: the tower's inner back corner, its boss tangent to both riser faces (and 0.2 clear of the
 // lid's cut edges below them). In the base it is joined to the cell's fence by a web.
@@ -164,6 +193,7 @@ bracket_d = 4.4;                      // R3 sits at the edge of H2's 5 mm courty
 
 lid_h = plate_top_z - part_z;                     // 6.0
 engage = screw_len - (lid_h - screw_head[1]);     // screw length below the lid: 5.2
+tseat = part_z + engage - screw_len;              // raven: tower screws' heads, from below: 5.8
 
 module pout2d() rect(pouter, pr);
 module pin2d() rect(pinner, 0.5);
@@ -234,6 +264,9 @@ module base() {
                 translate([0, 0, floor_t]) linear_extrude(height = part_z) top_view() pin2d();
             }
             corner_bosses(part_z, bed_c, seam_c);
+            // raven: the through bosses are wider, round their counterbores
+            if (rvn) intersection() { outer3d(part_z, bed_c, seam_c);
+                for (c = tower_screws) translate([c[0], -c[1], 0]) cylinder(d = 9.0, h = part_z); }
             // big_button: RM's boss stands 0.1 mm off the cell's fence; a web joins them
             if (bigb) translate([0, 0, floor_t - 0.01]) linear_extrude(height = part_z - floor_t + 0.01) top_view()
                 rect([RM[0] - boss_d / 2, pcell[3], RM[0] + boss_d / 2, RM[1]]);
@@ -249,9 +282,15 @@ module base() {
             }
         }
         usb_cut();
-        for (s = pscrews) translate([s[0], -s[1], 0]) {
+        for (s = rvn ? lid_screws : pscrews) translate([s[0], -s[1], 0]) {
             translate([0, 0, part_z - insert_depth]) cylinder(d = insert_hole, h = insert_depth + 1);
             translate([0, 0, part_z]) lead_in(insert_hole, lead_c);
+        }
+        // raven: the tower's screws go up through the base, heads in counterbores from below; one
+        // layer closes each counterbore's top, so it bridges (push it out as for the others)
+        if (rvn) for (s = tower_screws) translate([s[0], -s[1], 0]) {
+            translate([0, 0, -1]) cylinder(d = screw_head[0], h = tseat + 1);
+            translate([0, 0, tseat + membrane]) cylinder(d = screw_clear, h = part_z);
         }
         if (has_peg) translate([ppeg[0], -ppeg[1], 0]) {
             translate([0, 0, part_z - peg_h - 0.5]) cylinder(d = peg_d + 2 * gapf, h = peg_h + 1);
@@ -376,7 +415,66 @@ twall = [pouter[0] - 1, step_y, step_x, pouter[3] + 1];
 triser = [pouter[0] - 1, step_y - riser_t, step_x + riser_t, pouter[3] + 1];
 tin = [pinner[0], step_y, step_x, pinner[3]];
 module tband3d(r, z0, z1) translate([0, 0, z0]) linear_extrude(height = z1 - z0) top_view() rect(r);
-module tower() {
+// raven: one station of the beak, a thin triangle across y at x (assembled coordinates)
+module beak_station(st) translate([step_x + riser_t + st[0], -beak_y, plate_top_z])
+    rotate([90, 0, 90]) linear_extrude(height = 0.01)
+        polygon([[-st[2], 0], [st[2], 0], [0, st[1]]]);
+module beak3d() for (i = [0 : len(beak) - 2]) hull() { beak_station(beak[i]); beak_station(beak[i + 1]); }
+// raven: the head's outline (board coordinates) at blend t, from the footprint (0) to the crown (1).
+// The front-left corner is the case's own, so it keeps at least the case's corner radius.
+module rrect4(b, rs) hull() for (i = [0 : 3]) {
+    c = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]][i];
+    sg = [[1, 1], [-1, 1], [-1, -1], [1, -1]][i];
+    translate(c + sg * rs[i]) circle(r = rs[i], $fn = 48);
+}
+module head2d(t) let(f = [pouter[0], step_y - riser_t, step_x + riser_t, pouter[3]], r = max(0.01, t * head_r))
+    rrect4([f[0] + t * head_in[0], f[1] + t * head_in[1], f[2] - t * head_in[2], f[3] - t * head_in[3]],
+           [r, r, r, max(pr, r)]);
+module head_inner2d(t) intersection() { rect(tin, 0.5); offset(delta = -head_wall) head2d(t); }
+module head_slice(k, inner = false) translate([0, 0, plate_top_z + head_prof[k][0] - (k == 0 && inner ? 0.01 : 0)])  // the outer starts flush with the lid's top
+    linear_extrude(height = 0.01) top_view() if (inner) head_inner2d(head_prof[k][1]); else head2d(head_prof[k][1]);
+module head_outer() union() {
+    intersection() { translate([0, 0, part_z]) outer3d(plate_top_z - part_z + 0.02, seam_c, 0);
+                     tband3d(twall, part_z, plate_top_z + 0.01); }
+    for (k = [0 : len(head_prof) - 2]) hull() { head_slice(k); head_slice(k + 1); }
+}
+module raven_tower() {
+    roof_z = tower_top - panel_t;
+    difference() {
+        union() { head_outer(); beak3d(); }
+        // the inside: the tower's below the lid, then shrinking with the head up to the roof
+        translate([0, 0, part_z - 1]) linear_extrude(height = plate_top_z - part_z + 1.01) top_view() rect(tin, 0.5);
+        for (k = [0 : len(head_prof) - 2]) if (plate_top_z + head_prof[k + 1][0] <= roof_z + 0.01)
+            hull() { head_slice(k, true); head_slice(k + 1, true); }
+    }
+    // the screw columns, roof to base, and RM's corner fill; inside the head's outline
+    difference() {
+        intersection() {
+            head_outer();
+            union() {
+                for (c = tower_screws) translate([c[0], -c[1], part_z]) cylinder(d = boss_d, h = tower_top - part_z);
+                tband3d([RM[0], step_y, step_x, RM[1]], part_z, tower_top);
+            }
+        }
+        for (c = tower_screws) translate([c[0], -c[1], part_z - 0.01]) {
+            cylinder(d = insert_hole, h = insert_depth);
+            translate([0, 0, 0.01]) mirror([0, 0, 1]) lead_in(insert_hole, lead_c);
+        }
+    }
+}
+module tower() if (rvn) difference() {
+    raven_tower();
+    translate([btn_c[0], -btn_c[1], 0]) {
+        translate([0, 0, tower_top - panel_t - 1]) cylinder(d = btn_hole, h = panel_t + 2, $fn = 128);
+        translate([0, 0, tower_top - mx_c]) cylinder(d1 = btn_hole, d2 = btn_hole + 2 * mx_c + 0.02, h = mx_c + 0.01, $fn = 128);
+    }
+    translate([btn_c[0], -btn_c[1], tower_top - eye_ring[2]]) difference() {
+        cylinder(r = eye_ring[1], h = eye_ring[2] + 0.01, $fn = 128);
+        translate([0, 0, -0.01]) cylinder(r = eye_ring[0], h = eye_ring[2] + 0.03, $fn = 128);
+    }
+    joint_vees(part_z, plate_top_z);
+} else plain_tower();
+module plain_tower() {
     roof_z = tower_top - panel_t;
     difference() {
         union() {
@@ -426,7 +524,7 @@ top_z = xiao ? hood_top : bigb ? tower_top : plate_top_z;
 // for check-stack.py
 if (bigb) echo(str("BIGBUTTON ", btn_c[0], " ", btn_c[1], " ", tower_top, " ", btn_depth, " ", btn_nut_d, " ",
                    btn_body_d, " ", panel_t, " ", pcell[0], " ", pcell[1], " ", pcell[2], " ", pcell[3]));
-echo(str("PRINTED ", variant, bigb ? " big_button" : "", ": outside ", pouter[2] - pouter[0], " x ", pouter[3] - pouter[1], " x ", top_z,
+echo(str("PRINTED ", variant, bigb ? " big_button" : "", rvn ? " raven" : "", ": outside ", pouter[2] - pouter[0], " x ", pouter[3] - pouter[1], " x ", top_z,
          " mm; ", len(pscrews), " x M3 x ", screw_len, " SHCS, ", engage, " mm into the inserts"));
 
 if (piece == "base") base();

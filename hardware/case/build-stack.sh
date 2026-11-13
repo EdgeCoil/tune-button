@@ -57,6 +57,14 @@ mkdir -p stack/c3-btn
 $run openscad -q -D 'variant="c3"' -D big_button=true -o stack/c3-btn/printed-preview.png --imgsize=1200,900 --viewall \
     --autocenter --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-printed.scad || true
 echo "c3 big button printed: tune-button-c3-btn-base.stl tune-button-c3-btn-lid.stl tune-button-c3-btn-tower.stl"
+# The raven: the big-button case with a raven's-head tower (raven = true); the lid is the big button's.
+for p in base tower; do
+    openscad -q -D 'variant="c3"' -D big_button=true -D raven=true -D "piece=\"$p\"" -o "tune-button-c3-raven-$p.stl" tune-button-printed.scad
+done
+mkdir -p stack/c3-raven
+$run openscad -q -D 'variant="c3"' -D big_button=true -D raven=true -o stack/c3-raven/printed-preview.png --imgsize=1200,900 --viewall \
+    --autocenter --camera=0,0,0,55,0,25,0 --colorscheme=Tomorrow tune-button-printed.scad || true
+echo "c3 raven printed: tune-button-c3-raven-base.stl tune-button-c3-raven-tower.stl, with tune-button-c3-btn-lid.stl"
 # A test plate for the MX hole size (see tune-button-mx-gauge.scad).
 openscad -q -o tune-button-mx-gauge.stl tune-button-mx-gauge.scad
 echo "MX hole gauge: tune-button-mx-gauge.stl"

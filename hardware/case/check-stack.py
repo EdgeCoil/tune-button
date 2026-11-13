@@ -46,10 +46,13 @@ VARIANTS = {
     "c3": ("c3", 46.0, -1, 16.0, 14.4),
     "c3-jst": ("c3-jst", None, +1, 7.6, 6.0),
     "c3-btn": ("c3", 46.0, -1, 9.6, 8.0),     # printed only: tune-button-printed.scad big_button
+    "c3-raven": ("c3", 46.0, -1, 9.6, 8.0),   # printed only: big_button with raven (beak on the tower)
 }
 STACKED = ("xiao", "c3", "c3-jst")            # the variants stack.scad builds
 # openscad -D arguments that select each printed variant in tune-button-printed.scad
-PRINTED_DEFINES = {"c3-btn": ["-D", 'variant="c3"', "-D", "big_button=true"]}
+PRINTED_DEFINES = {"c3-btn": ["-D", 'variant="c3"', "-D", "big_button=true"],
+                   "c3-raven": ["-D", 'variant="c3"', "-D", "big_button=true", "-D", "raven=true"]}
+BIG_BUTTON = ("c3-btn", "c3-raven")
 
 
 def printed_echo(v, key):
@@ -182,7 +185,7 @@ def boxes(variant):
         out.append((label, [x0, y0, x1, y1], min(z0, z1), max(z0, z1)))
 
     for ref, name, side, r in parts(pcbdir):
-        if variant == "c3-btn" and ref == "TP1":
+        if variant in BIG_BUTTON and ref == "TP1":
             continue   # not fitted on this variant: wires go straight to its pads
         up = (fdir if side == "F" else -fdir) > 0
         face, far = (top_z, bot_z) if up else (bot_z, top_z)
@@ -213,7 +216,7 @@ def boxes(variant):
     if variant == "xiao":
         add("cell 503040", [8, 13.5, 38, 53.5], 3.5, 9.0)
         add("J3 plug", [-5.5, 9.5, 1.9, 16.5], top_z + 0.05, top_z + 4.6)
-    if variant == "c3-btn":
+    if variant in BIG_BUTTON:
         # the case's own figures, in the top view: mirror them back so add() can mirror them again
         cx, cy, top, depth, nut, body, panel, c0, c1, c2, c3 = printed_echo(variant, "BIGBUTTON")
         tv = lambda r: [mirror - r[2], r[1], mirror - r[0], r[3]]
@@ -322,6 +325,7 @@ PRINTED = {   # variant: its printed parts, each in its assembled position
     "c3": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();")],
     "xiao": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("hood", "hood();")],
     "c3-btn": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("tower", "tower();")],
+    "c3-raven": [("base", "base();"), ("lid", "translate([0, 0, part_z]) lid();"), ("tower", "tower();")],
 }
 
 
